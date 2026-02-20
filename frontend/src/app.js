@@ -57,6 +57,7 @@ function initAuthView() {
  * @param {object} user 
  */
 function showDashboardView(user) {
+    window.currentUser = user; // 전역 유저 정보 저장 (삭제 버튼 노출용)
     const appRoot = document.getElementById('app-root');
     if (appRoot) {
         appRoot.innerHTML = getDashboardHTML(user);
@@ -72,6 +73,30 @@ function showDashboardView(user) {
 
     // 고객의 소리함 초기화
     initFeedback();
+
+    // D-Day 데이터 동기화
+    const updateMainDday = () => {
+        const ddayCount = document.getElementById('ddayCount');
+        const mainDday = document.getElementById('mainDdayCount');
+        if (ddayCount && mainDday) mainDday.textContent = ddayCount.textContent;
+    };
+    setTimeout(updateMainDday, 500);
+    setInterval(updateMainDday, 2000);
+
+    // To-Do 및 그리드 커스터마이징 초기화
+    import('./features/todo.js').then(module => module.initTodo());
+    import('./features/dashboard-grid.js').then(module => {
+        module.initDashboardGrid();
+        module.restoreLayout();
+    });
+
+    // 마인드맵 버튼 연동
+    const startMindmapBtn = document.getElementById('startMindmapBtn');
+    if (startMindmapBtn) {
+        startMindmapBtn.addEventListener('click', () => {
+            import('./features/mindmap.js').then(module => module.initMindmap());
+        });
+    }
 
     // 로그아웃 버튼 설정
     document.getElementById('logoutBtn').addEventListener('click', logout);

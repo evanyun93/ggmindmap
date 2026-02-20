@@ -1,3 +1,4 @@
+
 # 🧠 MindMap 무료 배포 가이드 (Render)
 
 이 가이드는 현재까지 개발된 마인드맵 프로젝트를 **Render** 플랫폼을 사용하여 무료로 배포하는 방법을 안내합니다.
@@ -31,9 +32,12 @@
    - `JWT_SECRET`: 자신만의 보안 키 문자열 (예: `super-secret-key-1234`).
 5. `Create Web Service` 클릭.
 
-## 5. 확인
-배포가 완료되면 Render에서 제공하는 URL(예: `https://my-mindmap.onrender.com`)로 접속할 수 있습니다!
-초기 계정은 `admin / 1234`로 생성됩니다.
+## 6. 수동 배포 설정 (선택 사항)
+매번 `push` 할 때마다 배포되는 것이 부담스럽다면 수동 배포로 변경할 수 있습니다.
+1. Render 대시보드에서 해당 **Web Service** 선택.
+2. 좌측 메뉴에서 **Settings** 클릭.
+3. **Auto Deploy** 항목을 찾아 `No`로 변경.
+4. 이후 배포를 원할 때만 우측 상단의 **Manual Deploy** 버튼을 눌러 `Deploy latest commit`을 선택하세요.
 
 ---
 > [!NOTE]

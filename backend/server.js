@@ -1,4 +1,5 @@
 const express = require('express');
+require('dotenv').config(); // 환경변수 로드
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const cors = require('cors');
@@ -8,13 +9,13 @@ const { Pool } = require('pg');
 const app = express();
 // 배포 환경(Render)에서 할당하는 PORT 또는 기본값 3001 사용
 const PORT = process.env.PORT || 3001;
-// JWT 비밀키 (운영 환경에서는 반드시 환경변수 JWT_SECRET을 설정하세요)
+// JWT 비밀키
 const JWT_SECRET = process.env.JWT_SECRET || 'mindmap-secret-key-2026';
 
-// PostgreSQL 연결 설정 (Render에서는 DATABASE_URL 환경변수가 제공됨)
+// PostgreSQL 연결 설정
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+  ssl: { rejectUnauthorized: false } // 무조건 SSL 허용 (Render DB 접속용)
 });
 
 // 미들웨어 설정
@@ -61,6 +62,27 @@ async function initDatabase() {
           user_id INTEGER REFERENCES tba_users(id),
           content TEXT NOT NULL,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // tba_todos 테이블 생성 (프라이빗 할 일)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_todos (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES tba_users(id) NOT NULL,
+          task TEXT NOT NULL,
+          is_completed BOOLEAN DEFAULT FALSE,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+
+      // tba_mindmaps 테이블 생성 (사용자별 마인드맵 데이터)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_mindmaps (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES tba_users(id) NOT NULL,
+          data JSONB NOT NULL,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -228,6 +250,161 @@ app.post('/api/feedback', async (req, res) => {
   } catch (error) {
     console.error('피드백 저장 에러:', error);
     res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+});
+
+/**
+ * 고객의 소리(피드백) 삭제 API - 관리자 전용
+ */
+app.delete('/api/feedback/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: '권한이 없습니다.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+
+    // 관리자 여부 확인 (username이 admin인 경우)
+    if (decoded.username !== 'admin') {
+      return res.status(403).json({ success: false, message: '관리자만 삭제할 수 있습니다.' });
+    }
+
+    const result = await pool.query('DELETE FROM tba_feedback WHERE id = $1', [id]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ success: false, message: '삭제할 항목을 찾을 수 없습니다.' });
+    }
+
+    res.json({ success: true, message: '의견이 삭제되었습니다.' });
+  } catch (error) {
+    console.error('피드백 삭제 에러:', error);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+});
+
+// ─── 프라이빗 기능 API (To-Do & MindMap) ──────────────────
+
+/**
+ * 인증 미들웨어
+ */
+const authenticateToken = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+  }
+
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(403).json({ success: false, message: '유효하지 않은 토큰입니다.' });
+  }
+};
+
+/**
+ * 사용자별 To-Do 목록 조회
+ */
+app.get('/api/todos', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT * FROM tba_todos WHERE user_id = $1 ORDER BY created_at ASC',
+      [req.user.id]
+    );
+    res.json({ success: true, todos: result.rows });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+/**
+ * To-Do 추가
+ */
+app.post('/api/todos', authenticateToken, async (req, res) => {
+  try {
+    const { task } = req.body;
+    await pool.query(
+      'INSERT INTO tba_todos (user_id, task) VALUES ($1, $2)',
+      [req.user.id, task]
+    );
+    res.status(201).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+/**
+ * To-Do 상태 변경 (완료/미완료)
+ */
+app.patch('/api/todos/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isCompleted } = req.body;
+    await pool.query(
+      'UPDATE tba_todos SET is_completed = $1 WHERE id = $2 AND user_id = $3',
+      [isCompleted, id, req.user.id]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+/**
+ * To-Do 삭제
+ */
+app.delete('/api/todos/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM tba_todos WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+/**
+ * 사용자별 마인드맵 데이터 조회
+ */
+app.get('/api/mindmap', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(
+      'SELECT data FROM tba_mindmaps WHERE user_id = $1 ORDER BY updated_at DESC LIMIT 1',
+      [req.user.id]
+    );
+    res.json({ success: true, data: result.rows[0]?.data || null });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '서버 오류' });
+  }
+});
+
+/**
+ * 마인드맵 데이터 저장 (Upsert)
+ */
+app.post('/api/mindmap', authenticateToken, async (req, res) => {
+  try {
+    const { data } = req.body;
+    const check = await pool.query('SELECT id FROM tba_mindmaps WHERE user_id = $1', [req.user.id]);
+
+    if (check.rows.length > 0) {
+      await pool.query(
+        'UPDATE tba_mindmaps SET data = $1, updated_at = CURRENT_TIMESTAMP WHERE user_id = $2',
+        [data, req.user.id]
+      );
+    } else {
+      await pool.query(
+        'INSERT INTO tba_mindmaps (user_id, data) VALUES ($1, $2)',
+        [req.user.id, data]
+      );
+    }
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: '서버 오류' });
   }
 });
 

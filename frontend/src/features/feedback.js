@@ -172,3 +172,25 @@ window.changeFeedbackPage = (page) => {
     renderCurrentPage();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 };
+
+// 피드백 삭제 요청 (관리자 전용)
+window.deleteFeedback = async (id) => {
+    if (!confirm('이 의견을 삭제하시겠습니까?')) return;
+
+    try {
+        const res = await apiFetch(`/api/feedback/${id}`, {
+            method: 'DELETE'
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            // 삭제 성공 후 현재 페이지 데이터 다시 불러오기
+            const listSection = document.getElementById('boardListSection');
+            loadFeedbackList(listSection);
+        } else {
+            alert(result.message || '삭제에 실패했습니다.');
+        }
+    } catch (err) {
+        alert('서버와 통신할 수 없습니다.');
+    }
+};

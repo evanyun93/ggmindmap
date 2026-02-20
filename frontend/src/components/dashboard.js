@@ -24,11 +24,65 @@ export function getDashboardHTML(user) {
         </div>
       </header>
       <div class="dashboard-content" id="dashboardContent">
-        <div class="welcome-card">
-          <div class="welcome-icon">🧠</div>
-          <h2>마인드맵에 오신 것을 환영합니다!</h2>
-          <h3>현재 PC버전에서만 최적화 되어있으며<br>추후 모바일 버전도 추가될 예정입니다.<br>업데이트 진척사항은 하단의 Version을 눌러주세요!</h3>
-          <p><br>우측 상단의 메모 버튼을 클릭하여 엑셀 기능을 사용할 수 있습니다.<br>현재 로그인 기능이 완성되었으며, 마인드맵 기능은 곧 추가됩니다.</p>
+        <div class="dashboard-main-split">
+          <!-- 좌측: 환영 메시지 섹션 -->
+          <div class="welcome-section">
+            <div class="welcome-card-premium premium-glass">
+              <div class="welcome-icon">🧠</div>
+              <h2>마인드맵에 오신 것을 환영합니다!</h2>
+              <h3>현재 PC버전에서만 최적화 되어있으며<br>추후 모바일 버전도 추가될 예정입니다.<br>업데이트 진척사항은 하단의 Version을 눌러주세요!</h3>
+              <div class="welcome-desc">
+                <p>우측 상단의 메모 버튼을 클릭하여 엑셀 기능을 사용할 수 있습니다.</p>
+                <p>현재 <strong>Private To-Do</strong> 및 <strong>Mind Canvas</strong> 기능이 추가되었습니다.<br>본인만의 생각을 정리하고 관리해보세요.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 우측: 위젯 섹션 (2열 그리드) -->
+          <div class="widgets-section">
+            <div class="dashboard-grid-v2" id="widgetGrid">
+              <!-- 1. D-Day 위젯 -->
+              <div class="dashboard-card premium-glass-card widget-dday draggable-widget" data-id="dday">
+                <div class="drag-handle">⋮⋮</div>
+                <div class="card-icon">📅</div>
+                <h3>나의 마일스톤</h3>
+                <div class="dday-content-mini">
+                  <div class="dday-info">
+                    <span class="label">목표까지</span>
+                    <span class="value" id="mainDdayCount">-</span>
+                  </div>
+                </div>
+                <div class="resize-handle"></div>
+              </div>
+
+              <!-- 2. 프라이빗 To-Do 위젯 -->
+              <div class="dashboard-card premium-glass-card widget-todo draggable-widget" data-id="todo">
+                <div class="drag-handle">⋮⋮</div>
+                <div class="card-icon">✅</div>
+                <h3>오늘의 할 일</h3>
+                <div class="todo-list-container" id="todoListContainer">
+                  <div class="loader-mini">불러오는 중...</div>
+                </div>
+                <div class="todo-input-group">
+                  <input type="text" id="todoInput" placeholder="할 일 추가...">
+                  <button id="addTodoBtn">+</button>
+                </div>
+                <div class="resize-handle"></div>
+              </div>
+
+              <!-- 3. 마인드맵 바로가기 카드 -->
+              <div class="dashboard-card premium-glass-card widget-mindmap-cta draggable-widget" id="startMindmapBtn" data-id="mindmap" style="grid-column: span 2;">
+                <div class="drag-handle">⋮⋮</div>
+                <div class="card-icon-mini">🧠</div>
+                <div class="cta-text">
+                  <h3>생각 그리기 (Mind Canvas)</h3>
+                  <p>나만의 복잡한 생각을 시각화하고 정리해보세요.</p>
+                </div>
+                <button class="btn-primary-gradient">시작하기</button>
+                <div class="resize-handle"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 

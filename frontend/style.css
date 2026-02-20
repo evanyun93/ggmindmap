@@ -1002,6 +1002,32 @@ body {
   overflow: hidden;
 }
 
+.btn-delete-feedback {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.3;
+  z-index: 10;
+}
+
+.btn-delete-feedback:hover {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+
 .premium-glass-card::before {
   content: '';
   position: absolute;
@@ -1460,3 +1486,5 @@ body {
 #saturdayCount {
   color: var(--accent-purple);
 }
+
+/* style added */
