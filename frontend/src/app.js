@@ -9,6 +9,7 @@ import { showMessage, hideMessage, setLoading, switchCard } from './utils/dom.js
 import { getDashboardHTML } from './components/dashboard.js';
 import { initMemo } from './features/memo.js';
 import { initFeedback } from './features/feedback.js';
+import { initChangelog } from './features/changelog.js';
 
 // DOM 요소 캐시 (로그인 페이지용)
 let loginCard, registerCard, loginForm, registerForm, loginError, registerError, registerSuccess;
@@ -24,6 +25,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     } else {
         initAuthView();
     }
+
+    // 3. 전역 기능 초기화 (푸터 등)
+    initChangelog();
 });
 
 /**
@@ -53,7 +57,12 @@ function initAuthView() {
  * @param {object} user 
  */
 function showDashboardView(user) {
-    document.body.innerHTML = getDashboardHTML(user);
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+        appRoot.innerHTML = getDashboardHTML(user);
+    } else {
+        document.body.innerHTML = getDashboardHTML(user); // 폴백
+    }
 
     // 대시보드 전용 파티클 생성
     createParticles('particles2', 20, ['#8B5CF6', '#06B6D4', '#A78BFA', '#22D3EE']);

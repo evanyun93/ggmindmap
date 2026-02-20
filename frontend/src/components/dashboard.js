@@ -27,7 +27,8 @@ export function getDashboardHTML(user) {
         <div class="welcome-card">
           <div class="welcome-icon">🧠</div>
           <h2>마인드맵에 오신 것을 환영합니다!</h2>
-          <p>우측 상단의 메모 버튼을 클릭하여 엑셀 기능을 사용할 수 있습니다.<br>현재 로그인 기능이 완성되었으며, 마인드맵 기능은 곧 추가됩니다.</p>
+          <h3>현재 PC버전에서만 최적화 되어있으며<br>추후 모바일 버전도 추가될 예정입니다.<br>업데이트 진척사항은 하단의 Version을 눌러주세요!</h3>
+          <p><br>우측 상단의 메모 버튼을 클릭하여 엑셀 기능을 사용할 수 있습니다.<br>현재 로그인 기능이 완성되었으며, 마인드맵 기능은 곧 추가됩니다.</p>
         </div>
       </div>
 
@@ -72,7 +73,7 @@ export function getDashboardHTML(user) {
             </div>
         </div>
 
-        <div id="spreadsheet-widget"></div>
+      <div id="spreadsheet-widget"></div>
       </div>
     </div>
   `;
