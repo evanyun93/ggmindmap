@@ -184,6 +184,26 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 /**
+ * 고객의 소리(피드백) 목록 조회 API
+ */
+app.get('/api/feedback', async (req, res) => {
+  try {
+    // 유저 정보와 함께 최신순으로 조회
+    const result = await pool.query(`
+      SELECT f.id, f.content, f.created_at, u.display_name, u.username
+      FROM tba_feedback f
+      LEFT JOIN tba_users u ON f.user_id = u.id
+      ORDER BY f.created_at DESC
+    `);
+
+    res.json({ success: true, feedback: result.rows });
+  } catch (error) {
+    console.error('피드백 조회 에러:', error);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+});
+
+/**
  * 고객의 소리(피드백) 저장 API
  */
 app.post('/api/feedback', async (req, res) => {
