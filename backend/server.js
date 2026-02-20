@@ -30,58 +30,51 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
  * 테이블 생성 및 초기 데이터 설정
  */
 async function initDatabase() {
-  const client = await pool.connect();
   try {
-    // 1. users 테이블을 tba_users로 변경 (이미 존재하면 이름 변경, 아니면 새로 생성)
-    await client.query(`
-      DO $$ 
-      BEGIN 
-        IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users') THEN
-          ALTER TABLE users RENAME TO tba_users;
-        END IF;
-      END $$;
-    `);
+    const client = await pool.connect();
+    try {
+      // 1. users 테이블을 tba_users로 변경
+      await client.query(`
+        DO $$ 
+        BEGIN 
+          IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users') THEN
+            ALTER TABLE users RENAME TO tba_users;
+          END IF;
+        END $$;
+      `);
 
-    // tba_users 테이블 생성 (확인용)
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS tba_users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        display_name VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+      // tba_users 테이블 생성
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_users (
+          id SERIAL PRIMARY KEY,
+          username VARCHAR(50) UNIQUE NOT NULL,
+          password VARCHAR(255) NOT NULL,
+          display_name VARCHAR(100),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    // 2. tba_feedback 테이블 생성
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS tba_feedback (
-        id SERIAL PRIMARY KEY,
-        user_id INTEGER REFERENCES tba_users(id) ON DELETE SET NULL,
-        content TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+      // tba_feedback 테이블 생성
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_feedback (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES tba_users(id),
+          content TEXT NOT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
 
-    console.log('✅ PostgreSQL 공용 테이블(tba_) 확인 완료');
-
-    // 기본 admin 계정 확인 및 생성
-    const res = await client.query('SELECT * FROM tba_users WHERE username = $1', ['admin']);
-    if (res.rows.length === 0) {
-      const hashedPassword = await bcrypt.hash('1234', 10);
-      await client.query(
-        'INSERT INTO tba_users (username, password, display_name) VALUES ($1, $2, $3)',
-        ['admin', hashedPassword, '관리자']
-      );
-      console.log('✅ 기본 계정 생성 완료: admin / 1234');
+      console.log('✅ PostgreSQL 데이터베이스 초기화 완료');
+    } finally {
+      client.release();
     }
   } catch (err) {
-    console.error('❌ DB 초기화 에러:', err);
-  } finally {
-    client.release();
+    console.error('⚠️ DB 연결 실패(로컬 환경일 수 있음):', err.message);
+    console.log('💡 DB 없이 프론트엔드 서버만 시작합니다.');
   }
 }
 
+// DB 초기화 실행 (에러가 발생해도 서버를 멈추지 않음)
 initDatabase();
 
 // ─── API 라우트 ────────────────────────────────────────────────
@@ -249,5 +242,5 @@ app.get('*', (req, res) => {
 // ─── 서버 시작 ─────────────────────────────────────────────────
 
 app.listen(PORT, () => {
-  console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT}`);
+  console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT} `);
 });

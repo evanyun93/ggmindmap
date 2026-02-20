@@ -25,14 +25,24 @@ export function initFeedback() {
     // 버튼 클릭 이벤트: 게시판 <-> 대시보드 전환
     feedbackBtn.addEventListener('click', () => {
         if (!isBoardView) {
-            switchToBoard(contentArea);
+            // 대시보드 -> 게시판 진입: 기존 내용을 완전히 비우고 게시판 렌더링
+            contentArea.classList.add('fade-out'); // 기존 내용 페이드 아웃 효과
+            setTimeout(() => {
+                contentArea.innerHTML = '';
+                switchToBoard(contentArea);
+                contentArea.classList.remove('fade-out');
+                contentArea.classList.add('fade-in');
+            }, 300);
+
             feedbackBtn.textContent = '대시보드로 돌아가기';
             isBoardView = true;
         } else {
-            switchToDashboard(contentArea);
+            // 게시판 -> 대시보드 복구
+            contentArea.innerHTML = originalDashboardHTML;
             feedbackBtn.textContent = '고객의 소리함';
             isBoardView = false;
         }
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     });
 }
 
