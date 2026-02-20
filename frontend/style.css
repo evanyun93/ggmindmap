@@ -1,0 +1,861 @@
+/* ═══════════════════════════════════════════════════════════════
+   MindMap - 로그인 페이지 스타일
+   다크 테마 + 글래스모피즘 + 그라데이션
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ─── 리셋 & 기본 설정 ──────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #111128;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(139, 92, 246, 0.5);
+  --text-primary: #f0f0ff;
+  --text-secondary: #8888aa;
+  --text-muted: #555577;
+  --accent-purple: #8B5CF6;
+  --accent-cyan: #06B6D4;
+  --accent-gradient: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+  --error: #EF4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --success: #10B981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-lg: 0 25px 60px rgba(0, 0, 0, 0.5);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.memo-fab {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: grab;
+  /* 드래그 가능함을 표시 */
+}
+
+.memo-fab:active {
+  cursor: grabbing;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* ─── 배경 파티클 애니메이션 ──────────────────────────────────── */
+.bg-particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh) scale(0);
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10vh) scale(1);
+  }
+}
+
+/* ─── 인증 컨테이너 ──────────────────────────────────────────── */
+.auth-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+}
+
+/* ─── 카드 (글래스모피즘) ────────────────────────────────────── */
+.auth-card {
+  background: rgba(17, 17, 40, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 40px;
+  box-shadow: var(--shadow-lg);
+  animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.auth-card.hidden {
+  display: none;
+}
+
+.auth-card.fade-out {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+
+.auth-card.fade-in {
+  animation: cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* ─── 헤더 ──────────────────────────────────────────────────── */
+.auth-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.1);
+  margin-bottom: 20px;
+  animation: logoPulse 3s ease-in-out infinite;
+}
+
+@keyframes logoPulse {
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0.2);
+  }
+
+  50% {
+    box-shadow: 0 0 0 16px rgba(139, 92, 246, 0);
+  }
+}
+
+.auth-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* ─── 폼 ────────────────────────────────────────────────────── */
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+}
+
+.optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-icon {
+  position: absolute;
+  left: 14px;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+  transition: color var(--transition);
+  pointer-events: none;
+}
+
+.input-wrapper input {
+  width: 100%;
+  padding: 14px 14px 14px 44px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 15px;
+  outline: none;
+  transition: all var(--transition);
+}
+
+.input-wrapper input::placeholder {
+  color: var(--text-muted);
+}
+
+.input-wrapper input:focus {
+  border-color: var(--border-focus);
+  background: var(--surface-hover);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.15);
+}
+
+.input-wrapper:focus-within .input-icon {
+  color: var(--accent-purple);
+}
+
+/* ─── 체크박스 (이 PC에서 기억하기) ──────────────────────────── */
+.remember-me {
+  margin-top: -4px;
+}
+
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkbox-container input[type="checkbox"] {
+  display: none;
+}
+
+.checkmark {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+  flex-shrink: 0;
+  position: relative;
+}
+
+.checkbox-container:hover .checkmark {
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.checkmark::after {
+  content: '';
+  width: 6px;
+  height: 10px;
+  border: solid white;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg) scale(0);
+  transition: transform 0.2s ease;
+  position: absolute;
+  top: 1px;
+}
+
+.checkbox-container input:checked+.checkmark {
+  background: var(--accent-gradient);
+  border-color: transparent;
+}
+
+.checkbox-container input:checked+.checkmark::after {
+  transform: rotate(45deg) scale(1);
+}
+
+.checkbox-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* ─── 에러 / 성공 메시지 ─────────────────────────────────────── */
+.error-message {
+  font-size: 13px;
+  color: var(--error);
+  background: var(--error-bg);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: none;
+  animation: shakeIn 0.4s ease;
+}
+
+.error-message.visible {
+  display: block;
+}
+
+.success-message {
+  font-size: 13px;
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  display: none;
+  animation: fadeIn 0.3s ease;
+}
+
+.success-message.visible {
+  display: block;
+}
+
+@keyframes shakeIn {
+  0% {
+    transform: translateX(-8px);
+    opacity: 0;
+  }
+
+  25% {
+    transform: translateX(6px);
+  }
+
+  50% {
+    transform: translateX(-4px);
+  }
+
+  75% {
+    transform: translateX(2px);
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── 버튼 ──────────────────────────────────────────────────── */
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background: var(--accent-gradient);
+  border: none;
+  border-radius: var(--radius-md);
+  color: white;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 60%);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 30px rgba(139, 92, 246, 0.4);
+}
+
+.btn-primary:hover::before {
+  opacity: 1;
+}
+
+.btn-primary:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+}
+
+.btn-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ─── 푸터 링크 ──────────────────────────────────────────────── */
+.auth-footer {
+  text-align: center;
+  margin-top: 28px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.auth-footer p {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--accent-purple);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  transition: color var(--transition);
+}
+
+.link-btn:hover {
+  color: var(--accent-cyan);
+  text-decoration: underline;
+}
+
+/* ─── 대시보드 ──────────────────────────────────────────────── */
+.dashboard-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 32px;
+  background: rgba(17, 17, 40, 0.9);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.dashboard-header .logo-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-header .logo-section h2 {
+  font-size: 20px;
+  font-weight: 600;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-name {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.user-name strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.btn-logout {
+  padding: 8px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.btn-logout:hover {
+  background: var(--error-bg);
+  border-color: var(--error);
+  color: var(--error);
+}
+
+.dashboard-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.welcome-card {
+  text-align: center;
+  max-width: 500px;
+}
+
+.welcome-card .welcome-icon {
+  font-size: 64px;
+  margin-bottom: 24px;
+}
+
+.welcome-card h2 {
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.welcome-card p {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+/* ─── 반응형 ────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 36px 24px;
+    border-radius: var(--radius-md);
+  }
+
+  .auth-header h1 {
+    font-size: 24px;
+  }
+
+  .dashboard-header {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+  }
+}
+
+/* ─── 스프레드시트 위젯 ────────────────────────────────────────── */
+.spreadsheet-container {
+  overflow-x: auto;
+  margin-bottom: 20px;
+  background: rgba(17, 17, 40, 0.6);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  backdrop-filter: blur(10px);
+}
+
+.spreadsheet-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 600px;
+  color: var(--text-primary);
+  font-size: 13px;
+}
+
+.spreadsheet-table th,
+.spreadsheet-table td {
+  border: 1px solid var(--border);
+  padding: 8px;
+  text-align: center;
+  min-width: 60px;
+}
+
+.spreadsheet-table th {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.spreadsheet-table .row-header {
+  background: rgba(255, 255, 255, 0.05);
+  font-weight: 600;
+  color: var(--text-secondary);
+  width: 40px;
+  user-select: none;
+}
+
+.spreadsheet-table td {
+  background: rgba(255, 255, 255, 0.02);
+  cursor: text;
+  transition: background 0.2s;
+}
+
+.spreadsheet-table td:focus {
+  background: rgba(139, 92, 246, 0.1);
+  outline: 2px solid var(--accent-purple);
+  z-index: 1;
+  /* Bring focused cell above borders */
+  position: relative;
+}
+
+.spreadsheet-table td:hover {
+  background: var(--surface-hover);
+}
+
+/* ─── 메모 팝업 & FAB ────────────────────────────────────────── */
+.memo-fab {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent-gradient);
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);
+  cursor: pointer;
+  z-index: 1000;
+  transition: transform var(--transition), box-shadow var(--transition);
+}
+
+.memo-fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.6);
+}
+
+.memo-popup {
+  position: fixed;
+  top: 90px;
+  right: 24px;
+  width: 400px;
+  /* 적절한 너비 */
+  background: rgba(17, 17, 40, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  padding: 16px;
+  z-index: 999;
+  transform-origin: top right;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.memo-popup.hidden {
+  display: none;
+  /* or use opacity/pointer-events if you want transition out */
+  opacity: 0;
+  transform: scale(0.9);
+  /* display:none overrides transitions, so for simple toggle we use class logic in JS or keyframes */
+}
+
+/* Override hidden for animation if needed, but simple .hidden {display:none} is safest for layout */
+
+.memo-popup.fade-in {
+  animation: popupOpen 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes popupOpen {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.memo-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  /* 드래그 중 텍스트 선택 방지 */
+}
+
+.memo-header span {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.close-popup {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+  transition: color 0.2s;
+}
+
+.close-popup:hover {
+  color: var(--text-primary);
+}
+
+/* 스프레드시트 컨테이너 조정 (팝업 내부) */
+.memo-popup .spreadsheet-container {
+  margin-bottom: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  backdrop-filter: none;
+  overflow-x: auto;
+}
+
+.memo-popup .spreadsheet-table {
+  min-width: 100%;
+  /* 팝업 꽉 채우기 */
+}
+
+.memo-popup .spreadsheet-table th,
+.memo-popup .spreadsheet-table td {
+  padding: 6px;
+  /* 조금 더 타이트하게 */
+  min-width: 50px;
+}
+
+/* ─── D-Day 위젯 ────────────────────────────────────────────── */
+.dday-widget {
+  margin-bottom: 20px;
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.dday-header,
+.dday-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.dday-title {
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.dday-today {
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.dday-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 4px 8px;
+  outline: none;
+  cursor: pointer;
+  color-scheme: dark;
+  /* 달력 아이콘 다크모드 */
+}
+
+.dday-input:focus {
+  border-color: var(--accent-purple);
+}
+
+.dday-content {
+  display: flex;
+  gap: 12px;
+}
+
+.dday-item {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dday-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.dday-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent-cyan);
+}
+
+#saturdayCount {
+  color: var(--accent-purple);
+}
