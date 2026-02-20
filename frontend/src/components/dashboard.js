@@ -9,7 +9,7 @@
  * @returns {string} 대시보드 HTML 문자열
  */
 export function getDashboardHTML(user) {
-    return `
+  return `
     <div class="bg-particles" id="particles2"></div>
     <div class="dashboard-container">
       <header class="dashboard-header">
@@ -19,6 +19,7 @@ export function getDashboardHTML(user) {
         </div>
         <div class="user-section">
           <span class="user-name">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
+          <button class="btn-feedback" id="feedbackBtn">고객의 소리함</button>
           <button class="btn-logout" id="logoutBtn">로그아웃</button>
         </div>
       </header>
@@ -27,6 +28,27 @@ export function getDashboardHTML(user) {
           <div class="welcome-icon">🧠</div>
           <h2>마인드맵에 오신 것을 환영합니다!</h2>
           <p>우측 상단의 메모 버튼을 클릭하여 엑셀 기능을 사용할 수 있습니다.<br>현재 로그인 기능이 완성되었으며, 마인드맵 기능은 곧 추가됩니다.</p>
+        </div>
+      </div>
+
+      <!-- 고객의 소리 모달 -->
+      <div class="modal-overlay hidden" id="feedbackModal">
+        <div class="modal-card">
+          <div class="modal-header">
+            <h3>고객의 소리함</h3>
+            <button class="close-modal" id="closeFeedback">×</button>
+          </div>
+          <div class="modal-body">
+            <p>마인드맵에 바라는 업데이트 내용이나 건의사항을 자유롭게 남겨주세요!</p>
+            <textarea id="feedbackContent" placeholder="여기에 제안 내용을 5자 이상 입력해 주세요..." rows="5"></textarea>
+            <div class="feedback-msg" id="feedbackMsg"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn-submit-feedback" id="submitFeedback">
+              <span class="btn-text">제출하기</span>
+              <span class="btn-loading" style="display:none;">전송 중...</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -81,7 +103,7 @@ export function getDashboardHTML(user) {
  * 로고 SVG 문자열을 반환합니다.
  */
 function getLogoSVG() {
-    return `
+  return `
     <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
         <circle cx="24" cy="24" r="8" fill="url(#grad1)" />
         <circle cx="24" cy="8" r="4" fill="url(#grad2)" />

@@ -8,6 +8,7 @@ import { checkAutoLogin, login, register, logout } from './services/auth.js';
 import { showMessage, hideMessage, setLoading, switchCard } from './utils/dom.js';
 import { getDashboardHTML } from './components/dashboard.js';
 import { initMemo } from './features/memo.js';
+import { initFeedback } from './features/feedback.js';
 
 // DOM 요소 캐시 (로그인 페이지용)
 let loginCard, registerCard, loginForm, registerForm, loginError, registerError, registerSuccess;
@@ -59,6 +60,9 @@ function showDashboardView(user) {
 
     // 메모 기능 초기화 (D-Day, Spreadsheet, Drag 등)
     initMemo();
+
+    // 고객의 소리함 초기화
+    initFeedback();
 
     // 로그아웃 버튼 설정
     document.getElementById('logoutBtn').addEventListener('click', logout);

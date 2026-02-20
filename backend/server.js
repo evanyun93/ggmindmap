@@ -32,9 +32,19 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 async function initDatabase() {
   const client = await pool.connect();
   try {
-    // users 테이블 생성
+    // 1. users 테이블을 tba_users로 변경 (이미 존재하면 이름 변경, 아니면 새로 생성)
     await client.query(`
-      CREATE TABLE IF NOT EXISTS users (
+      DO $$ 
+      BEGIN 
+        IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'users') THEN
+          ALTER TABLE users RENAME TO tba_users;
+        END IF;
+      END $$;
+    `);
+
+    // tba_users 테이블 생성 (확인용)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tba_users (
         id SERIAL PRIMARY KEY,
         username VARCHAR(50) UNIQUE NOT NULL,
         password VARCHAR(255) NOT NULL,
@@ -42,14 +52,25 @@ async function initDatabase() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
-    console.log('✅ PostgreSQL 테이블 확인 완료');
+
+    // 2. tba_feedback 테이블 생성
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tba_feedback (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES tba_users(id) ON DELETE SET NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    console.log('✅ PostgreSQL 공용 테이블(tba_) 확인 완료');
 
     // 기본 admin 계정 확인 및 생성
-    const res = await client.query('SELECT * FROM users WHERE username = $1', ['admin']);
+    const res = await client.query('SELECT * FROM tba_users WHERE username = $1', ['admin']);
     if (res.rows.length === 0) {
       const hashedPassword = await bcrypt.hash('1234', 10);
       await client.query(
-        'INSERT INTO users (username, password, display_name) VALUES ($1, $2, $3)',
+        'INSERT INTO tba_users (username, password, display_name) VALUES ($1, $2, $3)',
         ['admin', hashedPassword, '관리자']
       );
       console.log('✅ 기본 계정 생성 완료: admin / 1234');
@@ -76,7 +97,7 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // DB에서 유저 조회
-    const result = await pool.query('SELECT * FROM users WHERE username = $1', [username]);
+    const result = await pool.query('SELECT * FROM tba_users WHERE username = $1', [username]);
     const user = result.rows[0];
 
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -143,7 +164,7 @@ app.post('/api/auth/register', async (req, res) => {
     }
 
     // 중복 확인
-    const check = await pool.query('SELECT id FROM users WHERE username = $1', [username]);
+    const check = await pool.query('SELECT id FROM tba_users WHERE username = $1', [username]);
     if (check.rows.length > 0) {
       return res.status(409).json({ success: false, message: '이미 존재하는 아이디입니다.' });
     }
@@ -151,13 +172,48 @@ app.post('/api/auth/register', async (req, res) => {
     // 유저 생성
     const hashedPassword = await bcrypt.hash(password, 10);
     await pool.query(
-      'INSERT INTO users (username, password, display_name) VALUES ($1, $2, $3)',
+      'INSERT INTO tba_users (username, password, display_name) VALUES ($1, $2, $3)',
       [username, hashedPassword, displayName || username]
     );
 
     res.status(201).json({ success: true, message: '회원가입 성공!' });
   } catch (error) {
     console.error('회원가입 에러:', error);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+});
+
+/**
+ * 고객의 소리(피드백) 저장 API
+ */
+app.post('/api/feedback', async (req, res) => {
+  try {
+    const { content } = req.body;
+    if (!content || content.trim().length < 5) {
+      return res.status(400).json({ success: false, message: '제안 내용을 5자 이상 입력해주세요.' });
+    }
+
+    // 토큰에서 유저 정보 추출 (선택사항)
+    let userId = null;
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+        userId = decoded.id;
+      } catch (e) {
+        // 토큰이 유효하지 않아도 익명으로 저장 가능하게 처리
+      }
+    }
+
+    await pool.query(
+      'INSERT INTO tba_feedback (user_id, content) VALUES ($1, $2)',
+      [userId, content]
+    );
+
+    res.status(201).json({ success: true, message: '소중한 의견 감사합니다! 검토 후 반영하겠습니다.' });
+  } catch (error) {
+    console.error('피드백 저장 에러:', error);
     res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
   }
 });
