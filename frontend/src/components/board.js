@@ -17,11 +17,14 @@ export function getBoardHTML() {
 
             <!-- 작성 폼 섹션 (기본 숨김) -->
             <div class="board-write-section hidden" id="boardWriteSection">
-                <div class="write-card">
+                <div class="write-card premium-glass">
                     <textarea id="feedbackBoardContent" placeholder="마인드맵에 바라는 점을 5자 이상 입력해 주세요..." rows="4"></textarea>
-                    <div class="write-actions">
+                    <div class="write-footer">
                         <div class="feedback-msg" id="boardFeedbackMsg"></div>
-                        <button class="btn-submit-board" id="submitBoardFeedback">제출하기</button>
+                        <button class="btn-submit-board-premium" id="submitBoardFeedback">
+                            <span>제출하기</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
                     </div>
                 </div>
             </div>
@@ -49,9 +52,12 @@ export function getFeedbackItemHTML(item) {
     });
 
     return `
-        <div class="feedback-item">
+        <div class="feedback-item premium-glass-card">
             <div class="item-header">
-                <span class="item-author">${item.display_name || item.username || '익명 사용자'}</span>
+                <div class="author-info">
+                    <div class="author-avatar">${(item.display_name || item.username || '익')[0]}</div>
+                    <span class="item-author">${item.display_name || item.username || '익명 사용자'}</span>
+                </div>
                 <span class="item-date">${date}</span>
             </div>
             <div class="item-content">${item.content.replace(/\n/g, '<br>')}</div>
