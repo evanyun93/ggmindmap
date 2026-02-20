@@ -7,6 +7,10 @@ import { apiFetch } from '../services/api.js';
 import { showMessage, hideMessage, setLoading } from '../utils/dom.js';
 import { getBoardHTML, getFeedbackItemHTML } from '../components/board.js';
 
+let currentPage = 1;
+const ITEMS_PER_PAGE = 5;
+let allFeedback = [];
+
 let isBoardView = false;
 let originalDashboardHTML = '';
 
@@ -25,7 +29,7 @@ export function initFeedback() {
     // 버튼 클릭 이벤트: 게시판 <-> 대시보드 전환
     feedbackBtn.addEventListener('click', () => {
         if (!isBoardView) {
-            // 대시보드 -> 게시판 진입: 기존 내용을 완전히 비우고 게시판 렌더링
+            // 대시보드 -> 게시판 진입
             contentArea.classList.add('fade-out'); // 기존 내용 페이드 아웃 효과
             setTimeout(() => {
                 contentArea.innerHTML = '';
@@ -57,17 +61,11 @@ async function switchToBoard(container) {
     const submitBtn = document.getElementById('submitBoardFeedback');
     const listSection = document.getElementById('boardListSection');
 
-    // 작성 폼 토글
-    toggleBtn.addEventListener('click', () => {
-        const isHidden = writeSection.classList.toggle('hidden');
-        toggleBtn.textContent = isHidden ? '의견 남기기' : '작성 취소';
-    });
-
     // 제출 로직
     submitBtn.addEventListener('click', async () => {
-        const contentArea = document.getElementById('feedbackBoardContent');
+        const contentInput = document.getElementById('feedbackBoardContent');
         const msgEl = document.getElementById('boardFeedbackMsg');
-        const content = contentArea.value.trim();
+        const content = contentInput.value.trim();
 
         if (content.length < 5) {
             showMessage(msgEl, '내용을 5자 이상 입력해 주세요.');
@@ -83,10 +81,10 @@ async function switchToBoard(container) {
             const result = await res.json();
 
             if (result.success) {
-                contentArea.value = '';
-                writeSection.classList.add('hidden');
-                toggleBtn.textContent = '의견 남기기';
-                // 목록 갱신
+                contentInput.value = '';
+                showMessage(msgEl, '의견이 소중하게 전달되었습니다!', true);
+                // 목록 갱신 (첫 페이지로)
+                currentPage = 1;
                 loadFeedbackList(listSection);
             } else {
                 showMessage(msgEl, result.message);
@@ -110,23 +108,67 @@ function switchToDashboard(container) {
 }
 
 /**
- * 피드백 목록을 백엔드에서 가져와 렌더링합니다.
+ * 피드백 목록을 가져와 페이지네이션 처리합니다.
  */
-async function loadFeedbackList(container) {
+async function loadFeedbackList(listSection) {
     try {
         const res = await apiFetch('/api/feedback');
         const result = await res.json();
 
-        if (result.success && result.feedback.length > 0) {
-            container.innerHTML = result.feedback
-                .map(item => getFeedbackItemHTML(item))
-                .join('');
-        } else if (result.feedback.length === 0) {
-            container.innerHTML = '<div class="no-data">등록된 업데이트 제안이 없습니다. 첫 번째 의견을 남겨보세요!</div>';
+        if (result.success) {
+            allFeedback = result.feedback;
+            renderCurrentPage();
         } else {
-            container.innerHTML = '<div class="error">목록을 불러오지 못했습니다.</div>';
+            listSection.innerHTML = '<div class="error">목록을 불러오지 못했습니다.</div>';
         }
     } catch (err) {
-        container.innerHTML = '<div class="error">서버와 통신할 수 없습니다.</div>';
+        listSection.innerHTML = '<div class="error">서버와 통신할 수 없습니다.</div>';
     }
 }
+
+/**
+ * 현재 페이지의 피드백 목록과 페이지네이션 UI를 렌더링합니다.
+ */
+function renderCurrentPage() {
+    const listSection = document.getElementById('boardListSection');
+    const paginationSection = document.getElementById('boardPagination');
+
+    if (!listSection || !paginationSection) return;
+
+    if (allFeedback.length === 0) {
+        listSection.innerHTML = '<div class="no-data">등록된 업데이트 제안이 없습니다. 첫 번째 의견을 남겨보세요!</div>';
+        paginationSection.innerHTML = '';
+        return;
+    }
+
+    // 데이터 쪼개기
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    const pagedItems = allFeedback.slice(startIndex, endIndex);
+
+    // 목록 렌더링
+    listSection.innerHTML = pagedItems
+        .map(item => getFeedbackItemHTML(item))
+        .join('');
+
+    // 페이지네이션 버튼 렌더링
+    const totalPages = Math.ceil(allFeedback.length / ITEMS_PER_PAGE);
+    let paginationHTML = '';
+
+    for (let i = 1; i <= totalPages; i++) {
+        paginationHTML += `
+            <button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="window.changeFeedbackPage(${i})">
+                ${i}
+            </button>
+        `;
+    }
+
+    paginationSection.innerHTML = paginationHTML;
+}
+
+// 전역 윈도우 객체에 페이지 변경 함수 등록
+window.changeFeedbackPage = (page) => {
+    currentPage = page;
+    renderCurrentPage();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
