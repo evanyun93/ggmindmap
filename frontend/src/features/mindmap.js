@@ -70,15 +70,29 @@ function renderMindmap() {
     }).join('');
 
     // 노드 렌더링
-    nodesGroup.innerHTML = nodes.map(node => `
-        <g class="node-group" transform="translate(${node.x}, ${node.y})" 
-           onmousedown="window.startNodeDrag(event, ${node.id})"
-           ondblclick="window.openNodeEditor(${node.id})">
-            <rect x="-60" y="-20" width="120" height="40" rx="10" 
-                  class="node-rect ${node.isMain ? 'main' : ''}" />
-            <text text-anchor="middle" dy="5" class="node-text">${node.text}</text>
-        </g>
-    `).join('');
+    nodesGroup.innerHTML = nodes.map(node => {
+        // collapsed 상태면 타이틀만 보이기
+        if (node.collapsed) {
+            return `
+            <g class="node-group collapsed" transform="translate(${node.x}, ${node.y})"
+               onmousedown="window.startNodeDrag(event, ${node.id})"
+               ondblclick="window.toggleNodeCollapse(${node.id})">
+                <rect x="-60" y="-20" width="120" height="40" rx="10" class="node-rect${node.isMain ? ' main' : ''}" />
+                <text text-anchor="middle" dy="5" class="node-text">${node.text}</text>
+            </g>
+            `;
+        } else {
+            return `
+            <g class="node-group" transform="translate(${node.x}, ${node.y})"
+               onmousedown="window.startNodeDrag(event, ${node.id})"
+               ondblclick="window.toggleNodeCollapse(${node.id})">
+                <rect x="-60" y="-20" width="120" height="40" rx="10" class="node-rect${node.isMain ? ' main' : ''}" />
+                <text text-anchor="middle" dy="5" class="node-text">${node.text}</text>
+                <!-- 펼쳐진 상태에서만 상세 내용/버튼 등 추가 가능 -->
+            </g>
+            `;
+        }
+    }).join('');
 }
 
 function setupCanvasEvents() {
@@ -140,6 +154,15 @@ window.startNodeDrag = (e, id) => {
     window.draggingNodeId = id;
 };
 
+// 노드 더블클릭 시 접기/펼치기 토글
+window.toggleNodeCollapse = (id) => {
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+    node.collapsed = !node.collapsed;
+    renderMindmap();
+};
+
+// 기존 편집 팝업은 우클릭 등으로 분리하거나, 필요시 유지
 window.openNodeEditor = (id) => {
     const node = nodes.find(n => n.id === id);
     if (!node) return;

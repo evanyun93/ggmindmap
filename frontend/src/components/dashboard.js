@@ -27,6 +27,7 @@ export function getDashboardHTML(user) {
                <button class="btn-link-mini naver" id="linkNaverBtn" title="네이버 계정 연동">N</button>`
     }
           </div>
+          <button class="btn-manual" id="manualBtn">매뉴얼</button>
           <button class="btn-feedback" id="feedbackBtn">고객의 소리함</button>
           <span class="user-name">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
           <button class="btn-logout" id="logoutBtn">로그아웃</button>
@@ -34,6 +35,17 @@ export function getDashboardHTML(user) {
       </header>
       <div class="dashboard-content" id="dashboardContent">
         ${getMainDashboardContentHTML(user)}
+      </div>
+
+      <!-- 매뉴얼 팝업 -->
+      <div class="manual-popup hidden" id="manualPopup">
+        <div class="manual-header">
+          <span style="flex:1;">📝 MindMap 사용 매뉴얼</span>
+          <button class="close-popup" id="closeManual">×</button>
+        </div>
+        <div class="manual-content" id="manualContent" style="overflow-y:auto; max-height:60vh; padding:18px 8px 8px 8px; background:rgba(255,255,255,0.03); border-radius:12px;">
+          로딩 중...
+        </div>
       </div>
 
       <!-- 플로팅 메모 버튼 (FAB) -->
@@ -80,7 +92,38 @@ export function getDashboardHTML(user) {
       <div id="spreadsheet-widget"></div>
       </div>
     </div>
+    </div>
   `;
+}
+
+// 매뉴얼 팝업 동작 스크립트 (대시보드 진입 시 실행)
+export function setupManualPopup() {
+    console.log('[매뉴얼] setupManualPopup 실행');
+  const manualBtn = document.getElementById('manualBtn');
+  const manualPopup = document.getElementById('manualPopup');
+  const closeManual = document.getElementById('closeManual');
+  const manualContent = document.getElementById('manualContent');
+  if (!manualBtn || !manualPopup || !closeManual || !manualContent) return;
+  if (!manualBtn._manualListenerAdded) {
+    manualBtn.addEventListener('click', async () => {
+      manualPopup.classList.remove('hidden');
+      // 매뉴얼 파일 불러오기
+      try {
+        const res = await fetch('manual.md');
+        const text = await res.text();
+        manualContent.innerHTML = marked ? marked.parse(text) : `<pre>${text}</pre>`;
+      } catch {
+        manualContent.innerHTML = '<pre>매뉴얼을 불러올 수 없습니다.</pre>';
+      }
+    });
+    manualBtn._manualListenerAdded = true;
+  }
+  if (!closeManual._manualListenerAdded) {
+    closeManual.addEventListener('click', () => {
+      manualPopup.classList.add('hidden');
+    });
+    closeManual._manualListenerAdded = true;
+  }
 }
 
 /**

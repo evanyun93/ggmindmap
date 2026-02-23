@@ -20,10 +20,26 @@ export function initMilestone() {
     renderMilestoneData();
 
     // 3. 접기/펼치기 이벤트
-    header.addEventListener('click', (e) => {
-        if (e.target.closest('button, input, a')) return;
-        const collapsed = widget.classList.toggle('collapsed');
-        localStorage.setItem('milestone_collapsed', collapsed);
+    let isDragging = false;
+    let dragStartY = 0;
+    header.addEventListener('mousedown', (e) => {
+        isDragging = false;
+        dragStartY = e.clientY;
+        const onMove = (moveEvent) => {
+            if (Math.abs(moveEvent.clientY - dragStartY) > 5) {
+                isDragging = true;
+            }
+        };
+        const onUp = (upEvent) => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            if (!isDragging && !upEvent.target.closest('button, input, a')) {
+                const collapsed = widget.classList.toggle('collapsed');
+                localStorage.setItem('milestone_collapsed', collapsed);
+            }
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
     });
 
     // 4. 데이터 변경 감지 (간단히 5초마다 갱신 또는 필요 시 호출)

@@ -8,6 +8,7 @@ import { checkAutoLogin, login, register, logout } from './services/auth.js';
 import { showMessage, hideMessage, setLoading, switchCard } from './utils/dom.js';
 import { initSocialAuth } from './services/social-auth.js'; // social-auth 임포트
 import { getDashboardHTML } from './components/dashboard.js';
+import { setupManualPopup } from './components/dashboard.js';
 import { initMemo } from './features/memo.js';
 import { initFeedback } from './features/feedback.js';
 import { initChangelog } from './features/changelog.js';
@@ -97,6 +98,9 @@ export function initDashboardFeatures(user) {
 
     // 마일스톤 위젯 초기화 (D-Day 등)
     initMilestone();
+
+    // 매뉴얼 팝업 기능 초기화
+    setupManualPopup();
 
     // D-Day 데이터 동기화
     const updateMainDday = () => {

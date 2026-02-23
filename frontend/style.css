@@ -1,3 +1,163 @@
+/* 매뉴얼 팝업 숨김 처리 */
+.manual-popup.hidden {
+  display: none !important;
+}
+/* 매뉴얼 팝업(모달) 스타일 */
+.manual-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  min-width: 340px;
+  max-width: 90vw;
+  background: rgba(20, 20, 40, 0.98);
+  border-radius: 18px;
+  box-shadow: 0 8px 40px 0 rgba(0,0,0,0.45);
+  border: 1.5px solid rgba(139,92,246,0.18);
+  padding: 0 0 18px 0;
+  animation: fadeIn 0.4s;
+}
+.manual-popup .manual-header {
+  display: flex;
+  align-items: center;
+  padding: 18px 24px 0 18px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+.manual-popup .close-popup {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: color 0.2s;
+}
+.manual-popup .close-popup:hover {
+  color: #ef4444;
+}
+.manual-popup .manual-content {
+  padding: 18px 24px 8px 24px !important;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.7;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+/* 매뉴얼 마크다운 섹션 간격 */
+.manual-popup .manual-content h2,
+.manual-popup .manual-content h3 {
+  margin-top: 1.1em;
+  margin-bottom: 0.35em;
+}
+.manual-popup .manual-content hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1.5px dashed #a78bfa44;
+}
+.manual-popup .manual-content ul {
+  margin-bottom: 0.6em;
+}
+.manual-popup .manual-content p {
+  margin-bottom: 0.55em;
+}
+/* 팝업 배경 오버레이 */
+.manual-popup::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: -1;
+  border-radius: 18px;
+}
+/* 오늘의 할일 카드 스크롤바 */
+.widget-todo .todo-list-container {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 스크롤바 스타일(크롬/엣지/사파리) */
+.widget-todo .todo-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+.widget-todo .todo-list-container::-webkit-scrollbar-thumb {
+  background: rgba(139,92,246,0.18);
+  border-radius: 6px;
+}
+.widget-todo .todo-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+/* 접힌 카드에서 헤더를 카드 중앙에 정렬 */
+
+/* 헤더(타이틀)는 카드 상태와 무관하게 항상 같은 위치/높이 유지 */
+.dashboard-card .widget-header,
+.premium-glass-card .widget-header,
+.widget-milestone .widget-header,
+.widget-todo .widget-header {
+  align-items: center;
+  min-height: 64px;
+  height: 64px;
+  margin: 0;
+  transition: background 0.3s, color 0.3s;
+}
+/* 접힌 위젯(카드) 최소 크기 스타일 */
+
+/* 접힌 카드(위젯)는 헤더(타이틀)만 보이고, 자연스럽게 줄어듦 */
+.dashboard-card.collapsed,
+.premium-glass-card.collapsed,
+.widget-milestone.collapsed,
+.widget-todo.collapsed,
+.widget-mindmap-cta.collapsed {
+  max-height: 72px !important;
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden !important;
+  padding-bottom: 0 !important;
+  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), padding 0.3s;
+}
+
+/* 헤더는 항상 보이도록 */
+.dashboard-card.collapsed .widget-header,
+.premium-glass-card.collapsed .widget-header,
+.widget-milestone.collapsed .widget-header,
+.widget-todo.collapsed .widget-header {
+  display: flex !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  position: relative;
+  z-index: 2;
+}
+
+/* 접힌 상태에서 내부 컨텐츠는 숨김 */
+.dashboard-card.collapsed .milestone-collapsible-wrapper,
+.premium-glass-card.collapsed .milestone-collapsible-wrapper,
+.widget-milestone.collapsed .milestone-collapsible-wrapper,
+.widget-todo.collapsed .todo-collapsible-wrapper {
+  max-height: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: max-height 0.4s, opacity 0.3s;
+}
+/* 마인드맵 노드 접힘(collapsed) 상태 스타일 */
+svg .node-group.collapsed .node-rect {
+  fill: #222b;
+  stroke: #8B5CF6;
+  filter: brightness(0.9) blur(0.5px);
+}
+
+svg .node-group.collapsed .node-text {
+  font-weight: bold;
+  fill: #8B5CF6;
+}
+
+svg .node-group.collapsed {
+  opacity: 0.85;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    MindMap - 로그인 페이지 스타일
    다크 테마 + 글래스모피즘 + 그라데이션
@@ -1685,24 +1845,9 @@ body {
   margin-bottom: 8px;
 }
 
-.dday-title {
-  font-size: 13px;
-  color: var(--text-secondary);
-  font-weight: 500;
+.drag-handle {
+  display: none !important;
 }
-
-.dday-today {
-  font-size: 13px;
-  color: var(--text-primary);
-  font-weight: 600;
-}
-
-.dday-input {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: inherit;
   font-size: 13px;
   padding: 4px 8px;
   outline: none;
@@ -2018,7 +2163,7 @@ body {
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--card-border) !important;
   border-radius: 26px;
-  padding: 26px;
+  padding: 12px 26px 26px 26px;
   overflow: hidden;
   display: flex;
   flex-direction: column;

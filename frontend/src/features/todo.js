@@ -28,12 +28,26 @@ export function initTodo() {
     loadTodoList();
 
     // 3. 접기/펼치기 이벤트 (헤더 전체 클릭 지원)
-    header.addEventListener('click', (e) => {
-        // 입력창이나 버튼 클릭 시에는 접히지 않도록 방지 (이미 헤더 밖이라 안전하지만 명시적 처리)
-        if (e.target.closest('input, button')) return;
-
-        const collapsed = widget.classList.toggle('collapsed');
-        localStorage.setItem('todo_collapsed', collapsed);
+    let isDragging = false;
+    let dragStartY = 0;
+    header.addEventListener('mousedown', (e) => {
+        isDragging = false;
+        dragStartY = e.clientY;
+        const onMove = (moveEvent) => {
+            if (Math.abs(moveEvent.clientY - dragStartY) > 5) {
+                isDragging = true;
+            }
+        };
+        const onUp = (upEvent) => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            if (!isDragging && !upEvent.target.closest('input, button')) {
+                const collapsed = widget.classList.toggle('collapsed');
+                localStorage.setItem('todo_collapsed', collapsed);
+            }
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
     });
 
     // 4. 추가 이벤트
