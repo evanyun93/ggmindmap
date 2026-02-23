@@ -119,51 +119,83 @@ function setupFabDrag(fab, popup) {
         fab.style.bottom = 'auto';
     }
 
+
+    // 마우스 드래그
     fab.addEventListener('mousedown', (e) => {
         isFabDragging = true;
         fabDragged = false;
         const rect = fab.getBoundingClientRect();
-
-        // 팝업이 열려있는 경우 상대 거리 계산
         if (!popup.classList.contains('hidden')) {
             const popupRect = popup.getBoundingClientRect();
             deltaX = popupRect.left - rect.left;
             deltaY = popupRect.top - rect.top;
         }
-
         fab.style.left = `${rect.left}px`;
         fab.style.top = `${rect.top}px`;
         fab.style.right = 'auto';
         fab.style.bottom = 'auto';
-
         initialX = e.clientX - rect.left;
         initialY = e.clientY - rect.top;
         fab.style.transition = 'none';
         fab.style.cursor = 'grabbing';
     });
-
     document.addEventListener('mousemove', (e) => {
         if (!isFabDragging) return;
         fabDragged = true;
-
         const x = Math.min(Math.max(0, e.clientX - initialX), window.innerWidth - fab.offsetWidth);
         const y = Math.min(Math.max(0, e.clientY - initialY), window.innerHeight - fab.offsetHeight);
-
         fab.style.left = `${x}px`;
         fab.style.top = `${y}px`;
-
-        // 팝업이 열려있는 경우 함께 이동
         if (!popup.classList.contains('hidden')) {
             popup.style.left = `${x + deltaX}px`;
             popup.style.top = `${y + deltaY}px`;
             popup.style.right = 'auto';
         }
     });
-
     document.addEventListener('mouseup', () => {
         if (!isFabDragging) return;
         isFabDragging = false;
         fab.style.cursor = 'grab';
+        fab.style.transition = '';
+        localStorage.setItem('mindmap_fab_pos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+    });
+
+    // 터치 드래그 (모바일)
+    fab.addEventListener('touchstart', (e) => {
+        isFabDragging = true;
+        fabDragged = false;
+        const touch = e.touches[0];
+        const rect = fab.getBoundingClientRect();
+        if (!popup.classList.contains('hidden')) {
+            const popupRect = popup.getBoundingClientRect();
+            deltaX = popupRect.left - rect.left;
+            deltaY = popupRect.top - rect.top;
+        }
+        fab.style.left = `${rect.left}px`;
+        fab.style.top = `${rect.top}px`;
+        fab.style.right = 'auto';
+        fab.style.bottom = 'auto';
+        initialX = touch.clientX - rect.left;
+        initialY = touch.clientY - rect.top;
+        fab.style.transition = 'none';
+    }, { passive: false });
+    document.addEventListener('touchmove', (e) => {
+        if (!isFabDragging) return;
+        fabDragged = true;
+        const touch = e.touches[0];
+        const x = Math.min(Math.max(0, touch.clientX - initialX), window.innerWidth - fab.offsetWidth);
+        const y = Math.min(Math.max(0, touch.clientY - initialY), window.innerHeight - fab.offsetHeight);
+        fab.style.left = `${x}px`;
+        fab.style.top = `${y}px`;
+        if (!popup.classList.contains('hidden')) {
+            popup.style.left = `${x + deltaX}px`;
+            popup.style.top = `${y + deltaY}px`;
+            popup.style.right = 'auto';
+        }
+    }, { passive: false });
+    document.addEventListener('touchend', () => {
+        if (!isFabDragging) return;
+        isFabDragging = false;
         fab.style.transition = '';
         localStorage.setItem('mindmap_fab_pos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
     });
@@ -209,6 +241,7 @@ function setupPopupDrag(popup, header, closeBtn) {
     let isDragging = false;
     let initialX, initialY;
 
+    // 마우스 드래그
     header.addEventListener('mousedown', (e) => {
         if (e.target === closeBtn) return;
         const style = window.getComputedStyle(popup);
@@ -222,15 +255,37 @@ function setupPopupDrag(popup, header, closeBtn) {
         isDragging = true;
         header.style.cursor = 'grabbing';
     });
-
     document.addEventListener('mousemove', (e) => {
         if (!isDragging) return;
         popup.style.left = `${e.clientX - initialX}px`;
         popup.style.top = `${e.clientY - initialY}px`;
     });
-
     document.addEventListener('mouseup', () => {
         isDragging = false;
         header.style.cursor = 'grab';
+    });
+
+    // 터치 드래그 (모바일)
+    header.addEventListener('touchstart', (e) => {
+        if (e.target === closeBtn) return;
+        const style = window.getComputedStyle(popup);
+        if (!popup.style.left) {
+            popup.style.left = style.left;
+            popup.style.top = style.top;
+            popup.style.right = 'auto';
+        }
+        const touch = e.touches[0];
+        initialX = touch.clientX - popup.offsetLeft;
+        initialY = touch.clientY - popup.offsetTop;
+        isDragging = true;
+    }, { passive: false });
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const touch = e.touches[0];
+        popup.style.left = `${touch.clientX - initialX}px`;
+        popup.style.top = `${touch.clientY - initialY}px`;
+    }, { passive: false });
+    document.addEventListener('touchend', () => {
+        isDragging = false;
     });
 }

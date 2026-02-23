@@ -14,6 +14,7 @@ export const changelogData = [
     items: [
       '매뉴얼(도움말) 팝업 UI 추가',
       '카드 접기 버튼 클릭 시, 해당 카드 크기도 접히도록 개선'
+      '모바일 버전 UI개선'
     ]
   },
   {
