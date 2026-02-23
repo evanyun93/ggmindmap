@@ -66,6 +66,15 @@ function showDashboardView(user) {
         document.body.innerHTML = getDashboardHTML(user); // 폴백
     }
 
+    // 대시보드 기능 초기화 실행
+    initDashboardFeatures(user);
+}
+
+/**
+ * 대시보드의 모든 동적 기능(메모, 피드백, 그리드 등)을 초기화합니다.
+ * @param {object} user 
+ */
+export function initDashboardFeatures(user) {
     // 대시보드 전용 파티클 생성
     createParticles('particles2', 20, ['#8B5CF6', '#06B6D4', '#A78BFA', '#22D3EE']);
 
@@ -85,7 +94,7 @@ function showDashboardView(user) {
         if (ddayCount && mainDday) mainDday.textContent = ddayCount.textContent;
     };
     setTimeout(updateMainDday, 500);
-    setInterval(updateMainDday, 2000);
+    // 중복 방지를 위한 타이머 관리 로직이 추후 필요할 수 있음
 
     // To-Do 및 그리드 커스터마이징 초기화
     import('./features/todo.js').then(module => module.initTodo());
@@ -94,17 +103,18 @@ function showDashboardView(user) {
         module.restoreLayout();
     });
 
-    // 마인드맵 버튼 연동 (카드 전체가 아닌 버튼 클릭 시)
+    // 마인드맵 버튼 연동
     const startBtn = document.getElementById('realStartMindmapBtn');
     if (startBtn) {
         startBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // 드래그 이벤트와 충돌 방지
+            e.stopPropagation();
             import('./features/mindmap.js').then(module => module.initMindmap());
         });
     }
 
     // 로그아웃 버튼 설정
-    document.getElementById('logoutBtn').addEventListener('click', logout);
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) logoutBtn.addEventListener('click', logout);
 }
 
 /**

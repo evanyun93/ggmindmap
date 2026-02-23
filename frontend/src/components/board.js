@@ -21,7 +21,7 @@ export function getBoardHTML() {
                         <div class="write-card premium-glass">
                             <h3>의견 남기기</h3>
                             <textarea id="feedbackBoardContent" placeholder="마인드맵에 바라는 점을 5자 이상 입력해 주세요...\n\n여기 적은 내용들은 모두에게 공유됩니다.
-- from. 성연 " rows="6"></textarea>
+- from. 성연 " rows="10"></textarea>
                             <div class="write-footer">
                                 <div class="feedback-msg" id="boardFeedbackMsg"></div>
                                 <button class="btn-submit-board-premium" id="submitBoardFeedback">

@@ -5,14 +5,15 @@
 
 import { apiFetch } from '../services/api.js';
 import { showMessage, hideMessage, setLoading } from '../utils/dom.js';
+import { getMainDashboardContentHTML } from '../components/dashboard.js';
 import { getBoardHTML, getFeedbackItemHTML } from '../components/board.js';
+import { initDashboardFeatures } from '../app.js';
 
 let currentPage = 1;
 const ITEMS_PER_PAGE = 5;
 let allFeedback = [];
 
 let isBoardView = false;
-let originalDashboardHTML = '';
 
 /**
  * 피드백 기능 초기화
@@ -22,9 +23,6 @@ export function initFeedback() {
     const contentArea = document.getElementById('dashboardContent');
 
     if (!feedbackBtn || !contentArea) return;
-
-    // 원래 대시보드 내용 저장
-    originalDashboardHTML = contentArea.innerHTML;
 
     // 버튼 클릭 이벤트: 게시판 <-> 대시보드 전환
     feedbackBtn.addEventListener('click', () => {
@@ -41,8 +39,17 @@ export function initFeedback() {
             feedbackBtn.textContent = '대시보드로 돌아가기';
             isBoardView = true;
         } else {
-            // 게시판 -> 대시보드 복구
-            contentArea.innerHTML = originalDashboardHTML;
+            // 게시판 -> 대시보드 복구 (정적 HTML이 아닌 동적 재렌더링 및 초기화)
+            contentArea.classList.add('fade-out');
+            setTimeout(() => {
+                const user = window.currentUser;
+                contentArea.innerHTML = getMainDashboardContentHTML(user);
+                initDashboardFeatures(user); // 모든 기능 재초기화 (그리드 위치 복구 포함)
+
+                contentArea.classList.remove('fade-out');
+                contentArea.classList.add('fade-in');
+            }, 300);
+
             feedbackBtn.textContent = '고객의 소리함';
             isBoardView = false;
         }
@@ -100,12 +107,6 @@ async function switchToBoard(container) {
     loadFeedbackList(listSection);
 }
 
-/**
- * 대시보드 원본 화면으로 전환
- */
-function switchToDashboard(container) {
-    container.innerHTML = originalDashboardHTML;
-}
 
 /**
  * 피드백 목록을 가져와 페이지네이션 처리합니다.
