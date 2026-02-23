@@ -10,6 +10,7 @@ import { getDashboardHTML } from './components/dashboard.js';
 import { initMemo } from './features/memo.js';
 import { initFeedback } from './features/feedback.js';
 import { initChangelog } from './features/changelog.js';
+import { initMilestone } from './features/milestone.js';
 
 // DOM 요소 캐시 (로그인 페이지용)
 let loginCard, registerCard, loginForm, registerForm, loginError, registerError, registerSuccess;
@@ -74,6 +75,9 @@ function showDashboardView(user) {
     // 고객의 소리함 초기화
     initFeedback();
 
+    // 마일스톤 위젯 초기화 (D-Day 등)
+    initMilestone();
+
     // D-Day 데이터 동기화
     const updateMainDday = () => {
         const ddayCount = document.getElementById('ddayCount');
@@ -90,10 +94,11 @@ function showDashboardView(user) {
         module.restoreLayout();
     });
 
-    // 마인드맵 버튼 연동
-    const startMindmapBtn = document.getElementById('startMindmapBtn');
-    if (startMindmapBtn) {
-        startMindmapBtn.addEventListener('click', () => {
+    // 마인드맵 버튼 연동 (카드 전체가 아닌 버튼 클릭 시)
+    const startBtn = document.getElementById('realStartMindmapBtn');
+    if (startBtn) {
+        startBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // 드래그 이벤트와 충돌 방지
             import('./features/mindmap.js').then(module => module.initMindmap());
         });
     }

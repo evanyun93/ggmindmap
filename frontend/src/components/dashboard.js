@@ -25,31 +25,82 @@ export function getDashboardHTML(user) {
       </header>
       <div class="dashboard-content" id="dashboardContent">
         <div class="dashboard-main-split">
-          <!-- 좌측: 환영 메시지 섹션 -->
-          <div class="welcome-section">
+          <!-- 상단: 환영 메시지 섹션 (Full Width) -->
+          <div class="welcome-section wide-layout" id="welcomeSection">
             <div class="welcome-card-premium premium-glass">
-              <div class="welcome-icon">🧠</div>
-              <h2>마인드맵에 오신 것을 환영합니다!</h2>
-              <h3>현재 PC버전에서만 최적화 되어있으며<br>추후 모바일 버전도 추가될 예정입니다.<br>업데이트 진척사항은 하단의 Version을 눌러주세요!</h3>
-              <div class="welcome-desc">
-                <p>우측 상단의 메모 버튼을 클릭하여 엑셀 기능을 사용할 수 있습니다.</p>
-                <p>현재 <strong>Private To-Do</strong> 및 <strong>Mind Canvas</strong> 기능이 추가되었습니다.<br>본인만의 생각을 정리하고 관리해보세요.</p>
+              <button class="welcome-close-btn" id="closeWelcomeBtn" title="닫기">&times;</button>
+              <div class="welcome-header-content">
+                <div class="welcome-icon">🧠</div>
+                <div class="welcome-text">
+                  <h2>마인드맵에 오신 것을 환영합니다!</h2>
+                  <p>나만의 복잡한 생각을 시각화하고 <strong>Private To-Do</strong>와 <strong>마일스톤</strong>으로 체계적으로 관리해보세요.</p>
+                </div>
+              </div>
+              <div class="welcome-info-strip">
+                <div class="info-links">
+                  <span>현재 PC 버전에 최적화되어 있습니다.</span>
+                  <span>업데이트 소식은 하단의 <strong>Version</strong>을 클릭해주세요.</span>
+                </div>
+                <!-- 다시 보지 않기 -->
+                <label class="welcome-dont-show">
+                  <input type="checkbox" id="dontShowAgainCheckbox"> 다시 보지 않기
+                </label>
               </div>
             </div>
           </div>
 
-          <!-- 우측: 위젯 섹션 (2열 그리드) -->
-          <div class="widgets-section">
+          <!-- 상단: 중앙 로고 섹션 (환영 메시지 숨김 시 노출) -->
+          <div class="central-logo-section hidden" id="centralLogoSection">
+            <div class="central-logo-content">
+              <div class="mega-logo">
+                ${getLogoSVG()}
+              </div>
+              <h1>${user.displayName || user.username}'s MindMap</h1>
+            </div>
+          </div>
+
+          <!-- 하단: 위젯 섹션 (Wide Whiteboard) -->
+          <div class="widgets-section wide-layout">
             <div class="dashboard-grid-v2" id="widgetGrid">
+              <!-- 테마 선택 UI: 화이트보드 우상단으로 이동 -->
+              <div class="theme-picker-premium whiteboard-theme-picker">
+                <button class="theme-chip midnight active" data-theme="midnight" title="Midnight"></button>
+                <button class="theme-chip blueprint" data-theme="blueprint" title="Blueprint"></button>
+                <button class="theme-chip classic" data-theme="classic" title="Classic"></button>
+                <button class="theme-chip dark" data-theme="dark" title="Dark"></button>
+              </div>
+
               <!-- 1. D-Day 위젯 -->
-              <div class="dashboard-card premium-glass-card widget-dday draggable-widget" data-id="dday">
+              <div class="dashboard-card premium-glass-card widget-milestone draggable-widget" data-id="milestone">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="card-icon">📅</div>
-                <h3>나의 마일스톤</h3>
-                <div class="dday-content-mini">
-                  <div class="dday-info">
-                    <span class="label">목표까지</span>
-                    <span class="value" id="mainDdayCount">-</span>
+                <div class="widget-header clickable-header" id="milestoneHeader" title="접기/펼치기">
+                  <div class="header-main">
+                    <div class="card-icon">📅</div>
+                    <h3>나의 마일스톤</h3>
+                  </div>
+                  <div class="toggle-icon-wrapper" id="milestoneToggleBtn">
+                    <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
+                </div>
+
+                <div class="milestone-collapsible-wrapper" id="milestoneCollapsible">
+                  <div class="milestone-content">
+                    <div class="milestone-main-info">
+                      <div class="milestone-dday-badge" id="milestoneDdayBadge">-</div>
+                      <div class="milestone-text-info">
+                        <p class="target-date" id="milestoneTargetDate">목표일을 설정해주세요</p>
+                        <p class="sub-info" id="milestoneSubInfo">남은 토요일: -회</p>
+                      </div>
+                    </div>
+                    <div class="milestone-separator"></div>
+                    <div class="milestone-spreadsheet-summary">
+                      <h4>📊 메모 요약</h4>
+                      <div id="milestoneSheetSummary" class="summary-list">
+                        <div class="loader-mini">불러오는 중...</div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div class="resize-handle"></div>
@@ -58,27 +109,48 @@ export function getDashboardHTML(user) {
               <!-- 2. 프라이빗 To-Do 위젯 -->
               <div class="dashboard-card premium-glass-card widget-todo draggable-widget" data-id="todo">
                 <div class="drag-handle">⋮⋮</div>
-                <div class="card-icon">✅</div>
-                <h3>오늘의 할 일</h3>
-                <div class="todo-list-container" id="todoListContainer">
-                  <div class="loader-mini">불러오는 중...</div>
+                <div class="widget-header clickable-header" id="todoHeader" title="접기/펼치기">
+                  <div class="header-main">
+                    <div class="card-icon">✅</div>
+                    <h3>오늘의 할 일</h3>
+                  </div>
+                  <div class="toggle-icon-wrapper" id="todoToggleBtn">
+                    <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
+                  </div>
                 </div>
-                <div class="todo-input-group">
-                  <input type="text" id="todoInput" placeholder="할 일 추가...">
-                  <button id="addTodoBtn">+</button>
+                
+                <div class="todo-collapsible-wrapper" id="todoCollapsible">
+                  <div class="todo-input-group-premium">
+                    <div class="premium-input-wrapper">
+                      <input type="text" id="todoInput" placeholder="할 일을 입력하세요...">
+                      <button id="addTodoBtn" class="btn-add-todo">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div class="todo-list-container" id="todoListContainer">
+                    <div class="loader-mini">불러오는 중...</div>
+                  </div>
                 </div>
                 <div class="resize-handle"></div>
               </div>
 
               <!-- 3. 마인드맵 바로가기 카드 -->
-              <div class="dashboard-card premium-glass-card widget-mindmap-cta draggable-widget" id="startMindmapBtn" data-id="mindmap">
+              <div class="dashboard-card premium-glass-card widget-mindmap-cta draggable-widget" data-id="mindmap">
                 <div class="drag-handle">⋮⋮</div>
                 <div class="card-icon-mini">🧠</div>
-                <div class="cta-text">
-                  <h3>생각 그리기 (Mind Canvas)</h3>
-                  <p>나만의 복잡한 생각을 시각화하고 정리해보세요.</p>
+                <div class="cta-content-wrapper">
+                  <div class="cta-text">
+                    <h3>생각 그리기(추후 업데이트 예정)</h3>
+                    <p>마인드맵으로 복잡한 아이디어를 시각화하세요.</p>
+                  </div>
+                  <button id="realStartMindmapBtn" class="cta-button-premium">
+                    <span>시작하기</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
+                  </button>
                 </div>
-                <button class="btn-primary-gradient">시작하기</button>
                 <div class="resize-handle"></div>
               </div>
             </div>

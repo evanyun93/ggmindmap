@@ -1,7 +1,10 @@
 /**
  * @file dashboard-grid.js
- * @description 대시보드 위젯의 드래그 앤 드롭 및 리사이즈 기능을 담당합니다.
+ * @description 대시보드 위젯의 자유로운 절대 좌표 드래그, 리사이즈 및 계층(Z-Index) 관리를 담당합니다.
  */
+
+// 현재 대시보드 내에서 가장 높은 Z-Index를 추적
+let maxZIndex = 100;
 
 export function initDashboardGrid() {
     const grid = document.getElementById('widgetGrid');
@@ -12,99 +15,201 @@ export function initDashboardGrid() {
     widgets.forEach(widget => {
         setupDraggable(widget, grid);
         setupResizable(widget, grid);
+
+        // 초기 렌더링 시 클릭하면 앞으로 가져오기 기능 활성화
+        widget.addEventListener('mousedown', () => bringToFront(widget));
+    });
+
+    // 테마 초기화
+    initTheme();
+
+    // 환영 세션 초기화
+    initWelcomeSection();
+}
+
+/**
+ * 환영 세션 제어 로직
+ */
+function initWelcomeSection() {
+    const welcomeSection = document.getElementById('welcomeSection');
+    const centralLogoSection = document.getElementById('centralLogoSection');
+    if (!welcomeSection) return;
+
+    const showLogo = () => {
+        if (centralLogoSection) centralLogoSection.classList.remove('hidden');
+    };
+
+    // '다시는 보지 않기' 설정 확인
+    const isHiddenForever = localStorage.getItem('hide_welcome_forever') === 'true';
+    if (isHiddenForever) {
+        welcomeSection.style.display = 'none';
+        showLogo();
+        return;
+    }
+
+    const closeBtn = document.getElementById('closeWelcomeBtn');
+    const dontShowCheckbox = document.getElementById('dontShowAgainCheckbox');
+
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            // 체크박스 상태 확인
+            if (dontShowCheckbox && dontShowCheckbox.checked) {
+                localStorage.setItem('hide_welcome_forever', 'true');
+            }
+            welcomeSection.style.display = 'none';
+            showLogo();
+        };
+    }
+}
+
+/**
+ * 테마 초기화 및 연동
+ */
+function initTheme() {
+    const savedTheme = localStorage.getItem('dashboard_theme') || 'midnight';
+    applyTheme(savedTheme);
+
+    const themePicker = document.querySelector('.theme-picker-premium');
+    if (!themePicker) return;
+
+    themePicker.addEventListener('click', (e) => {
+        const chip = e.target.closest('.theme-chip');
+        if (!chip) return;
+
+        const theme = chip.dataset.theme;
+        applyTheme(theme);
+    });
+}
+
+function applyTheme(theme) {
+    // 기존 테마 클래스 제거
+    document.body.classList.remove('theme-midnight', 'theme-blueprint', 'theme-classic', 'theme-dark');
+    // 신규 테마 클래스 추가
+    document.body.classList.add(`theme-${theme}`);
+
+    // UI 상태 업데이트
+    const chips = document.querySelectorAll('.theme-chip');
+    chips.forEach(c => {
+        c.classList.toggle('active', c.dataset.theme === theme);
+    });
+
+    // 저장
+    localStorage.setItem('dashboard_theme', theme);
+}
+
+/**
+ * 위젯을 최상단 계층으로 가져오기
+ */
+function bringToFront(widget) {
+    maxZIndex++;
+    widget.style.zIndex = maxZIndex;
+
+    // 조작 중임을 나타내는 스타일 초기화 (다른 위젯들의 zIndex가 무한히 커지는 것을 방지하기 위해 가끔 정리할 수도 있음)
+    if (maxZIndex > 10000) {
+        resetZIndexSequence();
+    }
+}
+
+/**
+ * Z-Index가 너무 커졌을 때 상대적 순서를 유지하며 초기화
+ */
+function resetZIndexSequence() {
+    const grid = document.getElementById('widgetGrid');
+    if (!grid) return;
+
+    const widgets = Array.from(grid.querySelectorAll('.draggable-widget'))
+        .sort((a, b) => (parseInt(a.style.zIndex) || 0) - (parseInt(b.style.zIndex) || 0));
+
+    maxZIndex = 100;
+    widgets.forEach((w, idx) => {
+        w.style.zIndex = 100 + idx;
+        maxZIndex = 100 + idx;
     });
 }
 
 /**
- * 드래그 앤 드롭 위치 변경 로직
+ * 절대 좌표 기반 드래그 기능 (픽셀 단위)
  */
 function setupDraggable(widget, grid) {
+    let isDragStarted = false;
+
     widget.onmousedown = (e) => {
         if (e.button !== 0) return;
 
-        const interactiveTags = ['INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'A'];
-        if (interactiveTags.includes(e.target.tagName) || e.target.closest('button, input, a, .todo-item')) {
+        // 버튼, 입력창, 리사이즈 핸들 등 인터랙티브 요소는 드래그 제외
+        if (e.target.closest('button, input, textarea, a, .todo-item, .resize-handle, .toggle-btn')) {
             return;
         }
 
-        e.preventDefault();
+        bringToFront(widget); // 클릭 시 즉시 앞으로
 
-        const rect = widget.getBoundingClientRect();
-        const offsetX = e.clientX - rect.left;
-        const offsetY = e.clientY - rect.top;
+        const initialX = e.clientX;
+        const initialY = e.clientY;
 
-        // 1. Placeholder 생성
-        const placeholder = document.createElement('div');
-        placeholder.className = 'widget-placeholder';
-        placeholder.style.width = rect.width + 'px';
-        placeholder.style.height = rect.height + 'px';
-        placeholder.style.gridColumn = widget.style.gridColumn;
-        placeholder.style.gridRow = widget.style.gridRow;
-
-        // 2. 위젯을 '플로팅' 상태로 변경
-        const origWidth = widget.offsetWidth;
-        const origHeight = widget.offsetHeight;
-
-        widget.classList.add('dragging');
-        widget.style.width = origWidth + 'px';
-        widget.style.height = origHeight + 'px';
-        widget.style.position = 'fixed';
-        widget.style.top = rect.top + 'px';
-        widget.style.left = rect.left + 'px';
-        widget.style.pointerEvents = 'none';
-        widget.style.zIndex = '10000';
-
-        widget.after(placeholder);
-
-        const onMouseMove = (moveEvent) => {
-            const x = moveEvent.clientX - offsetX;
-            const y = moveEvent.clientY - offsetY;
-            widget.style.top = y + 'px';
-            widget.style.left = x + 'px';
-
-            const elementsUnder = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
-            const target = elementsUnder.find(el =>
-                el.classList.contains('draggable-widget') && el !== widget
+        const onMouseMoveAttempt = (moveEvent) => {
+            const dist = Math.sqrt(
+                Math.pow(moveEvent.clientX - initialX, 2) +
+                Math.pow(moveEvent.clientY - initialY, 2)
             );
 
-            if (target) {
-                const targetRect = target.getBoundingClientRect();
-                const isAfter = moveEvent.clientX > targetRect.left + targetRect.width / 2 ||
-                    moveEvent.clientY > targetRect.top + targetRect.height / 2;
-
-                if (isAfter) {
-                    target.after(placeholder);
-                } else {
-                    target.before(placeholder);
-                }
+            if (dist > 5) {
+                cleanup();
+                startDrag(e);
             }
         };
 
+        const onMouseUpAttempt = () => {
+            cleanup();
+        };
+
+        const cleanup = () => {
+            document.removeEventListener('mousemove', onMouseMoveAttempt);
+            document.removeEventListener('mouseup', onMouseUpAttempt);
+        };
+
+        document.addEventListener('mousemove', onMouseMoveAttempt);
+        document.addEventListener('mouseup', onMouseUpAttempt);
+    };
+
+    function startDrag(e) {
+        if (isDragStarted) return;
+        isDragStarted = true;
+
+        widget.classList.add('dragging');
+
+        const gridRect = grid.getBoundingClientRect();
+        const rect = widget.getBoundingClientRect();
+
+        const offsetX = e.clientX - rect.left;
+        const offsetY = e.clientY - rect.top;
+
+        const onMouseMove = (moveEvent) => {
+            let left = moveEvent.clientX - gridRect.left - offsetX;
+            let top = moveEvent.clientY - gridRect.top - offsetY;
+
+            const maxLeft = gridRect.width - widget.offsetWidth;
+            left = Math.max(0, Math.min(maxLeft, left));
+            top = Math.max(0, top);
+
+            widget.style.left = `${left}px`;
+            widget.style.top = `${top}px`;
+        };
+
         const onMouseUp = () => {
-            placeholder.after(widget);
-            placeholder.remove();
-
             widget.classList.remove('dragging');
-            widget.style.position = '';
-            widget.style.top = '';
-            widget.style.left = '';
-            widget.style.width = '';
-            widget.style.height = '';
-            widget.style.pointerEvents = '';
-            widget.style.zIndex = '';
-
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
+            isDragStarted = false;
             saveLayout();
         };
 
         document.addEventListener('mousemove', onMouseMove);
         document.addEventListener('mouseup', onMouseUp);
-    };
+    }
 }
 
 /**
- * 자유 리사이즈 로직 (그리드 기반)
+ * 픽셀 단위 자유 리사이즈 로직
  */
 function setupResizable(widget, grid) {
     const handle = widget.querySelector('.resize-handle');
@@ -115,26 +220,33 @@ function setupResizable(widget, grid) {
         e.preventDefault();
         e.stopPropagation();
 
-        const gridRect = grid.getBoundingClientRect();
-        const widgetRect = widget.getBoundingClientRect(); // 시작 시 위치 캡처
-        const colWidth = gridRect.width / 6;
-        const rowHeight = 170;
+        bringToFront(widget); // 리사이즈 시에도 앞으로
+
+        const startWidth = widget.offsetWidth;
+        const startHeight = widget.offsetHeight;
+        const startX = e.clientX;
+        const startY = e.clientY;
 
         const onMouseMove = (moveEvent) => {
-            const currentWidth = moveEvent.clientX - widgetRect.left;
-            const currentHeight = moveEvent.clientY - widgetRect.top;
+            const gridRect = grid.getBoundingClientRect();
+            const widgetRect = widget.getBoundingClientRect();
+            const maxAllowedWidth = gridRect.right - widgetRect.left;
 
-            let colSpan = Math.round(currentWidth / colWidth);
-            let rowSpan = Math.round(currentHeight / rowHeight);
+            const currentWidth = startWidth + (moveEvent.clientX - startX);
+            const currentHeight = startHeight + (moveEvent.clientY - startY);
 
-            colSpan = Math.max(1, Math.min(6, colSpan));
-            rowSpan = Math.max(1, Math.min(5, rowSpan));
+            const minW = 250;
+            const minH = 120;
 
-            widget.style.gridColumn = `span ${colSpan}`;
-            widget.style.gridRow = `span ${rowSpan}`;
+            const finalW = Math.max(minW, Math.min(maxAllowedWidth, currentWidth));
+            const finalH = Math.max(minH, currentHeight);
 
+            widget.style.width = `${finalW}px`;
+            widget.style.height = `${finalH}px`;
+
+            // 마인드맵 CTA 레이아웃 가변 처리
             if (widget.classList.contains('widget-mindmap-cta')) {
-                widget.style.flexDirection = colSpan > 2 ? 'row' : 'column';
+                widget.style.flexDirection = finalW > 450 ? 'row' : 'column';
             }
         };
 
@@ -150,7 +262,7 @@ function setupResizable(widget, grid) {
 }
 
 /**
- * 레이아웃 상태 저장
+ * 레이아웃 상태 저장 (Z-Index 포함)
  */
 function saveLayout() {
     const grid = document.getElementById('widgetGrid');
@@ -158,38 +270,82 @@ function saveLayout() {
 
     const layout = Array.from(grid.querySelectorAll('.draggable-widget')).map(w => ({
         id: w.dataset.id,
-        colSpan: w.style.gridColumn,
-        rowSpan: w.style.gridRow
+        left: w.style.left,
+        top: w.style.top,
+        width: w.style.width,
+        height: w.style.height,
+        zIndex: w.style.zIndex || 100
     }));
-    localStorage.setItem('dashboard_layout_v2', JSON.stringify(layout));
+
+    localStorage.setItem('dashboard_layout_free_v1', JSON.stringify(layout));
 }
 
 /**
- * 레이아웃 상태 복구
+ * 레이아웃 상태 복구 (Z-Index 포함)
  */
 export function restoreLayout() {
     const grid = document.getElementById('widgetGrid');
-    const saved = localStorage.getItem('dashboard_layout_v2');
-    if (!grid || !saved) return;
+    const saved = localStorage.getItem('dashboard_layout_free_v1');
+    if (!grid) return;
+
+    if (!saved) {
+        setInitialLayout(grid);
+        return;
+    }
 
     try {
         const layout = JSON.parse(saved);
         layout.forEach(item => {
             const widget = grid.querySelector(`[data-id="${item.id}"]`);
             if (widget) {
-                if (item.colSpan) widget.style.gridColumn = item.colSpan;
-                if (item.rowSpan) widget.style.gridRow = item.rowSpan;
-
-                // 마인드맵 CTA 레이아웃 보정
-                if (widget.classList.contains('widget-mindmap-cta') && item.colSpan) {
-                    const spanNum = parseInt(item.colSpan.replace('span ', ''));
-                    widget.style.flexDirection = spanNum > 2 ? 'row' : 'column';
+                if (item.left) widget.style.left = item.left;
+                if (item.top) widget.style.top = item.top;
+                if (item.width) widget.style.width = item.width;
+                if (item.height) widget.style.height = item.height;
+                if (item.zIndex) {
+                    widget.style.zIndex = item.zIndex;
+                    // 전역 maxZIndex 갱신
+                    maxZIndex = Math.max(maxZIndex, parseInt(item.zIndex));
                 }
 
-                grid.appendChild(widget);
+                if (widget.classList.contains('widget-mindmap-cta') && item.width) {
+                    const wNum = parseInt(item.width);
+                    widget.style.flexDirection = wNum > 450 ? 'row' : 'column';
+                }
             }
         });
     } catch (e) {
-        console.error('레이아웃 복구 실패:', e);
+        console.error('자유 레이아웃 복구 실패:', e);
     }
+}
+
+/**
+ * 저장된 데이터가 없는 경우 초기 기본 위치 설정
+ */
+function setInitialLayout(grid) {
+    const gridWidth = grid.offsetWidth;
+
+    const configs = [
+        { id: 'milestone', left: '0px', top: '0px', width: '700px', height: '340px', zIndex: 101 },
+        { id: 'todo', left: '740px', top: '0px', width: '400px', height: '540px', zIndex: 102 },
+        { id: 'mindmap', left: '0px', top: '360px', width: '700px', height: '180px', zIndex: 103 }
+    ];
+
+    configs.forEach(conf => {
+        const widget = grid.querySelector(`[data-id="${conf.id}"]`);
+        if (widget) {
+            const w = parseInt(conf.width);
+            const l = parseInt(conf.left);
+            const finalLeft = (l + w > gridWidth) ? Math.max(0, gridWidth - w) : l;
+
+            widget.style.left = `${finalLeft}px`;
+            widget.style.top = conf.top;
+            widget.style.width = conf.width;
+            widget.style.height = conf.height;
+            widget.style.zIndex = conf.zIndex;
+
+            maxZIndex = Math.max(maxZIndex, conf.zIndex);
+        }
+    });
+    saveLayout();
 }

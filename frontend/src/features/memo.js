@@ -108,6 +108,7 @@ function updateDDayView(targetDateStr, display, countEl, satEl, dayNames) {
  */
 function setupFabDrag(fab, popup) {
     let initialX, initialY;
+    let deltaX = 0, deltaY = 0;
 
     const savedPos = localStorage.getItem('mindmap_fab_pos');
     if (savedPos) {
@@ -122,10 +123,19 @@ function setupFabDrag(fab, popup) {
         isFabDragging = true;
         fabDragged = false;
         const rect = fab.getBoundingClientRect();
+
+        // 팝업이 열려있는 경우 상대 거리 계산
+        if (!popup.classList.contains('hidden')) {
+            const popupRect = popup.getBoundingClientRect();
+            deltaX = popupRect.left - rect.left;
+            deltaY = popupRect.top - rect.top;
+        }
+
         fab.style.left = `${rect.left}px`;
         fab.style.top = `${rect.top}px`;
         fab.style.right = 'auto';
         fab.style.bottom = 'auto';
+
         initialX = e.clientX - rect.left;
         initialY = e.clientY - rect.top;
         fab.style.transition = 'none';
@@ -135,10 +145,19 @@ function setupFabDrag(fab, popup) {
     document.addEventListener('mousemove', (e) => {
         if (!isFabDragging) return;
         fabDragged = true;
+
         const x = Math.min(Math.max(0, e.clientX - initialX), window.innerWidth - fab.offsetWidth);
         const y = Math.min(Math.max(0, e.clientY - initialY), window.innerHeight - fab.offsetHeight);
+
         fab.style.left = `${x}px`;
         fab.style.top = `${y}px`;
+
+        // 팝업이 열려있는 경우 함께 이동
+        if (!popup.classList.contains('hidden')) {
+            popup.style.left = `${x + deltaX}px`;
+            popup.style.top = `${y + deltaY}px`;
+            popup.style.right = 'auto';
+        }
     });
 
     document.addEventListener('mouseup', () => {

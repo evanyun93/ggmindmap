@@ -13,6 +13,7 @@ export class Spreadsheet {
         this.rows = options.rows || 5;
         this.cols = options.cols || 10;
         this.data = {}; // 예: { "A1": { value: "10", formula: "" } }
+        this.headers = {}; // 예: { "col-0": "날짜", "row-1": "항목" }
         this.selectedCell = null;
 
         if (this.container) {
@@ -21,6 +22,7 @@ export class Spreadsheet {
     }
 
     init() {
+        this.loadHeaders();
         this.render();
         this.loadData();
     }
@@ -35,12 +37,17 @@ export class Spreadsheet {
         const table = document.createElement('table');
         table.className = 'spreadsheet-table';
 
-        // 헤더 행 (A, B, C...)
+        // 헤더 행 (A, B, C... 또는 커스텀 이름)
         const headerRow = document.createElement('tr');
         headerRow.appendChild(document.createElement('th')); // 왼쪽 상단 빈 칸
         for (let c = 0; c < this.cols; c++) {
             const th = document.createElement('th');
-            th.textContent = String.fromCharCode(65 + c);
+            const defaultLabel = String.fromCharCode(65 + c);
+            th.textContent = this.headers[`col-${c}`] || defaultLabel;
+            th.contentEditable = true;
+            th.className = 'col-header-editable';
+            th.addEventListener('blur', (e) => this.updateHeader('col', c, e.target.textContent.trim() || defaultLabel));
+            th.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
             headerRow.appendChild(th);
         }
         table.appendChild(headerRow);
@@ -49,10 +56,14 @@ export class Spreadsheet {
         for (let r = 1; r <= this.rows; r++) {
             const tr = document.createElement('tr');
 
-            // 행 번호 (1, 2, 3...)
+            // 행 번호 (1, 2, 3... 또는 커스텀 이름)
             const rowHeader = document.createElement('td');
-            rowHeader.className = 'row-header';
-            rowHeader.textContent = r;
+            const defaultRowLabel = r.toString();
+            rowHeader.className = 'row-header row-header-editable';
+            rowHeader.textContent = this.headers[`row-${r}`] || defaultRowLabel;
+            rowHeader.contentEditable = true;
+            rowHeader.addEventListener('blur', (e) => this.updateHeader('row', r, e.target.textContent.trim() || defaultRowLabel));
+            rowHeader.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } });
             tr.appendChild(rowHeader);
 
             for (let c = 0; c < this.cols; c++) {
@@ -69,6 +80,25 @@ export class Spreadsheet {
         }
 
         this.container.appendChild(table);
+    }
+
+    /**
+     * 헤더 이름을 업데이트하고 저장합니다.
+     */
+    updateHeader(type, index, value) {
+        this.headers[`${type}-${index}`] = value;
+        this.saveHeaders();
+    }
+
+    saveHeaders() {
+        localStorage.setItem('mindmap_spreadsheet_headers', JSON.stringify(this.headers));
+    }
+
+    loadHeaders() {
+        const saved = localStorage.getItem('mindmap_spreadsheet_headers');
+        if (saved) {
+            this.headers = JSON.parse(saved);
+        }
     }
 
     onCellFocus(e, cellId) {
