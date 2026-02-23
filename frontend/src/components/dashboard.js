@@ -71,7 +71,7 @@ export function getDashboardHTML(user) {
               </div>
 
               <!-- 3. 마인드맵 바로가기 카드 -->
-              <div class="dashboard-card premium-glass-card widget-mindmap-cta draggable-widget" id="startMindmapBtn" data-id="mindmap" style="grid-column: span 2;">
+              <div class="dashboard-card premium-glass-card widget-mindmap-cta draggable-widget" id="startMindmapBtn" data-id="mindmap">
                 <div class="drag-handle">⋮⋮</div>
                 <div class="card-icon-mini">🧠</div>
                 <div class="cta-text">
