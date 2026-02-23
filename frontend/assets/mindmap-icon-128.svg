@@ -1,0 +1,35 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 배경: 둥근 사각형 (Deep Indigo) -->
+  <rect width="128" height="128" rx="28" fill="#0F172A"/>
+  
+  <defs>
+    <!-- 프리미엄 그라데이션 -->
+    <linearGradient id="iconGrad" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8B5CF6"/>
+      <stop offset="100%" stop-color="#06B6D4"/>
+    </linearGradient>
+    
+    <!-- 부드러운 빛 효과 (Glow) -->
+    <filter id="glowEffect" x="-20" y="-20" width="168" height="168" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <!-- 마인드맵 네트워크 코어 디자인 -->
+  <g filter="url(#glowEffect)">
+    <!-- 연결선 (뉴런 네트워크) -->
+    <path d="M64 40L90 64L64 88L38 64L64 40Z" stroke="url(#iconGrad)" stroke-width="2.5" stroke-linejoin="round" opacity="0.5"/>
+    <path d="M64 40V88M38 64H90" stroke="url(#iconGrad)" stroke-width="1.5" stroke-dasharray="4 2" opacity="0.3"/>
+    
+    <!-- 주변 노드 -->
+    <circle cx="64" cy="40" r="5" fill="#8B5CF6"/>
+    <circle cx="90" cy="64" r="5" fill="#06B6D4"/>
+    <circle cx="64" cy="88" r="5" fill="#8B5CF6"/>
+    <circle cx="38" cy="64" r="5" fill="#06B6D4"/>
+    
+    <!-- 중앙 메인 노드 (강렬한 빛) -->
+    <circle cx="64" cy="64" r="9" fill="url(#iconGrad)"/>
+    <circle cx="64" cy="64" r="11" stroke="white" stroke-width="1" stroke-opacity="0.2"/>
+  </g>
+</svg>

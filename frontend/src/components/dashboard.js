@@ -18,6 +18,15 @@ export function getDashboardHTML(user) {
           <h2>MindMap</h2>
         </div>
         <div class="user-section">
+          <div class="account-link-zone">
+            ${user.socialProvider ?
+      `<span class="badge-social linked ${user.socialProvider}" title="${user.socialProvider} 계정으로 연동되었습니다.">
+                ${user.socialProvider === 'kakao' ? 'K' : 'N'} 연동됨
+               </span>` :
+      `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
+               <button class="btn-link-mini naver" id="linkNaverBtn" title="네이버 계정 연동">N</button>`
+    }
+          </div>
           <button class="btn-feedback" id="feedbackBtn">고객의 소리함</button>
           <span class="user-name">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
           <button class="btn-logout" id="logoutBtn">로그아웃</button>

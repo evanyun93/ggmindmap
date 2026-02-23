@@ -6,6 +6,7 @@
 import { createParticles } from './utils/effects.js';
 import { checkAutoLogin, login, register, logout } from './services/auth.js';
 import { showMessage, hideMessage, setLoading, switchCard } from './utils/dom.js';
+import { initSocialAuth } from './services/social-auth.js'; // social-auth 임포트
 import { getDashboardHTML } from './components/dashboard.js';
 import { initMemo } from './features/memo.js';
 import { initFeedback } from './features/feedback.js';
@@ -29,6 +30,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3. 전역 기능 초기화 (푸터 등)
     initChangelog();
+
+    // 4. 네이버 콜백 처리 (팝업 등에서 돌아왔을 때)
+    const { checkNaverCallback } = await import('./services/social-auth.js');
+    checkNaverCallback();
 });
 
 /**
@@ -51,6 +56,9 @@ function initAuthView() {
     registerForm.addEventListener('submit', handleRegisterSubmit);
     showRegisterBtn.addEventListener('click', () => switchCard('register', loginCard, registerCard, clearAuthMessages));
     showLoginBtn.addEventListener('click', () => switchCard('login', loginCard, registerCard, clearAuthMessages));
+
+    // 소셜 로그인 초기화
+    initSocialAuth();
 }
 
 /**
@@ -68,6 +76,9 @@ function showDashboardView(user) {
 
     // 대시보드 기능 초기화 실행
     initDashboardFeatures(user);
+
+    // 대시보드 내 소셜 연동 버튼을 위해 다시 초기화 (이미 이벤트 리스너가 중복 등록되지 않도록 social-auth.js에서 처리됨)
+    initSocialAuth();
 }
 
 /**

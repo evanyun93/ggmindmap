@@ -44,15 +44,25 @@ async function initDatabase() {
         END $$;
       `);
 
-      // tba_users 테이블 생성
+      // tba_users 테이블 생성 및 컬럼 확장
       await client.query(`
         CREATE TABLE IF NOT EXISTS tba_users (
           id SERIAL PRIMARY KEY,
           username VARCHAR(50) UNIQUE NOT NULL,
-          password VARCHAR(255) NOT NULL,
+          password VARCHAR(255),
           display_name VARCHAR(100),
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          social_id VARCHAR(100),
+          provider VARCHAR(20),
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          UNIQUE(social_id, provider)
         );
+      `);
+
+      // 기존 테이블에 컬럼이 없는 경우 추가 (Migration)
+      await client.query(`
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS social_id VARCHAR(100);
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS provider VARCHAR(20);
+        ALTER TABLE tba_users ALTER COLUMN password DROP NOT NULL;
       `);
 
       // tba_feedback 테이블 생성
@@ -102,6 +112,64 @@ initDatabase();
 // ─── API 라우트 ────────────────────────────────────────────────
 
 /**
+ * 소셜 로그인/자동 가입 API
+ */
+app.post('/api/auth/social-login', async (req, res) => {
+  try {
+    const { socialId, provider, displayName, username } = req.body;
+
+    if (!socialId || !provider) {
+      return res.status(400).json({ success: false, message: '소셜 정보가 부족합니다.' });
+    }
+
+    // 1. 기존 유저인지 소셜 ID로 확인
+    let userResult = await pool.query(
+      'SELECT * FROM tba_users WHERE social_id = $1 AND provider = $2',
+      [socialId, provider]
+    );
+    let user = userResult.rows[0];
+
+    // 2. 기존 유저 정보 업데이트 또는 신규 가입
+    if (user) {
+      // 기존 유저라면 최신 소셜 닉네임으로 동기화 (선택 사항이나 싱크를 위해 추천)
+      if (displayName && user.display_name !== displayName) {
+        await pool.query('UPDATE tba_users SET display_name = $1 WHERE id = $2', [displayName, user.id]);
+        user.display_name = displayName;
+      }
+    } else {
+      // 신규 유저라면 자동 가입
+      const uniqueUsername = username || `${provider}_${socialId.substring(0, 10)}`;
+      const newUserResult = await pool.query(
+        'INSERT INTO tba_users (username, display_name, social_id, provider) VALUES ($1, $2, $3, $4) RETURNING *',
+        [uniqueUsername, displayName || uniqueUsername, socialId, provider]
+      );
+      user = newUserResult.rows[0];
+    }
+
+    // 3. JWT 토큰 발급
+    const token = jwt.sign(
+      { id: user.id, username: user.username, displayName: user.display_name },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    res.json({
+      success: true,
+      message: `${provider} 로그인 성공!`,
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name
+      }
+    });
+  } catch (error) {
+    console.error('소셜 로그인 에러:', error);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+  }
+});
+
+/**
  * 로그인 API
  */
 app.post('/api/auth/login', async (req, res) => {
@@ -115,7 +183,7 @@ app.post('/api/auth/login', async (req, res) => {
     const result = await pool.query('SELECT * FROM tba_users WHERE username = $1', [username]);
     const user = result.rows[0];
 
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+    if (!user || user.social_id || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ success: false, message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
     }
 
@@ -145,7 +213,7 @@ app.post('/api/auth/login', async (req, res) => {
 /**
  * 토큰 검증 API (자동 로그인)
  */
-app.get('/api/auth/verify', (req, res) => {
+app.get('/api/auth/verify', async (req, res) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -155,16 +223,72 @@ app.get('/api/auth/verify', (req, res) => {
     const token = authHeader.split(' ')[1];
     const decoded = jwt.verify(token, JWT_SECRET);
 
+    // DB에서 최신 유저 정보(닉네임, 연동 정보 등) 조회
+    const userResult = await pool.query(
+      'SELECT id, username, display_name, provider FROM tba_users WHERE id = $1',
+      [decoded.id]
+    );
+    const user = userResult.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+    }
+
     res.json({
       success: true,
       user: {
-        id: decoded.id,
-        username: decoded.username,
-        displayName: decoded.displayName
+        id: user.id,
+        username: user.username,
+        displayName: user.display_name, // 토큰(decoded)이 아닌 DB의 최신 값 사용
+        socialProvider: user.provider
       }
     });
   } catch (error) {
     res.status(401).json({ success: false, message: '토큰이 유효하지 않습니다.' });
+  }
+});
+
+/**
+ * 소셜 계정 연동 API (기존 유저 전용)
+ */
+app.post('/api/auth/link-social', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: '인증이 필요합니다.' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.id;
+
+    const { socialId, provider } = req.body;
+
+    if (!socialId || !provider) {
+      return res.status(400).json({ success: false, message: '소셜 정보가 부족합니다.' });
+    }
+
+    // 1. 이미 연동된 다른 계정이 있는지 확인
+    const checkResult = await pool.query(
+      'SELECT id FROM tba_users WHERE social_id = $1 AND provider = $2',
+      [socialId, provider]
+    );
+
+    if (checkResult.rows.length > 0) {
+      return res.status(409).json({ success: false, message: '이미 다른 계정에 연동된 소셜 정보입니다.' });
+    }
+
+    // 2. 현재 계정에 소셜 정보 및 닉네임 업데이트
+    const { displayName } = req.body;
+    await pool.query(
+      'UPDATE tba_users SET social_id = $1, provider = $2, display_name = COALESCE($4, display_name) WHERE id = $3',
+      [socialId, provider, userId, displayName]
+    );
+
+    res.json({ success: true, message: '소셜 계정 연동 성공!' });
+  } catch (error) {
+    console.error('소셜 연동 에러:', error);
+    res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
   }
 });
 
@@ -406,6 +530,17 @@ app.post('/api/mindmap', authenticateToken, async (req, res) => {
   } catch (error) {
     res.status(500).json({ success: false, message: '서버 오류' });
   }
+});
+
+/**
+ * 프론트엔드용 공개 설정 정보 조회 (소셜 키 등)
+ */
+app.get('/api/config/social', (req, res) => {
+  res.json({
+    success: true,
+    kakaoJsKey: process.env.KAKAO_JS_KEY || null,
+    naverClientId: process.env.NAVER_CLIENT_ID || null
+  });
 });
 
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
