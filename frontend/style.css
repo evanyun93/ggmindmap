@@ -2,6 +2,7 @@
 .manual-popup.hidden {
   display: none !important;
 }
+
 /* 매뉴얼 팝업(모달) 스타일 */
 .manual-popup {
   position: fixed;
@@ -13,11 +14,12 @@
   max-width: 90vw;
   background: rgba(20, 20, 40, 0.98);
   border-radius: 18px;
-  box-shadow: 0 8px 40px 0 rgba(0,0,0,0.45);
-  border: 1.5px solid rgba(139,92,246,0.18);
+  box-shadow: 0 8px 40px 0 rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(139, 92, 246, 0.18);
   padding: 0 0 18px 0;
   animation: fadeIn 0.4s;
 }
+
 .manual-popup .manual-header {
   display: flex;
   align-items: center;
@@ -26,6 +28,7 @@
   font-weight: 700;
   color: var(--accent-purple);
 }
+
 .manual-popup .close-popup {
   background: none;
   border: none;
@@ -35,9 +38,11 @@
   margin-left: 8px;
   transition: color 0.2s;
 }
+
 .manual-popup .close-popup:hover {
   color: #ef4444;
 }
+
 .manual-popup .manual-content {
   padding: 18px 24px 8px 24px !important;
   color: var(--text-primary);
@@ -53,26 +58,34 @@
   margin-top: 1.1em;
   margin-bottom: 0.35em;
 }
+
 .manual-popup .manual-content hr {
   margin: 1em 0;
   border: none;
   border-top: 1.5px dashed #a78bfa44;
 }
+
 .manual-popup .manual-content ul {
   margin-bottom: 0.6em;
 }
+
 .manual-popup .manual-content p {
   margin-bottom: 0.55em;
 }
+
 /* 팝업 배경 오버레이 */
 .manual-popup::before {
   content: '';
   position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.45);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
   z-index: -1;
   border-radius: 18px;
 }
+
 /* 오늘의 할일 카드 스크롤바 */
 .widget-todo .todo-list-container {
   max-height: 260px;
@@ -84,13 +97,16 @@
 .widget-todo .todo-list-container::-webkit-scrollbar {
   width: 8px;
 }
+
 .widget-todo .todo-list-container::-webkit-scrollbar-thumb {
-  background: rgba(139,92,246,0.18);
+  background: rgba(139, 92, 246, 0.18);
   border-radius: 6px;
 }
+
 .widget-todo .todo-list-container::-webkit-scrollbar-track {
   background: transparent;
 }
+
 /* 접힌 카드에서 헤더를 카드 중앙에 정렬 */
 
 /* 헤더(타이틀)는 카드 상태와 무관하게 항상 같은 위치/높이 유지 */
@@ -104,6 +120,7 @@
   margin: 0;
   transition: background 0.3s, color 0.3s;
 }
+
 /* 접힌 위젯(카드) 최소 크기 스타일 */
 
 /* 접힌 카드(위젯)는 헤더(타이틀)만 보이고, 자연스럽게 줄어듦 */
@@ -117,7 +134,7 @@
   height: auto !important;
   overflow: hidden !important;
   padding-bottom: 0 !important;
-  transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), padding 0.3s;
+  transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s;
 }
 
 /* 헤더는 항상 보이도록 */
@@ -142,6 +159,7 @@
   pointer-events: none !important;
   transition: max-height 0.4s, opacity 0.3s;
 }
+
 /* 마인드맵 노드 접힘(collapsed) 상태 스타일 */
 svg .node-group.collapsed .node-rect {
   fill: #222b;
@@ -1848,6 +1866,8 @@ body {
 .drag-handle {
   display: none !important;
 }
+
+.dday-input {
   font-size: 13px;
   padding: 4px 8px;
   outline: none;
@@ -2614,9 +2634,51 @@ body {
   transition: all 0.2s;
 }
 
-.todo-item input[type="checkbox"]:checked {
+/* ─── 타이틀 수정 버튼 ─── */
+.btn-edit-title {
   background: var(--accent-purple);
-  border-color: var(--accent-purple);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  /* 선명한 테두리 */
+  color: white;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 1 !important;
+  /* 항상 잘 보이게 */
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  border-radius: 50%;
+  margin-left: 12px;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.5),
+    inset 0 2px 4px rgba(255, 255, 255, 0.3);
+  z-index: 10000 !important;
+  /* 절대적인 최상단 레이어 */
+  position: relative;
+  pointer-events: auto !important;
+  /* 클릭 이벤트 보장 */
+}
+
+.btn-edit-title:hover {
+  transform: scale(1.3) rotate(15deg) translateY(-2px);
+  background: #a78bfa;
+  box-shadow: 0 8px 24px rgba(139, 92, 246, 0.7),
+    inset 0 2px 4px rgba(255, 255, 255, 0.4);
+}
+
+.btn-edit-title:active {
+  transform: scale(0.9) rotate(0deg);
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.4);
+}
+
+.btn-edit-title svg {
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+.todo-item input[type="checkbox"]:checked {
+  background: var(--todo-checkbox-color, var(--accent-purple));
+  border-color: var(--todo-checkbox-color, var(--accent-purple));
 }
 
 .todo-item input[type="checkbox"]:checked::after {
@@ -2627,6 +2689,79 @@ body {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
+}
+
+/* ─── 컬러 팔레트 버튼 & 팝오버 ─── */
+.color-palette-btn-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-right: 6px;
+}
+
+.todo-color-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--todo-checkbox-color, var(--accent-purple));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.todo-color-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.25);
+  transform: scale(1.1);
+}
+
+.color-palette-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  display: flex;
+  gap: 7px;
+  padding: 10px 12px;
+  background: rgba(20, 20, 35, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  backdrop-filter: blur(16px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  z-index: 9999;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.color-palette-pop.hidden {
+  display: none;
+}
+
+.color-chip {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.color-chip:hover {
+  transform: scale(1.2);
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.3);
+}
+
+.color-chip.active {
+  border-color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
+  transform: scale(1.15);
 }
 
 .todo-item span {

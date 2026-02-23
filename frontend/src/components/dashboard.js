@@ -98,7 +98,7 @@ export function getDashboardHTML(user) {
 
 // 매뉴얼 팝업 동작 스크립트 (대시보드 진입 시 실행)
 export function setupManualPopup() {
-    console.log('[매뉴얼] setupManualPopup 실행');
+  console.log('[매뉴얼] setupManualPopup 실행');
   const manualBtn = document.getElementById('manualBtn');
   const manualPopup = document.getElementById('manualPopup');
   const closeManual = document.getElementById('closeManual');
@@ -245,7 +245,10 @@ export function getMainDashboardContentHTML(user) {
                 <div class="widget-header clickable-header" id="todoHeader" title="접기/펼치기">
                   <div class="header-main">
                     <div class="card-icon">✅</div>
-                    <h3>오늘의 할 일</h3>
+                    <h3 id="todoWidgetTitle">오늘의 할 일</h3>
+                    <button id="editTodoTitleBtn" class="btn-edit-title" title="제목 수정">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </button>
                   </div>
                   <div class="toggle-icon-wrapper" id="todoToggleBtn">
                     <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -257,6 +260,25 @@ export function getMainDashboardContentHTML(user) {
                 <div class="todo-collapsible-wrapper" id="todoCollapsible">
                   <div class="todo-input-group-premium">
                     <div class="premium-input-wrapper">
+                      <div class="color-palette-btn-wrap">
+                        <button id="todoColorBtn" class="todo-color-btn" title="체크박스 색상 변경">
+                          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="13.5" cy="6.5" r="2.5" fill="currentColor" stroke="none"/>
+                            <circle cx="17.5" cy="10.5" r="2.5" fill="currentColor" stroke="none" opacity="0.7"/>
+                            <circle cx="8.5" cy="7.5" r="2.5" fill="currentColor" stroke="none" opacity="0.5"/>
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/>
+                          </svg>
+                        </button>
+                        <div class="color-palette-pop hidden" id="todoColorPalette">
+                          <button class="color-chip" data-color="#8B5CF6" style="background:#8B5CF6;" title="보라"></button>
+                          <button class="color-chip" data-color="#06B6D4" style="background:#06B6D4;" title="시안"></button>
+                          <button class="color-chip" data-color="#10B981" style="background:#10B981;" title="초록"></button>
+                          <button class="color-chip" data-color="#F59E0B" style="background:#F59E0B;" title="노랑"></button>
+                          <button class="color-chip" data-color="#EF4444" style="background:#EF4444;" title="빨강"></button>
+                          <button class="color-chip" data-color="#EC4899" style="background:#EC4899;" title="핑크"></button>
+                          <button class="color-chip" data-color="#FFFFFF" style="background:#FFFFFF;outline:1px solid rgba(255,255,255,0.3);" title="흰색"></button>
+                        </div>
+                      </div>
                       <input type="text" id="todoInput" placeholder="할 일을 입력하세요...">
                       <button id="addTodoBtn" class="btn-add-todo">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>

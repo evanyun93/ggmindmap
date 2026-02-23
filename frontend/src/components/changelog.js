@@ -8,6 +8,16 @@
  */
 export const changelogData = [
   {
+    version: '1.4.3',
+    date: '2026-02-23',
+    title: '할 일 리스트 UI 개선',
+    items: [
+      '할 일 리스트 UI 개선',
+      '제목 수정 기능 추가',
+      '체크박스 색상 지정 팔레트 추가'
+    ]
+  },
+  {
     version: '1.4.2',
     date: '2026-02-23',
     title: '매뉴얼 팝업 및 사용성 개선',
