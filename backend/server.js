@@ -39,6 +39,10 @@ app.use('/api/mindmap', mindmapApi);
 const setupApi = require('./routes/setupApi');
 app.use('/api/config', setupApi);
 
+// 6. 위젯 API 관련
+const widgetApi = require('./routes/widgetApi');
+app.use('/api/widgets', widgetApi);
+
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 
 app.get('*', (req, res) => {

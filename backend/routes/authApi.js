@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../config/database');
-const { JWT_SECRET } = require('../middleware/authHandler');
+const { JWT_SECRET, authenticateToken } = require('../middleware/authHandler');
 
 /**
  * 소셜 로그인/자동 가입 API
@@ -38,12 +38,14 @@ router.post('/social-login', async (req, res) => {
             user = newUserResult.rows[0];
         }
 
-        // 3. JWT 토큰 발급
+        // 3. JWT 토큰 발급 및 접속 시간 업데이트
         const token = jwt.sign(
             { id: user.id, username: user.username, displayName: user.display_name },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
+
+        await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
         res.json({
             success: true,
@@ -52,7 +54,8 @@ router.post('/social-login', async (req, res) => {
             user: {
                 id: user.id,
                 username: user.username,
-                displayName: user.display_name
+                displayName: user.display_name,
+                todoAutoDelete: user.todo_auto_delete
             }
         });
     } catch (error) {
@@ -84,6 +87,8 @@ router.post('/login', async (req, res) => {
             { expiresIn: '7d' }
         );
 
+        await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
+
         res.json({
             success: true,
             message: '로그인 성공!',
@@ -91,7 +96,8 @@ router.post('/login', async (req, res) => {
             user: {
                 id: user.id,
                 username: user.username,
-                displayName: user.display_name
+                displayName: user.display_name,
+                todoAutoDelete: user.todo_auto_delete
             }
         });
     } catch (error) {
@@ -114,7 +120,7 @@ router.get('/verify', async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
 
         const userResult = await pool.query(
-            'SELECT id, username, display_name, provider FROM tba_users WHERE id = $1',
+            'SELECT id, username, display_name, provider, todo_auto_delete FROM tba_users WHERE id = $1',
             [decoded.id]
         );
         const user = userResult.rows[0];
@@ -129,7 +135,8 @@ router.get('/verify', async (req, res) => {
                 id: user.id,
                 username: user.username,
                 displayName: user.display_name,
-                socialProvider: user.provider
+                socialProvider: user.provider,
+                todoAutoDelete: user.todo_auto_delete
             }
         });
     } catch (error) {
@@ -202,6 +209,65 @@ router.post('/register', async (req, res) => {
         res.status(201).json({ success: true, message: '회원가입 성공!' });
     } catch (error) {
         console.error('회원가입 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+
+/**
+ * 관리자용 가입자 목록 및 사용시간 조회 API
+ * GET /api/auth/admin/users
+ * (추후 관리자 인증 필요)
+ */
+router.get('/admin/users', async (req, res) => {
+    try {
+        // TODO: 관리자 인증 추가
+        const query = `
+            SELECT 
+                u.id, 
+                u.username, 
+                u.display_name, 
+                u.provider, 
+                u.created_at, 
+                u.last_login_at,
+                COALESCE((SELECT SUM(duration_minutes) FROM tba_usage_logs WHERE user_id = u.id AND login_at >= date_trunc('month', CURRENT_DATE)), 0) as monthly_usage_minutes,
+                (
+                    COALESCE((SELECT SUM(OCTET_LENGTH(task)) FROM tba_todos WHERE user_id = u.id), 0) +
+                    COALESCE((SELECT SUM(OCTET_LENGTH(data::text)) FROM tba_mindmaps WHERE user_id = u.id), 0)
+                ) as data_size_bytes
+            FROM tba_users u
+            ORDER BY u.created_at DESC
+        `;
+        const result = await pool.query(query);
+        res.json({
+            success: true,
+            users: result.rows
+        });
+    } catch (error) {
+        console.error('관리자 가입자 목록 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 사용자 설정 업데이트 API
+ * PATCH /api/auth/settings
+ */
+router.patch('/settings', authenticateToken, async (req, res) => {
+    try {
+        const { todoAutoDelete } = req.body;
+        if (todoAutoDelete === undefined) {
+            return res.status(400).json({ success: false, message: '설정값이 누락되었습니다.' });
+        }
+
+        await pool.query(
+            'UPDATE tba_users SET todo_auto_delete = $1 WHERE id = $2',
+            [todoAutoDelete, req.user.id]
+        );
+
+        res.json({ success: true, message: '설정이 저장되었습니다.' });
+    } catch (error) {
+        console.error('설정 업데이트 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 });

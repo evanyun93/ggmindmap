@@ -6,18 +6,68 @@
 // 현재 대시보드 내에서 가장 높은 Z-Index를 추적
 let maxZIndex = 100;
 
+import { contextMenu } from '../utils/context-menu.js';
+
 export function initDashboardGrid() {
+    console.log('[DashboardGrid] 그리드 초기화 시작');
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
 
-    const widgets = grid.querySelectorAll('.draggable-widget');
+    // 대시보드 배경 우클릭 이벤트
+    grid.addEventListener('contextmenu', (e) => {
+        // 위젯 자체를 우클릭한 경우는 제외
+        if (e.target.closest('.draggable-widget')) return;
 
-    widgets.forEach(widget => {
-        setupDraggable(widget, grid);
-        setupResizable(widget, grid);
+        e.preventDefault();
 
-        // 초기 렌더링 시 클릭하면 앞으로 가져오기 기능 활성화
-        widget.addEventListener('mousedown', () => bringToFront(widget));
+        contextMenu.show(e.clientX, e.clientY, [
+            {
+                label: 'To-Do 카드 추가',
+                icon: '📝',
+                action: () => {
+                    console.log('[DashboardGrid] To-Do 카드 추가 요청');
+                    import('./widget-manager.js').then(m => {
+                        const rect = grid.getBoundingClientRect();
+                        const x = Math.max(0, e.clientX - rect.left - 100);
+                        const y = Math.max(0, e.clientY - rect.top - 10);
+                        m.widgetManager.createWidget('todo', x, y);
+                    });
+                }
+            },
+            {
+                label: '마일스톤 카드 추가',
+                icon: '🚩',
+                action: () => {
+                    console.log('[DashboardGrid] 마일스톤 카드 추가 요청');
+                    import('./widget-manager.js').then(m => {
+                        const rect = grid.getBoundingClientRect();
+                        const x = Math.max(0, e.clientX - rect.left - 100);
+                        const y = Math.max(0, e.clientY - rect.top - 10);
+                        m.widgetManager.createWidget('milestone', x, y);
+                    });
+                }
+            },
+            { type: 'separator' },
+            {
+                label: '전체 위젯 초기화 (기본 배치)',
+                icon: '🔄',
+                action: async () => {
+                    if (confirm('현재 배치된 모든 위젯을 삭제하고 초기 상태로 되돌리시겠습니까?')) {
+                        try {
+                            await fetch('/api/widgets/all', {
+                                method: 'DELETE',
+                                headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}` }
+                            });
+                            localStorage.removeItem('dashboard_layout_free_v1');
+                            location.reload();
+                        } catch (err) {
+                            console.error('초기화 실패:', err);
+                            alert('초기화 중 오류가 발생했습니다.');
+                        }
+                    }
+                }
+            }
+        ]);
     });
 
     // 테마 초기화
@@ -25,6 +75,11 @@ export function initDashboardGrid() {
 
     // 환영 세션 초기화
     initWelcomeSection();
+
+    // 동적 위젯 로드 (WidgetManager 시스템)
+    import('./widget-manager.js').then(m => {
+        m.widgetManager.loadWidgets();
+    });
 }
 
 /**
@@ -100,9 +155,10 @@ function applyTheme(theme) {
 /**
  * 위젯을 최상단 계층으로 가져오기
  */
-function bringToFront(widget) {
+export function bringToFront(widget) {
     maxZIndex++;
     widget.style.zIndex = maxZIndex;
+    console.log(`[DashboardGrid] 위젯 앞으로 가져오기: ID ${widget.dataset.id}, Z-Index ${maxZIndex}`);
 
     // 조작 중임을 나타내는 스타일 초기화 (다른 위젯들의 zIndex가 무한히 커지는 것을 방지하기 위해 가끔 정리할 수도 있음)
     if (maxZIndex > 10000) {
@@ -130,10 +186,10 @@ function resetZIndexSequence() {
 /**
  * 절대 좌표 기반 드래그 기능 (픽셀 단위)
  */
-function setupDraggable(widget, grid) {
+export function setupDraggable(widget, grid) {
     let isDragStarted = false;
 
-    widget.onmousedown = (e) => {
+    widget.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
 
         // 버튼, 입력창, 리사이즈 핸들 등 인터랙티브 요소는 드래그 제외
@@ -169,7 +225,7 @@ function setupDraggable(widget, grid) {
 
         document.addEventListener('mousemove', onMouseMoveAttempt);
         document.addEventListener('mouseup', onMouseUpAttempt);
-    };
+    });
 
     function startDrag(e) {
         if (isDragStarted) return;
@@ -211,7 +267,7 @@ function setupDraggable(widget, grid) {
 /**
  * 픽셀 단위 자유 리사이즈 로직
  */
-function setupResizable(widget, grid) {
+export function setupResizable(widget, grid) {
     const handle = widget.querySelector('.resize-handle');
     if (!handle) return;
 
@@ -268,16 +324,29 @@ function saveLayout() {
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
 
-    const layout = Array.from(grid.querySelectorAll('.draggable-widget')).map(w => ({
-        id: w.dataset.id,
-        left: w.style.left,
-        top: w.style.top,
-        width: w.style.width,
-        height: w.style.height,
-        zIndex: w.style.zIndex || 100
-    }));
+    const widgets = grid.querySelectorAll('.draggable-widget');
+    widgets.forEach(w => {
+        const id = w.dataset.id;
+        if (!id) return; // DB 기반이 아닌 정적 위젯은 무시
 
-    localStorage.setItem('dashboard_layout_free_v1', JSON.stringify(layout));
+        const layout = {
+            x: Math.round(parseFloat(w.style.left) || 0),
+            y: Math.round(parseFloat(w.style.top) || 0),
+            width: Math.round(parseFloat(w.style.width) || 0),
+            height: Math.round(parseFloat(w.style.height) || 0),
+            zIndex: parseInt(w.style.zIndex) || 100
+        };
+
+        // 서버에 저장 (비동기로 실행되나 await 하지 않음 - 성능 위함)
+        fetch(`/api/widgets/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}`
+            },
+            body: JSON.stringify(layout)
+        }).catch(err => console.error('레이아웃 저장 실패:', err));
+    });
 }
 
 /**

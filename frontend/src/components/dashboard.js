@@ -29,7 +29,8 @@ export function getDashboardHTML(user) {
           </div>
           <button class="btn-manual" id="manualBtn">매뉴얼</button>
           <button class="btn-feedback" id="feedbackBtn">고객의 소리함</button>
-          <span class="user-name">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
+          ${(user && user.username && user.username.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn" style="background: rgba(139, 92, 246, 0.2); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.3); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s ease; margin-right: 8px;">관리자</button>' : ''}
+          <span class="user-name" data-user-debug="${user.username}">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
           <button class="btn-logout" id="logoutBtn">로그아웃</button>
         </div>
       </header>
@@ -202,112 +203,7 @@ export function getMainDashboardContentHTML(user) {
                 <button class="theme-chip classic" data-theme="classic" title="Classic"></button>
                 <button class="theme-chip dark" data-theme="dark" title="Dark"></button>
               </div>
-
-              <!-- 1. D-Day 위젯 -->
-              <div class="dashboard-card premium-glass-card widget-milestone draggable-widget" data-id="milestone">
-                <div class="drag-handle">⋮⋮</div>
-                <div class="widget-header clickable-header" id="milestoneHeader" title="접기/펼치기">
-                  <div class="header-main">
-                    <div class="card-icon">📅</div>
-                    <h3>나의 마일스톤</h3>
-                  </div>
-                  <div class="toggle-icon-wrapper" id="milestoneToggleBtn">
-                    <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                </div>
-
-                <div class="milestone-collapsible-wrapper" id="milestoneCollapsible">
-                  <div class="milestone-content">
-                    <div class="milestone-main-info">
-                      <div class="milestone-dday-badge" id="milestoneDdayBadge">-</div>
-                      <div class="milestone-text-info">
-                        <p class="target-date" id="milestoneTargetDate">목표일을 설정해주세요</p>
-                        <p class="sub-info" id="milestoneSubInfo">남은 토요일: -회</p>
-                      </div>
-                    </div>
-                    <div class="milestone-separator"></div>
-                    <div class="milestone-spreadsheet-summary">
-                      <h4>📊 메모 요약</h4>
-                      <div id="milestoneSheetSummary" class="summary-list">
-                        <div class="loader-mini">불러오는 중...</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div class="resize-handle"></div>
-              </div>
-
-              <!-- 2. 프라이빗 To-Do 위젯 -->
-              <div class="dashboard-card premium-glass-card widget-todo draggable-widget" data-id="todo">
-                <div class="drag-handle">⋮⋮</div>
-                <div class="widget-header clickable-header" id="todoHeader" title="접기/펼치기">
-                  <div class="header-main">
-                    <div class="card-icon">✅</div>
-                    <h3 id="todoWidgetTitle">오늘의 할 일</h3>
-                    <button id="editTodoTitleBtn" class="btn-edit-title" title="제목 수정">
-                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                    </button>
-                  </div>
-                  <div class="toggle-icon-wrapper" id="todoToggleBtn">
-                    <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                      <polyline points="6 9 12 15 18 9"></polyline>
-                    </svg>
-                  </div>
-                </div>
-                
-                <div class="todo-collapsible-wrapper" id="todoCollapsible">
-                  <div class="todo-input-group-premium">
-                    <div class="premium-input-wrapper">
-                      <div class="color-palette-btn-wrap">
-                        <button id="todoColorBtn" class="todo-color-btn" title="체크박스 색상 변경">
-                          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="13.5" cy="6.5" r="2.5" fill="currentColor" stroke="none"/>
-                            <circle cx="17.5" cy="10.5" r="2.5" fill="currentColor" stroke="none" opacity="0.7"/>
-                            <circle cx="8.5" cy="7.5" r="2.5" fill="currentColor" stroke="none" opacity="0.5"/>
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10c.83 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.01-.23-.26-.38-.61-.38-.99 0-.83.67-1.5 1.5-1.5H16c2.76 0 5-2.24 5-5 0-4.42-4.03-8-9-8z"/>
-                          </svg>
-                        </button>
-                        <div class="color-palette-pop hidden" id="todoColorPalette">
-                          <button class="color-chip" data-color="#8B5CF6" style="background:#8B5CF6;" title="보라"></button>
-                          <button class="color-chip" data-color="#06B6D4" style="background:#06B6D4;" title="시안"></button>
-                          <button class="color-chip" data-color="#10B981" style="background:#10B981;" title="초록"></button>
-                          <button class="color-chip" data-color="#F59E0B" style="background:#F59E0B;" title="노랑"></button>
-                          <button class="color-chip" data-color="#EF4444" style="background:#EF4444;" title="빨강"></button>
-                          <button class="color-chip" data-color="#EC4899" style="background:#EC4899;" title="핑크"></button>
-                          <button class="color-chip" data-color="#FFFFFF" style="background:#FFFFFF;outline:1px solid rgba(255,255,255,0.3);" title="흰색"></button>
-                        </div>
-                      </div>
-                      <input type="text" id="todoInput" placeholder="할 일을 입력하세요...">
-                      <button id="addTodoBtn" class="btn-add-todo">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                      </button>
-                    </div>
-                  </div>
-                  <div class="todo-list-container" id="todoListContainer">
-                    <div class="loader-mini">불러오는 중...</div>
-                  </div>
-                </div>
-                <div class="resize-handle"></div>
-              </div>
-
-              <!-- 3. 마인드맵 바로가기 카드 -->
-              <div class="dashboard-card premium-glass-card widget-mindmap-cta draggable-widget" data-id="mindmap">
-                <div class="drag-handle">⋮⋮</div>
-                <div class="card-icon-mini">🧠</div>
-                <div class="cta-content-wrapper">
-                  <div class="cta-text">
-                    <h3>생각 그리기(추후 업데이트 예정)</h3>
-                    <p>마인드맵으로 복잡한 아이디어를 시각화하세요.</p>
-                  </div>
-                  <button id="realStartMindmapBtn" class="cta-button-premium">
-                    <span>시작하기</span>
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14m-7-7 7 7-7 7"/></svg>
-                  </button>
-                </div>
-                <div class="resize-handle"></div>
-              </div>
+              <!-- 동적 위젯이 여기에 렌더링됩니다 -->
             </div>
           </div>
         </div>

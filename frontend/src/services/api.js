@@ -11,7 +11,8 @@ export const API_BASE = window.location.origin;
  * @param {object} options - fatch 옵션
  */
 export async function apiFetch(endpoint, options = {}) {
-    const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+    const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
+        sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
 
     const headers = {
         'Content-Type': 'application/json',
@@ -28,4 +29,23 @@ export async function apiFetch(endpoint, options = {}) {
     });
 
     return response;
+}
+
+/**
+ * 관리자용 사용자 목록을 가져옵니다.
+ * @param {string} token - 관리자 인증 토큰
+ * @returns {Promise<object>}
+ */
+export async function fetchAdminUsers(token) {
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/admin/users`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        return await res.json();
+    } catch (err) {
+        console.error('관리자 데이터 호출 에러:', err);
+        return { success: false, message: '서버 통신 실패' };
+    }
 }

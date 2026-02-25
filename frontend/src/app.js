@@ -13,6 +13,7 @@ import { initMemo } from './features/memo.js';
 import { initFeedback } from './features/feedback.js';
 import { initChangelog } from './features/changelog.js';
 import { initMilestone } from './features/milestone.js';
+import { initAdmin } from './admin.js';
 
 // DOM 요소 캐시 (로그인 페이지용)
 let loginCard, registerCard, loginForm, registerForm, loginError, registerError, registerSuccess;
@@ -67,9 +68,11 @@ function initAuthView() {
  * @param {object} user 
  */
 function showDashboardView(user) {
+    console.log('[Dashboard] 로그인 유저 정보:', user);
     window.currentUser = user; // 전역 유저 정보 저장 (삭제 버튼 노출용)
     const appRoot = document.getElementById('app-root');
     if (appRoot) {
+        appRoot.classList.add('dashboard-active');
         appRoot.innerHTML = getDashboardHTML(user);
     } else {
         document.body.innerHTML = getDashboardHTML(user); // 폴백
@@ -115,7 +118,7 @@ export function initDashboardFeatures(user) {
     import('./features/todo.js').then(module => module.initTodo());
     import('./features/dashboard-grid.js').then(module => {
         module.initDashboardGrid();
-        module.restoreLayout();
+        // module.restoreLayout(); // [제거] 이제 WidgetManager가 DB에서 레이아웃을 로드함
     });
 
     // 마인드맵 버튼 연동
@@ -130,6 +133,12 @@ export function initDashboardFeatures(user) {
     // 로그아웃 버튼 설정
     const logoutBtn = document.getElementById('logoutBtn');
     if (logoutBtn) logoutBtn.addEventListener('click', logout);
+
+    // 관리자 버튼 설정 (어드민 계정일 경우)
+    const adminBtn = document.getElementById('adminBtn');
+    if (adminBtn) adminBtn.addEventListener('click', () => {
+        initAdmin();
+    });
 }
 
 /**

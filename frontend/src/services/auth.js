@@ -10,7 +10,8 @@ import { apiFetch } from './api.js';
  * @returns {Promise<object|null>} 유저 정보 또는 null
  */
 export async function checkAutoLogin() {
-    const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+    const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
+        sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
     if (!token) return null;
 
     try {
@@ -43,8 +44,10 @@ export async function login(username, password, rememberMe) {
         const data = await res.json();
         if (data.success) {
             if (rememberMe) {
+                localStorage.setItem('token', data.token);
                 localStorage.setItem('mindmap_token', data.token);
             } else {
+                sessionStorage.setItem('token', data.token);
                 sessionStorage.setItem('mindmap_token', data.token);
             }
         }
@@ -82,6 +85,8 @@ export function logout() {
  * 저장된 인증 토큰을 삭제합니다.
  */
 export function clearTokens() {
+    localStorage.removeItem('token');
     localStorage.removeItem('mindmap_token');
+    sessionStorage.removeItem('token');
     sessionStorage.removeItem('mindmap_token');
 }

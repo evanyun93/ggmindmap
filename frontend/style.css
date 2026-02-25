@@ -2955,4 +2955,509 @@ body {
   display: flex;
   align-items: center;
   gap: 15px;
+}/*  UI 컴포넌트 트렌디화 (닫기 버튼 및 투두 설정)  */
+.btn-del-widget {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50% !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  padding: 0 !important;
+  z-index: 10;
+}
+.btn-del-widget:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+  transform: rotate(90deg);
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.3);
+}
+.todo-options-bar {
+  display: flex !important;
+  justify-content: flex-end !important;
+  padding: 5px 20px !important;
+  margin-bottom: 5px;
+}
+.todo-auto-delete-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 6px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.premium-switch {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+.premium-switch input { opacity: 0; width: 0; height: 0; }
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(255, 255, 255, 0.1);
+  transition: .4s; border-radius: 20px;
+}
+.switch-slider:before {
+  position: absolute; content: "";
+  height: 14px; width: 14px;
+  left: 2px; bottom: 2px;
+  background-color: white;
+  transition: .4s; border-radius: 50%;
+}
+input:checked + .switch-slider { background: linear-gradient(135deg, #8b5cf6, #d946ef); }
+input:checked + .switch-slider:before { transform: translateX(16px); }
+
+/*  이미지 기반 UI 완벽 원복 및 프리미엄 고도화  */
+
+/* 1. 위젯 헤더 버튼 (보라색 원형 스타일) */
+.btn-del-widget, .edit-todo-title-btn, .edit-milestone-title-btn {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50% !important;
+  background: rgba(139, 92, 246, 0.2) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  color: #c084fc !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.3s ease !important;
+  padding: 0 !important;
+}
+
+.btn-del-widget:hover {
+  background: rgba(239, 68, 68, 0.2) !important;
+  color: #ef4444 !important;
+  border-color: rgba(239, 68, 68, 0.4) !important;
+  transform: rotate(90deg);
+}
+
+/* 2. 스위치 우측 정렬 (마일스톤 & 투두 공통) */
+.milestone-options-bar, .todo-options-bar {
+  display: flex !important;
+  justify-content: flex-end !important;
+  padding: 10px 20px 5px !important;
+}
+
+.memo-sync-container, .todo-auto-delete-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.sync-text, .todo-auto-delete-text {
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 3. 마일스톤 메인 정보 (이미지 기반 그라데이션) */
+.milestone-main-info {
+  background: linear-gradient(135deg, rgba(88, 52, 235, 0.4), rgba(6, 182, 212, 0.4)) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 12px !important;
+  margin: 10px 20px !important;
+  padding: 18px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important;
+}
+
+.milestone-dday-badge {
+  font-size: 1.8rem !important;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #a78bfa, #22d3ee) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+}
+
+/* 4. 마일스톤 메모 섹션 (이미지 기반 넓은 그라데이션) */
+.milestone-memo-section {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(217, 70, 239, 0.15)) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  border-radius: 12px !important;
+  margin: 10px 20px !important;
+  padding: 15px !important;
+}
+
+.milestone-premium-memo {
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 0.85rem !important;
+  line-height: 1.6 !important;
+  min-height: 80px !important;
+}
+
+/* 5. 프리미엄 날짜 필드 (이미지 기반) */
+.date-field input {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px !important;
+  color: white !important;
+  padding: 5px 10px !important;
+}
+
+/*  프리미엄 날짜 입력 UI (Premium Date Picker)  */
+.date-field input[type='date'] {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  color: white !important;
+  padding: 8px 12px !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 0.9rem !important;
+  outline: none !important;
+  cursor: pointer !important;
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  
+  /* 오로라 보더 효과 */
+  background-image: linear-gradient(rgba(17, 24, 39, 0.8), rgba(17, 24, 39, 0.8)), 
+                    linear-gradient(135deg, #8b5cf6, #06b6d4) !important;
+  background-clip: padding-box, border-box !important;
+  background-origin: padding-box, border-box !important;
+}
+
+.date-field input[type='date']:hover, .date-field input[type='date']:focus {
+  background-image: linear-gradient(rgba(31, 41, 55, 0.9), rgba(31, 41, 55, 0.9)), 
+                    linear-gradient(135deg, #a78bfa, #22d3ee) !important;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.3) !important;
+  transform: translateY(-1px);
+}
+
+/* 캘린더 아이콘 커스텀 (브라우저 기본 아이콘 숨기기 시도 및 커스텀 디자인) */
+.date-field input[type='date']::-webkit-calendar-picker-indicator {
+  filter: invert(1) hue-rotate(250deg) brightness(1.5);
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.3s ease;
+}
+
+.date-field input[type='date']:hover::-webkit-calendar-picker-indicator {
+  opacity: 1;
+}
+
+.date-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 20px;
+  color: #8b5cf6;
+  font-weight: bold;
+  text-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+}
+
+.date-field label {
+  font-size: 0.65rem !important;
+  font-weight: 700 !important;
+  color: rgba(167, 139, 250, 0.8) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 4px;
+  margin-left: 4px;
+}
+
+/*  마일스톤 날짜 입력 한 줄(Single Line) UX 고도화  */
+.milestone-date-controls {
+  padding: 0 20px 15px !important;
+}
+
+.date-input-group-row {
+  display: flex !important;
+  align-items: flex-end !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+.date-field {
+  flex: 1 !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+.date-field input[type='date'] {
+  width: 100% !important;
+  box-sizing: border-box !important;
+  min-width: 0 !important; /* Flexbox 내에서 축소를 허용 */
+}
+
+.date-arrow {
+  margin-top: 0 !important;
+  padding-bottom: 10px !important;
+  font-size: 1.2rem !important;
+  flex-shrink: 0 !important;
+}
+
+/* 텍스트 내 용어 수정 대응 */
+.target-date::before {
+  content: "" !important; /* 기존 자동 생성 텍스트 방해 금지 */
+}
+
+/*  마일스톤 메모 및 데이터 섹션 '섹시' UI 고도화  */
+
+/* 1. 메모 섹션 및 입력란 최적화 */
+.milestone-memo-section {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 120px !important;
+  padding: 0 !important; /* 내부 패딩 제거하여 꽉 채움 */
+  overflow: hidden !important;
+  border-radius: 12px !important;
+  background: rgba(139, 92, 246, 0.05) !important;
+  border: 1px solid rgba(139, 92, 246, 0.2) !important;
+  margin: 10px 20px !important;
+}
+
+.memo-header-mini {
+  background: rgba(139, 92, 246, 0.15) !important;
+  padding: 6px 15px !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.2) !important;
+}
+
+.milestone-premium-memo {
+  flex: 1 !important;
+  width: 100% !important;
+  padding: 12px 15px !important;
+  background: transparent !important;
+  border: none !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  font-size: 0.88rem !important;
+  resize: none !important;
+  line-height: 1.6 !important;
+  outline: none !important;
+}
+
+/* 2. 섹시한 항목 및 값 입력 UI (카드형) */
+.independent-data-grid {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+  padding: 5px 20px 20px !important;
+}
+
+.independent-item {
+  display: flex !important;
+  align-items: center !important;
+  background: rgba(255, 255, 255, 0.03) !important;
+  border: 1px solid rgba(139, 92, 246, 0.15) !important;
+  border-radius: 10px !important;
+  padding: 2px 10px !important;
+  transition: all 0.3s ease !important;
+  position: relative;
+  overflow: hidden;
+}
+
+.independent-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #8b5cf6, #06b6d4);
+  opacity: 0.5;
+}
+
+.independent-item:hover {
+  background: rgba(139, 92, 246, 0.08) !important;
+  border-color: rgba(139, 92, 246, 0.4) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+  transform: translateX(2px);
+}
+
+.indie-label, .indie-value {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  font-size: 0.82rem !important;
+  padding: 8px !important;
+  outline: none !important;
+}
+
+.indie-label {
+  flex: 0.45 !important;
+  font-weight: 600 !important;
+  color: #a78bfa !important;
+  text-align: left !important;
+}
+
+.indie-value {
+  flex: 0.55 !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
+  padding-left: 15px !important;
+}
+
+.indie-label::placeholder, .indie-value::placeholder {
+  color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* 포커스 효과 */
+.independent-item:focus-within {
+  background: rgba(139, 92, 246, 0.12) !important;
+  border-color: #8b5cf6 !important;
+  box-shadow: 0 0 15px rgba(139, 92, 246, 0.2) !important;
+}
+.indie-divider {
+  width: 1px !important;
+  height: 20px !important;
+  background: rgba(139, 92, 246, 0.3) !important;
+  margin: 0 5px !important;
+  flex-shrink: 0 !important;
+}
+
+.independent-item .indie-value {
+  border-left: none !important; /* 기존 보더 제거하고 divider 사용 */
+}
+
+/*  컨텍스트 메뉴 프리미엄 UI 고도화 (Premium Context Menu)  */
+.custom-context-menu {
+  min-width: 220px !important;
+  background: rgba(17, 24, 39, 0.8) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-radius: 16px !important;
+  padding: 8px !important;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5), 
+              0 0 20px rgba(139, 92, 246, 0.1) !important;
+  overflow: hidden !important;
+  
+  /* 등장 애니메이션 */
+  animation: contextMenuFadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  transform-origin: top left;
+}
+
+@keyframes contextMenuFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-5px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.custom-context-menu .menu-item {
+  display: flex !important;
+  align-items: center !important;
+  padding: 12px 16px !important;
+  border-radius: 10px !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 2px !important;
+}
+
+.custom-context-menu .menu-item:last-child {
+  margin-bottom: 0 !important;
+}
+
+.custom-context-menu .menu-item:hover {
+  background: rgba(139, 92, 246, 0.15) !important;
+  color: white !important;
+  transform: translateX(4px);
+}
+
+.custom-context-menu .menu-item::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%) translateX(-100%);
+  width: 3px;
+  height: 60%;
+  background: linear-gradient(to bottom, #8b5cf6, #06b6d4);
+  border-radius: 0 4px 4px 0;
+  transition: transform 0.3s ease;
+}
+
+.custom-context-menu .menu-item:hover::after {
+  transform: translateY(-50%) translateX(0);
+}
+
+.custom-context-menu .menu-icon {
+  font-size: 1.2rem !important;
+  margin-right: 14px !important;
+  width: 24px !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  opacity: 0.9;
+  filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.3));
+}
+
+.custom-context-menu .menu-label {
+  flex: 1 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.custom-context-menu .menu-separator {
+  height: 1px !important;
+  background: linear-gradient(to right, 
+    transparent, 
+    rgba(139, 92, 246, 0.2), 
+    transparent) !important;
+  margin: 6px 8px !important;
+}
+
+/*  컨텍스트 메뉴 비비드 컬러(Vivid Color) 디자인 보정  */
+.custom-context-menu {
+  /* 카드 위젯과 확실히 구분되는 비비드한 진보라 그라데이션 배경 */
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.95), rgba(49, 46, 129, 0.95)) !important;
+  backdrop-filter: blur(25px) saturate(200%) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(200%) !important;
+  
+  /* 더욱 선명하고 화려한 네온 보더 */
+  border: 1.5px solid rgba(167, 139, 250, 0.5) !important;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 
+              0 0 30px rgba(139, 92, 246, 0.25),
+              inset 0 0 15px rgba(255, 255, 255, 0.05) !important;
+}
+
+.custom-context-menu .menu-item:hover {
+  /* 호버 시 더욱 비비드한 배경색 적용 */
+  background: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: inset 0 0 10px rgba(167, 139, 250, 0.2) !important;
+}
+
+.custom-context-menu .menu-icon {
+  /* 아이콘 색상 더욱 선명하게 보정 */
+  filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.6)) !important;
+  opacity: 1 !important;
+}
+
+.custom-context-menu .menu-label {
+  /* 텍스트 가독성 강화 */
+  color: #fff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+}
+
+.custom-context-menu .menu-separator {
+  /* 구분선도 비비드한 테마에 맞춰 선명하게 변경 */
+  background: linear-gradient(to right, 
+    transparent, 
+    rgba(167, 139, 250, 0.4), 
+    transparent) !important;
+  height: 1.5px !important;
 }
