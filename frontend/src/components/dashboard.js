@@ -21,17 +21,19 @@ export function getDashboardHTML(user) {
           <div class="account-link-zone">
             ${user.socialProvider ?
       `<span class="badge-social linked ${user.socialProvider}" title="${user.socialProvider} 계정으로 연동되었습니다.">
-                ${user.socialProvider === 'kakao' ? 'K' : 'N'} 연동됨
+                ${user.socialProvider === 'kakao' ? 'K' : 'N'}
                </span>` :
       `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
                <button class="btn-link-mini naver" id="linkNaverBtn" title="네이버 계정 연동">N</button>`
     }
           </div>
-          <button class="btn-manual" id="manualBtn">매뉴얼</button>
-          <button class="btn-feedback" id="feedbackBtn">고객의 소리함</button>
-          ${(user && user.username && user.username.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn" style="background: rgba(139, 92, 246, 0.2); color: #A78BFA; border: 1px solid rgba(139, 92, 246, 0.3); padding: 6px 12px; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.2s ease; margin-right: 8px;">관리자</button>' : ''}
-          <span class="user-name" data-user-debug="${user.username}">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
-          <button class="btn-logout" id="logoutBtn">로그아웃</button>
+          <div class="nav-actions">
+            <button class="btn-manual" id="manualBtn">매뉴얼</button>
+            <button class="btn-feedback" id="feedbackBtn">소리함</button>
+            ${(user && user.username && user.username.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
+            <button class="btn-logout" id="logoutBtn">로그아웃</button>
+          </div>
+          <span class="user-name mobile-hide" data-user-debug="${user.username}">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
         </div>
       </header>
       <div class="dashboard-content" id="dashboardContent">

@@ -189,43 +189,55 @@ function resetZIndexSequence() {
 export function setupDraggable(widget, grid) {
     let isDragStarted = false;
 
-    widget.addEventListener('mousedown', (e) => {
-        if (e.button !== 0) return;
+    // 마우스 드래그 시작
+    widget.addEventListener('mousedown', (e) => handleStart(e));
+    // 터치 드래그 시작 (모바일 지원)
+    widget.addEventListener('touchstart', (e) => handleStart(e), { passive: false });
 
-        // 버튼, 입력창, 리사이즈 핸들 등 인터랙티브 요소는 드래그 제외
+    function handleStart(e) {
+        // 인터랙티브 요소는 드래그 제외
         if (e.target.closest('button, input, textarea, a, .todo-item, .resize-handle, .toggle-btn')) {
             return;
         }
 
-        bringToFront(widget); // 클릭 시 즉시 앞으로
+        // 우클릭 제외 (마우스인 경우)
+        if (e.type === 'mousedown' && e.button !== 0) return;
 
-        const initialX = e.clientX;
-        const initialY = e.clientY;
+        bringToFront(widget); // 조작 시 즉시 앞으로
 
-        const onMouseMoveAttempt = (moveEvent) => {
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+        const initialX = touch.clientX;
+        const initialY = touch.clientY;
+
+        const onMoveAttempt = (moveEvent) => {
+            const currentTouch = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
             const dist = Math.sqrt(
-                Math.pow(moveEvent.clientX - initialX, 2) +
-                Math.pow(moveEvent.clientY - initialY, 2)
+                Math.pow(currentTouch.clientX - initialX, 2) +
+                Math.pow(currentTouch.clientY - initialY, 2)
             );
 
             if (dist > 5) {
                 cleanup();
-                startDrag(e);
+                startDrag(e); // 첫 이벤트 객체 전달
             }
         };
 
-        const onMouseUpAttempt = () => {
+        const onEndAttempt = () => {
             cleanup();
         };
 
         const cleanup = () => {
-            document.removeEventListener('mousemove', onMouseMoveAttempt);
-            document.removeEventListener('mouseup', onMouseUpAttempt);
+            document.removeEventListener('mousemove', onMoveAttempt);
+            document.removeEventListener('touchmove', onMoveAttempt);
+            document.removeEventListener('mouseup', onEndAttempt);
+            document.removeEventListener('touchend', onEndAttempt);
         };
 
-        document.addEventListener('mousemove', onMouseMoveAttempt);
-        document.addEventListener('mouseup', onMouseUpAttempt);
-    });
+        document.addEventListener('mousemove', onMoveAttempt);
+        document.addEventListener('touchmove', onMoveAttempt, { passive: false });
+        document.addEventListener('mouseup', onEndAttempt);
+        document.addEventListener('touchend', onEndAttempt);
+    }
 
     function startDrag(e) {
         if (isDragStarted) return;
@@ -236,32 +248,131 @@ export function setupDraggable(widget, grid) {
         const gridRect = grid.getBoundingClientRect();
         const rect = widget.getBoundingClientRect();
 
-        const offsetX = e.clientX - rect.left;
-        const offsetY = e.clientY - rect.top;
+        const touch = e.type === 'touchstart' ? e.touches[0] : e;
+        let initialTouchY = touch.clientY;
+        let currentTranslateY = 0;
 
-        const onMouseMove = (moveEvent) => {
-            let left = moveEvent.clientX - gridRect.left - offsetX;
-            let top = moveEvent.clientY - gridRect.top - offsetY;
+        const onMove = (moveEvent) => {
+            // 드래그 중 스크롤 방지
+            if (moveEvent.cancelable) moveEvent.preventDefault();
 
-            const maxLeft = gridRect.width - widget.offsetWidth;
-            left = Math.max(0, Math.min(maxLeft, left));
-            top = Math.max(0, top);
+            const currentTouch = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
 
-            widget.style.left = `${left}px`;
-            widget.style.top = `${top}px`;
+            // 모바일 수직 스택 모드 체크 (768px 이하)
+            const isMobile = window.innerWidth <= 768;
+
+            if (isMobile) {
+                // 1. 실시간 시각적 추적 (Hardware Accelerated)
+                currentTranslateY = currentTouch.clientY - initialTouchY;
+                widget.style.transform = `translate3d(0, ${currentTranslateY}px, 0) scale(1.02)`;
+
+                // 2. 물리적 순서 변경 체크
+                const widgetCenterY = currentTouch.clientY;
+                const siblings = Array.from(grid.querySelectorAll('.draggable-widget:not(.dragging)'));
+
+                const nextSibling = siblings.find(sibling => {
+                    const siblingRect = sibling.getBoundingClientRect();
+                    return widgetCenterY < siblingRect.top + siblingRect.height / 2;
+                });
+
+                // 현재 위치 저장 (보정용)
+                const preRect = widget.getBoundingClientRect();
+                const oldIndex = Array.from(grid.children).indexOf(widget);
+
+                if (nextSibling) {
+                    if (widget.nextElementSibling !== nextSibling) {
+                        grid.insertBefore(widget, nextSibling);
+                    }
+                } else if (siblings.length > 0) {
+                    if (widget.nextElementSibling !== null) {
+                        grid.appendChild(widget);
+                    }
+                }
+
+                const newIndex = Array.from(grid.children).indexOf(widget);
+
+                // 3. 순서가 바뀌었을 때 위치 튐(Jump) 방지 보정 (정밀 보정)
+                if (oldIndex !== newIndex) {
+                    const postRect = widget.getBoundingClientRect();
+                    // 레이아웃 이동만큼 initialTouchY를 보정하여 손가락 위치와의 동기화 유지
+                    const layoutDeltaY = postRect.top - preRect.top;
+                    initialTouchY += layoutDeltaY;
+
+                    // 보정된 기준점 기반으로 transform 즉시 업데이트
+                    currentTranslateY = currentTouch.clientY - initialTouchY;
+                    widget.style.transform = `translate3d(0, ${currentTranslateY}px, 0) scale(1.02)`;
+                }
+
+                // [중요] 모바일에서는 인라인 left, top을 0으로 덮어쓰지 않음. 
+                // CSS !important가 이미 처리하고 있으며, 여기서 건드리면 PC 버전 복구 시 좌표가 유실됨.
+            } else {
+                // PC용 자유 좌표 이동
+                const offsetX = touch.clientX - rect.left;
+                const offsetY = touch.clientY - rect.top;
+                let left = currentTouch.clientX - gridRect.left - offsetX;
+                let top = currentTouch.clientY - gridRect.top - offsetY;
+
+                const maxLeft = gridRect.width - widget.offsetWidth;
+                left = Math.max(0, Math.min(maxLeft, left));
+                top = Math.max(0, top);
+
+                widget.style.left = `${left}px`;
+                widget.style.top = `${top}px`;
+            }
         };
 
-        const onMouseUp = () => {
+        const onEnd = () => {
             widget.classList.remove('dragging');
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+            widget.style.transform = ''; // 스타일 초기화
+
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('mouseup', onEnd);
+            document.removeEventListener('touchend', onEnd);
             isDragStarted = false;
-            saveLayout();
+
+            // 모바일인 경우 현재 DOM 순서에 따라 zIndex 재할당하여 순서 저장
+            if (window.innerWidth <= 768) {
+                reassignMobileZIndices();
+            } else {
+                saveLayout();
+            }
         };
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchend', onEnd);
     }
+}
+
+/**
+ * 모바일 수직 스택 순서에 따라 zIndex를 재할당하여 서버에 저장
+ */
+function reassignMobileZIndices() {
+    const grid = document.getElementById('widgetGrid');
+    if (!grid) return;
+
+    const widgets = Array.from(grid.querySelectorAll('.draggable-widget'));
+    console.log('[DashboardGrid] 모바일 순서 기반 zIndex 재할당 시작');
+
+    widgets.forEach((w, index) => {
+        const newZ = 100 + (index * 10);
+        w.style.zIndex = newZ;
+
+        const id = w.dataset.id;
+        if (!id) return;
+
+        // 서버에 변경된 zIndex만 업데이트 (좌표는 건드리지 않음)
+        fetch(`/api/widgets/${id}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}`
+            },
+            body: JSON.stringify({ zIndex: newZ })
+        }).catch(err => console.error(`[MobileReorder] 저장 실패 (ID: ${id}):`, err));
+    });
 }
 
 /**
@@ -273,6 +384,10 @@ export function setupResizable(widget, grid) {
 
     handle.onmousedown = (e) => {
         if (e.button !== 0) return;
+
+        // 모바일에서는 리사이즈 비활성화 (좌표 오염 방지)
+        if (window.innerWidth <= 768) return;
+
         e.preventDefault();
         e.stopPropagation();
 
@@ -321,6 +436,12 @@ export function setupResizable(widget, grid) {
  * 레이아웃 상태 저장 (Z-Index 포함)
  */
 function saveLayout() {
+    // [보안 가드] 모바일 모드에서는 PC 좌표를 덮어쓰지 않도록 즉시 종료
+    if (window.innerWidth <= 768) {
+        console.warn('[DashboardGrid] 모바일 뷰에서는 PC 레이아웃 저장을 방지합니다.');
+        return;
+    }
+
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
 

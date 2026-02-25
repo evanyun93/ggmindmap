@@ -11,7 +11,7 @@ router.get('/', authenticateToken, async (req, res) => {
     console.log(`[API] 위젯 로드 요청: 사용자 ID ${req.user.id}`);
     try {
         const result = await pool.query(
-            'SELECT * FROM tba_user_widgets WHERE user_id = $1 ORDER BY id ASC',
+            'SELECT * FROM tba_user_widgets WHERE user_id = $1 ORDER BY z_index ASC, id ASC',
             [req.user.id]
         );
         res.json({ success: true, widgets: result.rows });
