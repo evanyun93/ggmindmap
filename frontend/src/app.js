@@ -90,55 +90,69 @@ function showDashboardView(user) {
  * @param {object} user 
  */
 export function initDashboardFeatures(user) {
-    // 대시보드 전용 파티클 생성
+    console.log('[Init] 대시보드 피처 초기화 시작...');
+
+    // 1. UI 및 시각 효과 레이어 초기화
+    initVisualEffects();
+
+    // 2. 개별 위젯 독립적 초기화
+    initWidgets();
+
+    // 3. 도구 및 메뉴 초기화
+    initUtilities();
+
+    console.log('[Init] 모든 피처 초기화 완료.');
+}
+
+/**
+ * 시각 효과 및 배경 애니메이션 초기화
+ */
+function initVisualEffects() {
     createParticles('particles2', 20, ['#8B5CF6', '#06B6D4', '#A78BFA', '#22D3EE']);
 
-    // 메모 기능 초기화 (D-Day, Spreadsheet, Drag 등)
-    initMemo();
-
-    // 고객의 소리함 초기화
-    initFeedback();
-
-    // 마일스톤 위젯 초기화 (D-Day 등)
-    initMilestone();
-
-    // 매뉴얼 팝업 기능 초기화
-    setupManualPopup();
-
-    // D-Day 데이터 동기화
-    const updateMainDday = () => {
+    // D-Day 데이터 동기화 (레이아웃 안정화 후 실행)
+    setTimeout(() => {
         const ddayCount = document.getElementById('ddayCount');
         const mainDday = document.getElementById('mainDdayCount');
         if (ddayCount && mainDday) mainDday.textContent = ddayCount.textContent;
-    };
-    setTimeout(updateMainDday, 500);
-    // 중복 방지를 위한 타이머 관리 로직이 추후 필요할 수 있음
+    }, 500);
+}
 
-    // To-Do 및 그리드 커스터마이징 초기화
+/**
+ * 개별 비즈니스 위젯 로직 초기화
+ */
+function initWidgets() {
+    initMemo();
+    initFeedback();
+    initMilestone();
+
+    // 지연 로딩 피처들
     import('./features/todo.js').then(module => module.initTodo());
-    import('./features/dashboard-grid.js').then(module => {
-        module.initDashboardGrid();
-        // module.restoreLayout(); // [제거] 이제 WidgetManager가 DB에서 레이아웃을 로드함
-    });
+    import('./features/dashboard-grid.js').then(module => module.initDashboardGrid());
+}
 
-    // 마인드맵 버튼 연동
+/**
+ * 네비게이션, 로그아웃, 관리 시스템 등 유틸리티 초기화
+ */
+function initUtilities() {
+    setupManualPopup();
+
+    // 마인드맵 진입 버튼
     const startBtn = document.getElementById('realStartMindmapBtn');
     if (startBtn) {
-        startBtn.addEventListener('click', (e) => {
+        startBtn.onclick = (e) => {
             e.stopPropagation();
             import('./features/mindmap.js').then(module => module.initMindmap());
-        });
+        };
     }
 
-    // 로그아웃 버튼 설정
+    // 로그아웃 시스템
     const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) logoutBtn.addEventListener('click', logout);
+    if (logoutBtn) logoutBtn.onclick = logout;
 
-    // 관리자 버튼 설정 (어드민 계정일 경우)
+    // 관리자 전용 기능 (Admin 계정 체크는 상위에서 수행)
     const adminBtn = document.getElementById('adminBtn');
-    if (adminBtn) adminBtn.addEventListener('click', () => {
-        initAdmin();
-    });
+    if (adminBtn) adminBtn.onclick = initAdmin;
 }
 
 /**

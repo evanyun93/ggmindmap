@@ -12,15 +12,38 @@ export function initDashboardGrid() {
     console.log('[DashboardGrid] 그리드 초기화 시작');
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
+    const dashboardContent = document.getElementById('dashboardContent');
+    const widgetsSection = grid.closest('.widgets-section');
+    const longPressScope = dashboardContent || widgetsSection || grid;
 
-    // 대시보드 배경 우클릭 이벤트
-    grid.addEventListener('contextmenu', (e) => {
-        // 위젯 자체를 우클릭한 경우는 제외
-        if (e.target.closest('.draggable-widget')) return;
+    const TOUCH_DEBUG = false;
+    const logTouchDebug = (label, extra = {}) => {
+        if (!TOUCH_DEBUG) return;
+        console.log(`[DashboardGrid][TouchDebug] ${label}`, extra);
+    };
 
-        e.preventDefault();
+    const initialRect = grid.getBoundingClientRect();
+    const initialStyle = getComputedStyle(grid);
+    logTouchDebug('init', {
+        display: initialStyle.display,
+        position: initialStyle.position,
+        pointerEvents: initialStyle.pointerEvents,
+        longPressScopeId: longPressScope?.id || null,
+        longPressScopeClass: longPressScope?.className || null,
+        width: initialRect.width,
+        height: initialRect.height
+    });
 
-        contextMenu.show(e.clientX, e.clientY, [
+    const LONG_PRESS_MS = 550;
+    const MOVE_TOLERANCE_PX = 12;
+    const SCROLL_INTENT_Y_PX = 6;
+    let longPressTimer = null;
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    const openGridContextMenu = (clientX, clientY) => {
+        logTouchDebug('openGridContextMenu', { clientX, clientY });
+        contextMenu.show(clientX, clientY, [
             {
                 label: 'To-Do 카드 추가',
                 icon: '📝',
@@ -28,8 +51,8 @@ export function initDashboardGrid() {
                     console.log('[DashboardGrid] To-Do 카드 추가 요청');
                     import('./widget-manager.js').then(m => {
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, e.clientX - rect.left - 100);
-                        const y = Math.max(0, e.clientY - rect.top - 10);
+                        const x = Math.max(0, clientX - rect.left - 100);
+                        const y = Math.max(0, clientY - rect.top - 10);
                         m.widgetManager.createWidget('todo', x, y);
                     });
                 }
@@ -41,8 +64,8 @@ export function initDashboardGrid() {
                     console.log('[DashboardGrid] 마일스톤 카드 추가 요청');
                     import('./widget-manager.js').then(m => {
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, e.clientX - rect.left - 100);
-                        const y = Math.max(0, e.clientY - rect.top - 10);
+                        const x = Math.max(0, clientX - rect.left - 100);
+                        const y = Math.max(0, clientY - rect.top - 10);
                         m.widgetManager.createWidget('milestone', x, y);
                     });
                 }
@@ -68,7 +91,112 @@ export function initDashboardGrid() {
                 }
             }
         ]);
+    };
+
+    const clearLongPressTimer = () => {
+        if (longPressTimer) {
+            logTouchDebug('clearLongPressTimer');
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+    };
+
+    // 대시보드 배경 우클릭 이벤트
+    grid.addEventListener('contextmenu', (e) => {
+        // 위젯 자체를 우클릭한 경우는 제외
+        if (e.target.closest('.draggable-widget')) {
+            logTouchDebug('contextmenu ignored: draggable-widget');
+            return;
+        }
+
+        e.preventDefault();
+        logTouchDebug('contextmenu accepted', {
+            clientX: e.clientX,
+            clientY: e.clientY,
+            targetClass: e.target?.className || null
+        });
+
+        openGridContextMenu(e.clientX, e.clientY);
     });
+
+    const isDraggableWidgetTouch = (target) => !!target?.closest('.draggable-widget');
+    const isScrollControllerTouch = (target) => !!target?.closest('#mobileScrollController');
+    const isInsideLongPressArea = (target) => {
+        if (!target) return false;
+        if (target.closest('#dashboardContent')) return true;
+        return !!longPressScope?.contains?.(target);
+    };
+
+    // 모바일 롱프레스(길게 누르기)로 컨텍스트 메뉴 열기
+    longPressScope.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) {
+            logTouchDebug('touchstart ignored: touches.length !== 1', { touches: e.touches.length });
+            return;
+        }
+        if (!isInsideLongPressArea(e.target)) {
+            logTouchDebug('touchstart ignored: outside long-press area');
+            return;
+        }
+        if (isDraggableWidgetTouch(e.target)) {
+            logTouchDebug('touchstart ignored: draggable-widget');
+            return;
+        }
+        if (isScrollControllerTouch(e.target)) {
+            logTouchDebug('touchstart ignored: mobile-scroll-controller');
+            return;
+        }
+
+        const touch = e.touches[0];
+        touchStartX = touch.clientX;
+        touchStartY = touch.clientY;
+        logTouchDebug('touchstart accepted', {
+            x: touchStartX,
+            y: touchStartY,
+            targetId: e.target?.id || null,
+            targetClass: e.target?.className || null
+        });
+
+        clearLongPressTimer();
+        longPressTimer = setTimeout(() => {
+            logTouchDebug('longPressTimer fired', { x: touchStartX, y: touchStartY });
+            openGridContextMenu(touchStartX, touchStartY);
+            longPressTimer = null;
+        }, LONG_PRESS_MS);
+        logTouchDebug('longPressTimer started', { timeoutMs: LONG_PRESS_MS });
+    }, { passive: true });
+
+    longPressScope.addEventListener('touchmove', (e) => {
+        if (!longPressTimer || e.touches.length !== 1) return;
+
+        const touch = e.touches[0];
+        const movedX = Math.abs(touch.clientX - touchStartX);
+        const movedY = Math.abs(touch.clientY - touchStartY);
+        if (movedY > SCROLL_INTENT_Y_PX && movedY > movedX) {
+            logTouchDebug('longPress canceled: vertical scroll intent detected', { movedX, movedY });
+            clearLongPressTimer();
+            return;
+        }
+        if (movedX > MOVE_TOLERANCE_PX || movedY > MOVE_TOLERANCE_PX) {
+            logTouchDebug('longPress canceled: move exceeded tolerance', { movedX, movedY });
+            clearLongPressTimer();
+        }
+    }, { passive: true });
+
+    longPressScope.addEventListener('touchend', () => {
+        logTouchDebug('touchend');
+        clearLongPressTimer();
+    }, { passive: true });
+
+    longPressScope.addEventListener('touchcancel', () => {
+        logTouchDebug('touchcancel');
+        clearLongPressTimer();
+    }, { passive: true });
+
+    longPressScope.addEventListener('scroll', () => {
+        clearLongPressTimer();
+    }, { passive: true });
+
+    initMobileScrollController(dashboardContent);
 
     // 테마 초기화
     initTheme();
@@ -80,6 +208,176 @@ export function initDashboardGrid() {
     import('./widget-manager.js').then(m => {
         m.widgetManager.loadWidgets();
     });
+}
+
+function initMobileScrollController(dashboardContent) {
+    const controller = document.getElementById('mobileScrollController');
+    const track = document.getElementById('mobileScrollTrack');
+    const thumb = document.getElementById('mobileScrollThumb');
+    const fill = document.getElementById('mobileScrollFill');
+    const indicator = document.getElementById('mobileScrollIndicator');
+    if (!controller || !track || !thumb || !fill || !indicator) return;
+    if (controller.dataset.bound === 'true') return;
+    controller.dataset.bound = 'true';
+
+    const getScrollTarget = () => {
+        if (dashboardContent && dashboardContent.scrollHeight > dashboardContent.clientHeight + 1) {
+            return dashboardContent;
+        }
+        return document.scrollingElement || document.documentElement;
+    };
+
+    const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+    let isDragging = false;
+
+    const setControllerState = (enabled) => {
+        controller.classList.toggle('is-hidden', !enabled);
+        thumb.classList.toggle('disabled', !enabled);
+        thumb.setAttribute('aria-disabled', enabled ? 'false' : 'true');
+        thumb.tabIndex = enabled ? 0 : -1;
+    };
+
+    const applyVisualRatio = (ratio) => {
+        const trackHeight = track.clientHeight;
+        const thumbHeight = thumb.offsetHeight;
+        const travel = Math.max(0, trackHeight - thumbHeight);
+        const y = ratio * travel;
+        const percent = Math.round(ratio * 100);
+
+        thumb.style.transform = `translateY(${y}px)`;
+        fill.style.height = `${Math.max(thumbHeight * 0.45, y + thumbHeight * 0.5)}px`;
+        indicator.textContent = `${percent}%`;
+        thumb.setAttribute('aria-valuenow', String(percent));
+        thumb.setAttribute('aria-valuetext', `${percent}%`);
+    };
+
+    const syncFromScroll = () => {
+        const target = getScrollTarget();
+        const maxScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+        if (maxScroll <= 1) {
+            setControllerState(false);
+            applyVisualRatio(0);
+            return;
+        }
+
+        setControllerState(true);
+        const ratio = clamp(target.scrollTop / maxScroll, 0, 1);
+        applyVisualRatio(ratio);
+    };
+
+    const scrollToRatio = (ratio, behavior = 'auto') => {
+        const target = getScrollTarget();
+        const maxScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+        if (maxScroll <= 1) return;
+        target.scrollTo({ top: ratio * maxScroll, behavior });
+    };
+
+    const jumpToClientY = (clientY, behavior = 'auto') => {
+        const rect = track.getBoundingClientRect();
+        const thumbHeight = thumb.offsetHeight;
+        const travel = Math.max(1, rect.height - thumbHeight);
+        const relative = clamp(clientY - rect.top - thumbHeight / 2, 0, travel);
+        const ratio = relative / travel;
+        scrollToRatio(ratio, behavior);
+        applyVisualRatio(ratio);
+    };
+
+    const onDragMove = (e) => {
+        if (!isDragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        jumpToClientY(touch.clientY);
+        if (e.cancelable) e.preventDefault();
+    };
+
+    const stopDrag = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        controller.classList.remove('dragging');
+        thumb.classList.remove('active');
+        document.removeEventListener('mousemove', onDragMove);
+        document.removeEventListener('touchmove', onDragMove);
+        document.removeEventListener('mouseup', stopDrag);
+        document.removeEventListener('touchend', stopDrag);
+        document.removeEventListener('touchcancel', stopDrag);
+    };
+
+    const startDrag = (e) => {
+        if (thumb.classList.contains('disabled')) return;
+        const touch = e.touches ? e.touches[0] : e;
+        isDragging = true;
+        controller.classList.add('dragging');
+        thumb.classList.add('active');
+        jumpToClientY(touch.clientY);
+
+        document.addEventListener('mousemove', onDragMove);
+        document.addEventListener('touchmove', onDragMove, { passive: false });
+        document.addEventListener('mouseup', stopDrag);
+        document.addEventListener('touchend', stopDrag, { passive: true });
+        document.addEventListener('touchcancel', stopDrag, { passive: true });
+
+        if (e.cancelable) e.preventDefault();
+    };
+
+    thumb.addEventListener('mousedown', startDrag);
+    thumb.addEventListener('touchstart', startDrag, { passive: false });
+
+    track.addEventListener('click', (e) => {
+        if (thumb.classList.contains('disabled')) return;
+        if (e.target === thumb) return;
+        jumpToClientY(e.clientY, 'smooth');
+    });
+
+    track.addEventListener('touchstart', (e) => {
+        if (thumb.classList.contains('disabled')) return;
+        if (e.target === thumb) return;
+        jumpToClientY(e.touches[0].clientY, 'smooth');
+        if (e.cancelable) e.preventDefault();
+    }, { passive: false });
+
+    thumb.addEventListener('keydown', (e) => {
+        const target = getScrollTarget();
+        const maxScroll = Math.max(0, target.scrollHeight - target.clientHeight);
+        if (maxScroll <= 1) return;
+
+        const currentRatio = clamp(target.scrollTop / maxScroll, 0, 1);
+        const stepRatio = 0.06;
+        let nextRatio = currentRatio;
+
+        if (e.key === 'ArrowDown' || e.key === 'PageDown') {
+            nextRatio = clamp(currentRatio + stepRatio, 0, 1);
+        } else if (e.key === 'ArrowUp' || e.key === 'PageUp') {
+            nextRatio = clamp(currentRatio - stepRatio, 0, 1);
+        } else if (e.key === 'Home') {
+            nextRatio = 0;
+        } else if (e.key === 'End') {
+            nextRatio = 1;
+        } else {
+            return;
+        }
+
+        scrollToRatio(nextRatio, 'smooth');
+        applyVisualRatio(nextRatio);
+        e.preventDefault();
+    });
+
+    const requestSync = () => {
+        requestAnimationFrame(syncFromScroll);
+    };
+
+    if (dashboardContent) {
+        dashboardContent.addEventListener('scroll', requestSync, { passive: true });
+    }
+    window.addEventListener('scroll', requestSync, { passive: true });
+    window.addEventListener('resize', requestSync, { passive: true });
+
+    if (typeof ResizeObserver !== 'undefined' && dashboardContent) {
+        const resizeObserver = new ResizeObserver(requestSync);
+        resizeObserver.observe(dashboardContent);
+    }
+
+    requestSync();
+    setTimeout(requestSync, 120);
+    setTimeout(requestSync, 420);
 }
 
 /**

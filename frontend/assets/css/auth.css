@@ -1,0 +1,189 @@
+/* ─── 로그인 및 회원가입 페이지 (인증 섹션) ───────────────────── */
+.auth-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 440px;
+  padding: 20px;
+}
+
+.auth-card {
+  background: rgba(17, 17, 40, 0.8);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 48px 40px;
+  box-shadow: var(--shadow-lg);
+  animation: cardAppear 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.auth-card.hidden {
+  display: none;
+}
+
+.auth-card.fade-out {
+  opacity: 0;
+  transform: scale(0.95) translateY(10px);
+}
+
+.auth-card.fade-in {
+  animation: cardAppear 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cardAppear {
+  from {
+    opacity: 0;
+    transform: scale(0.9) translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+
+/* 로그인 페이지 중앙 로고 및 구체 애니메이션 */
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(139, 92, 246, 0.1);
+  margin-bottom: 20px;
+  position: relative;
+  
+  filter: drop-shadow(0 0 15px rgba(139, 92, 246, 0.4));
+  animation: logoDreamyGlow 4s infinite alternate ease-in-out;
+}
+
+.logo svg circle,
+.logo-section svg circle,
+.mega-logo svg circle {
+  transform-origin: center;
+  animation: bubbleBounce 3s infinite ease-in-out;
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.3));
+}
+
+.logo svg circle:nth-child(1),
+.logo-section svg circle:nth-child(1),
+.mega-logo svg circle:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.logo svg circle:nth-child(2),
+.logo-section svg circle:nth-child(2),
+.mega-logo svg circle:nth-child(2) {
+  animation-delay: 0.2s;
+  animation-duration: 2.5s;
+}
+
+.logo svg circle:nth-child(3),
+.logo-section svg circle:nth-child(3),
+.mega-logo svg circle:nth-child(3) {
+  animation-delay: 0.5s;
+  animation-duration: 3.5s;
+}
+
+.logo svg circle:nth-child(4),
+.logo-section svg circle:nth-child(4),
+.mega-logo svg circle:nth-child(4) {
+  animation-delay: 0.8s;
+  animation-duration: 2.8s;
+}
+
+.logo svg circle:nth-child(5),
+.logo-section svg circle:nth-child(5),
+.mega-logo svg circle:nth-child(5) {
+  animation-delay: 1.1s;
+  animation-duration: 3.2s;
+}
+
+.logo svg circle:nth-child(6),
+.logo-section svg circle:nth-child(6),
+.mega-logo svg circle:nth-child(6) {
+  animation-delay: 1.4s;
+  animation-duration: 2.6s;
+}
+
+.logo svg circle:nth-child(7),
+.logo-section svg circle:nth-child(7),
+.mega-logo svg circle:nth-child(7) {
+  animation-delay: 1.7s;
+  animation-duration: 3s;
+}
+
+@keyframes bubbleBounce {
+
+  0%,
+  100% {
+    transform: scale(1) translateY(0);
+    opacity: 0.8;
+  }
+
+  50% {
+    transform: scale(1.15) translateY(-3px);
+    opacity: 1;
+  }
+}
+
+@keyframes logoDreamyGlow {
+  0% {
+    filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3)) drop-shadow(0 0 20px rgba(6, 182, 212, 0.2));
+  }
+
+  100% {
+    filter: drop-shadow(0 0 25px rgba(139, 92, 246, 0.6)) drop-shadow(0 0 35px rgba(6, 182, 212, 0.4));
+  }
+}
+
+.auth-header h1 {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  background: var(--accent-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 6px;
+}
+
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.input-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+}
+
+.optional {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+

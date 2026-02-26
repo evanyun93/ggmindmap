@@ -1,0 +1,73 @@
+/* ─── 스크롤바 스타일 (Webkit 기반) ────────────────────────── */
+.widget-todo .todo-list-container {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.widget-todo .todo-list-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.widget-todo .todo-list-container::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.18);
+  border-radius: 6px;
+}
+
+.widget-todo .todo-list-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+
+/* ─── 기초 리셋 및 박스 모델 설정 ────────────────────────────── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+
+
+
+/* ─── 배경 파티클 애니메이션 효과 ───────────────────────────── */
+.bg-particles {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.particle {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0;
+  animation: particleFloat linear infinite;
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh) scale(0);
+  }
+
+  10% {
+    opacity: 1;
+  }
+
+  90% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-10vh) scale(1);
+  }
+}
+
+
+

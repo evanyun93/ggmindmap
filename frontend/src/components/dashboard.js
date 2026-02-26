@@ -208,6 +208,28 @@ export function getMainDashboardContentHTML(user) {
               <!-- 동적 위젯이 여기에 렌더링됩니다 -->
             </div>
           </div>
+
+          <div class="mobile-scroll-controller" id="mobileScrollController" aria-label="대시보드 스크롤 컨트롤러">
+            <div class="mobile-scroll-fader" id="mobileScrollFader">
+              <div class="mobile-scroll-fader-track" id="mobileScrollTrack" aria-hidden="true">
+                <div class="mobile-scroll-fader-fill" id="mobileScrollFill"></div>
+                <button
+                  type="button"
+                  class="mobile-scroll-fader-thumb"
+                  id="mobileScrollThumb"
+                  role="slider"
+                  tabindex="0"
+                  aria-label="대시보드 세로 스크롤 페이더"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow="0"
+                  aria-valuetext="0%"
+                  title="스크롤 페이더"
+                ></button>
+              </div>
+              <div class="mobile-scroll-fader-indicator" id="mobileScrollIndicator" aria-hidden="true">0%</div>
+            </div>
+          </div>
         </div>
   `;
 }

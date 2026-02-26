@@ -1,0 +1,110 @@
+/*
+  ═══════════════════════════════════════════════════════════════
+  성연's MindMap - Premium Design System (Standard Build)
+  주요 기능: 다크 테마, 글래스모피즘, 화이트보드 레이아웃, 모바일 최적화
+  인코딩: UTF-8 (Korean Comments Restored)
+  ═══════════════════════════════════════════════════════════════
+*/
+
+
+/* ─── 전역 디자인 시스템 변수 (색상, 간격, 테마) ────────────────── */
+:root {
+  color-scheme: light dark;
+  forced-color-adjust: none !important;
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #111128;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(139, 92, 246, 0.5);
+  --text-primary: #f0f0ff !important;
+  --text-secondary: #8888aa !important;
+  --text-muted: #555577 !important;
+  --accent-purple: #8B5CF6;
+  --accent-cyan: #06B6D4;
+  --accent-gradient: linear-gradient(135deg, #8B5CF6 0%, #06B6D4 100%);
+  --error: #EF4444;
+  --error-bg: rgba(239, 68, 68, 0.1);
+  --success: #10B981;
+  --success-bg: rgba(16, 185, 129, 0.1);
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 20px;
+  --shadow-lg: 0 25px 60px rgba(0, 0, 0, 0.5);
+  --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --dashboard-bg: #0f172a;
+  --dashboard-dot: rgba(139, 92, 246, 0.15);
+  --card-bg: rgba(30, 41, 59, 0.75);
+  --card-border: rgba(255, 255, 255, 0.12);
+  --card-shadow: rgba(0, 0, 0, 0.5);
+  --card-text: #f0f0ff;
+}
+
+body.theme-midnight {
+  color-scheme: dark;
+  --dashboard-bg: #0f172a;
+  --dashboard-dot: rgba(139, 92, 246, 0.18);
+  --card-bg: rgba(30, 41, 59, 0.85);
+  --card-border: rgba(255, 255, 255, 0.15);
+  --card-shadow: rgba(0, 0, 0, 0.6);
+}
+
+body.theme-blueprint {
+  color-scheme: dark;
+  --dashboard-bg: #1e293b;
+  --dashboard-dot: rgba(56, 189, 248, 0.2);
+  --card-bg: rgba(15, 23, 42, 0.95);
+  --card-border: rgba(56, 189, 248, 0.4);
+  --card-shadow: rgba(0, 0, 0, 0.5);
+}
+
+body.theme-classic {
+  color-scheme: only light !important;
+  forced-color-adjust: none !important;
+  --dashboard-bg: #f8fafc;
+  --dashboard-dot: rgba(148, 163, 184, 0.3);
+  --card-bg: rgba(255, 255, 255, 0.98);
+  --card-border: rgba(148, 163, 184, 0.3);
+  --card-shadow: rgba(0, 0, 0, 0.1);
+  --card-text: #1e293b;
+}
+
+body.theme-dark {
+  color-scheme: dark;
+  --dashboard-bg: #050505;
+  --dashboard-dot: rgba(255, 255, 255, 0.05);
+  --card-bg: rgba(20, 20, 20, 0.9);
+  --card-border: rgba(255, 255, 255, 0.1);
+  --card-shadow: rgba(0, 0, 0, 0.8);
+}
+
+.memo-fab {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  cursor: grab;
+  
+}
+
+.memo-fab:active {
+  cursor: grabbing;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary) !important;
+  min-height: 100vh;
+  margin: 0;
+  forced-color-adjust: none !important;
+}
+
+#app-root {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: hidden;
+}
+

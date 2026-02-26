@@ -28,6 +28,11 @@ export class ContextMenu {
 
         // 클릭 시 메뉴 닫기
         document.addEventListener('click', () => this.hide());
+        document.addEventListener('touchstart', (e) => {
+            if (!e.target.closest('#customContextMenu')) {
+                this.hide();
+            }
+        }, { passive: true });
         document.addEventListener('contextmenu', (e) => {
             if (!e.target.closest('#widgetGrid')) {
                 this.hide();
