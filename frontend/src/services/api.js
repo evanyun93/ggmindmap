@@ -35,6 +35,21 @@ export async function apiFetch(endpoint, options = {}) {
 
     console.log(`[apiFetch] 📥 Response: ${response.status} ${response.statusText}`);
 
+    // 응답이 JSON인지 확인
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+        const text = await response.text();
+        console.error(`[apiFetch] ⚠️ JSON 아닌 응답: content-type=${contentType}, 본문=${text.substring(0, 200)}`);
+        // 텍스트 응답을 그대로 반환 (에러 처리 필요)
+        return {
+            ok: false,
+            status: response.status,
+            statusText: response.statusText,
+            json: async () => { throw new Error(`JSON 아닌 응답: ${text.substring(0, 100)}`) },
+            text: async () => text
+        };
+    }
+
     return response;
 }
 
