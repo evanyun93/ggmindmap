@@ -3,7 +3,9 @@
  * @description 백엔드 API와의 통신을 위한 기본 설정을 관리합니다.
  */
 
-export const API_BASE = window.location.origin;
+// 로컬 환경(localhost)에서는 로컬 백엔드, 그 외( Vercel 등 배포 환경)에서는 오라클 서버 백엔드 사용
+const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+export const API_BASE = isLocal ? window.location.origin : 'http://146.56.111.45:3001';
 
 /**
  * 전역 인증 헤더를 포함한 fetch 헬퍼 (필요시 확장 가능)
