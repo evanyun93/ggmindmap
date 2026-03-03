@@ -8,6 +8,6 @@
         "install-all": "cd backend && npm install"
     },
     "keywords": [],
-    "author": "",
+    "author": "@yun.boy",
     "license": "ISC"
 }

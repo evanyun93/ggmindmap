@@ -1,0 +1,85 @@
+/* ─── 팝업 모달 (매뉴얼 등) ─────────────────────────────────── */
+.manual-popup.hidden {
+  display: none !important;
+}
+
+.manual-popup {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  min-width: 340px;
+  max-width: 90vw;
+  background: rgba(20, 20, 40, 0.98);
+  border-radius: 18px;
+  box-shadow: 0 8px 40px 0 rgba(0, 0, 0, 0.45);
+  border: 1.5px solid rgba(139, 92, 246, 0.18);
+  padding: 0 0 18px 0;
+  animation: fadeIn 0.4s;
+}
+
+.manual-popup .manual-header {
+  display: flex;
+  align-items: center;
+  padding: 18px 24px 0 18px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--accent-purple);
+}
+
+.manual-popup .close-popup {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-left: 8px;
+  transition: color 0.2s;
+}
+
+.manual-popup .close-popup:hover {
+  color: #ef4444;
+}
+
+.manual-popup .manual-content {
+  padding: 18px 24px 8px 24px !important;
+  color: var(--text-primary);
+  font-size: 1rem;
+  line-height: 1.7;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.manual-popup .manual-content h2,
+.manual-popup .manual-content h3 {
+  margin-top: 1.1em;
+  margin-bottom: 0.35em;
+}
+
+.manual-popup .manual-content hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1.5px dashed #a78bfa44;
+}
+
+.manual-popup .manual-content ul {
+  margin-bottom: 0.6em;
+}
+
+.manual-popup .manual-content p {
+  margin-bottom: 0.55em;
+}
+
+.manual-popup::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: -1;
+  border-radius: 18px;
+}
+

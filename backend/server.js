@@ -7,8 +7,17 @@ const { initDatabase } = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// 미들웨어 설정
-app.use(cors());
+// CORS 설정 - Vercel Frontend 및 로컬 개발 허용
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'https://ggmindmap.vercel.app',
+  ],
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // 프론트엔드 정적 파일 제공

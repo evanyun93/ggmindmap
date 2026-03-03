@@ -6,6 +6,11 @@
 export class ContextMenu {
     constructor() {
         this.menu = null;
+        this.isInitialized = false;
+        this.handleDocumentClick = null;
+        this.handleDocumentTouchStart = null;
+        this.handleDocumentContextMenu = null;
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.init());
         } else {
@@ -14,9 +19,10 @@ export class ContextMenu {
     }
 
     init() {
-        // 기존 메뉴가 있으면 제거
-        const existing = document.getElementById('customContextMenu');
-        if (existing) existing.remove();
+        if (this.isInitialized) return;
+
+        // 기존 메뉴가 있으면 정리 후 재생성
+        this.destroy();
 
         this.menu = document.createElement('div');
         this.menu.id = 'customContextMenu';
@@ -26,21 +32,47 @@ export class ContextMenu {
         this.menu.style.zIndex = '10000';
         document.body.appendChild(this.menu);
 
-        // 클릭 시 메뉴 닫기
-        document.addEventListener('click', () => this.hide());
-        document.addEventListener('touchstart', (e) => {
+        this.bindGlobalListeners();
+        this.isInitialized = true;
+    }
+
+    bindGlobalListeners() {
+        this.handleDocumentClick = () => this.hide();
+        this.handleDocumentTouchStart = (e) => {
             if (!e.target.closest('#customContextMenu')) {
                 this.hide();
             }
-        }, { passive: true });
-        document.addEventListener('contextmenu', (e) => {
+        };
+        this.handleDocumentContextMenu = (e) => {
             if (!e.target.closest('#widgetGrid')) {
                 this.hide();
             }
-        });
+        };
+
+        document.addEventListener('click', this.handleDocumentClick);
+        document.addEventListener('touchstart', this.handleDocumentTouchStart, { passive: true });
+        document.addEventListener('contextmenu', this.handleDocumentContextMenu);
     }
 
-    show(x, y, items) {
+    unbindGlobalListeners() {
+        if (this.handleDocumentClick) {
+            document.removeEventListener('click', this.handleDocumentClick);
+            this.handleDocumentClick = null;
+        }
+
+        if (this.handleDocumentTouchStart) {
+            document.removeEventListener('touchstart', this.handleDocumentTouchStart);
+            this.handleDocumentTouchStart = null;
+        }
+
+        if (this.handleDocumentContextMenu) {
+            document.removeEventListener('contextmenu', this.handleDocumentContextMenu);
+            this.handleDocumentContextMenu = null;
+        }
+    }
+
+    renderItems(items) {
+        if (!this.menu) return;
         this.menu.innerHTML = '';
 
         items.forEach(item => {
@@ -61,33 +93,54 @@ export class ContextMenu {
             `;
 
             menuItem.addEventListener('click', (e) => {
-                e.stopPropagation(); // 부모(document)로 클릭 이벤트 전파 방지
+                e.stopPropagation();
                 item.action();
                 this.hide();
             });
+
             this.menu.appendChild(menuItem);
         });
+    }
+
+    positionMenu(x, y) {
+        if (!this.menu) return;
 
         this.menu.style.left = `${x}px`;
         this.menu.style.top = `${y}px`;
-        this.menu.classList.remove('hide');
-        this.menu.style.display = 'block';
 
-        // 화면 밖으로 나가는 것 방지 (가로)
         const rect = this.menu.getBoundingClientRect();
         if (x + rect.width > window.innerWidth) {
             this.menu.style.left = `${window.innerWidth - rect.width - 15}px`;
         }
-        // 세로 위치 보정 및 화면 밖 나감 방지
         if (y + rect.height > window.innerHeight) {
             this.menu.style.top = `${Math.max(10, window.innerHeight - rect.height - 15)}px`;
         }
+    }
+
+    show(x, y, items) {
+        if (!this.isInitialized) this.init();
+        if (!this.menu) return;
+
+        this.renderItems(items);
+        this.menu.classList.remove('hide');
+        this.menu.style.display = 'block';
+        this.positionMenu(x, y);
     }
 
     hide() {
         if (this.menu) {
             this.menu.style.display = 'none';
         }
+    }
+
+    destroy() {
+        this.unbindGlobalListeners();
+
+        const existing = document.getElementById('customContextMenu');
+        if (existing) existing.remove();
+
+        this.menu = null;
+        this.isInitialized = false;
     }
 }
 

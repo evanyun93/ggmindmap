@@ -8,12 +8,11 @@ import { checkAutoLogin, login, register, logout } from './services/auth.js';
 import { showMessage, hideMessage, setLoading, switchCard } from './utils/dom.js';
 import { initSocialAuth } from './services/social-auth.js'; // social-auth 임포트
 import { getDashboardHTML } from './components/dashboard.js';
-import { setupManualPopup } from './components/dashboard.js';
-import { initMemo } from './features/memo.js';
-import { initFeedback } from './features/feedback.js';
 import { initChangelog } from './features/changelog.js';
-import { initMilestone } from './features/milestone.js';
-import { initAdmin } from './admin.js';
+import { initDashboardFeatures } from './features/dashboard-bootstrap.js';
+
+// 피드백 모듈 등에서 initDashboardFeatures를 사용할 수 있도록 re-export
+export { initDashboardFeatures };
 
 // DOM 요소 캐시 (로그인 페이지용)
 let loginCard, registerCard, loginForm, registerForm, loginError, registerError, registerSuccess;
@@ -83,76 +82,6 @@ function showDashboardView(user) {
 
     // 대시보드 내 소셜 연동 버튼을 위해 다시 초기화 (이미 이벤트 리스너가 중복 등록되지 않도록 social-auth.js에서 처리됨)
     initSocialAuth();
-}
-
-/**
- * 대시보드의 모든 동적 기능(메모, 피드백, 그리드 등)을 초기화합니다.
- * @param {object} user 
- */
-export function initDashboardFeatures(user) {
-    console.log('[Init] 대시보드 피처 초기화 시작...');
-
-    // 1. UI 및 시각 효과 레이어 초기화
-    initVisualEffects();
-
-    // 2. 개별 위젯 독립적 초기화
-    initWidgets();
-
-    // 3. 도구 및 메뉴 초기화
-    initUtilities();
-
-    console.log('[Init] 모든 피처 초기화 완료.');
-}
-
-/**
- * 시각 효과 및 배경 애니메이션 초기화
- */
-function initVisualEffects() {
-    createParticles('particles2', 20, ['#8B5CF6', '#06B6D4', '#A78BFA', '#22D3EE']);
-
-    // D-Day 데이터 동기화 (레이아웃 안정화 후 실행)
-    setTimeout(() => {
-        const ddayCount = document.getElementById('ddayCount');
-        const mainDday = document.getElementById('mainDdayCount');
-        if (ddayCount && mainDday) mainDday.textContent = ddayCount.textContent;
-    }, 500);
-}
-
-/**
- * 개별 비즈니스 위젯 로직 초기화
- */
-function initWidgets() {
-    initMemo();
-    initFeedback();
-    initMilestone();
-
-    // 지연 로딩 피처들
-    import('./features/todo.js').then(module => module.initTodo());
-    import('./features/dashboard-grid.js').then(module => module.initDashboardGrid());
-}
-
-/**
- * 네비게이션, 로그아웃, 관리 시스템 등 유틸리티 초기화
- */
-function initUtilities() {
-    setupManualPopup();
-
-    // 마인드맵 진입 버튼
-    const startBtn = document.getElementById('realStartMindmapBtn');
-    if (startBtn) {
-        startBtn.onclick = (e) => {
-            e.stopPropagation();
-            import('./features/mindmap.js').then(module => module.initMindmap());
-        };
-    }
-
-    // 로그아웃 시스템
-    const logoutBtn = document.getElementById('logoutBtn');
-    if (logoutBtn) logoutBtn.onclick = logout;
-
-    // 관리자 전용 기능 (Admin 계정 체크는 상위에서 수행)
-    const adminBtn = document.getElementById('adminBtn');
-    if (adminBtn) adminBtn.onclick = initAdmin;
 }
 
 /**
