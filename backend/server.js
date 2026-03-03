@@ -7,12 +7,13 @@ const { initDatabase } = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS 설정 - Vercel Frontend 및 로컬 개발 허용
+// CORS 설정 - Vercel Frontend, ngrok 및 로컬 개발 허용
 const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
     'https://ggmindmap.vercel.app',
+    'https://unperturbable-fatherleess-annamae.ngrok-free.dev'
   ],
   credentials: true
 };
