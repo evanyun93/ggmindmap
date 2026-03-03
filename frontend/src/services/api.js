@@ -5,7 +5,7 @@
 
 // 로컬 환경(localhost)에서는 로컬 백엔드, 그 외(Vercel 등 배포 환경)에서는 ngrok HTTPS 사용
 const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-export const API_BASE = isLocal ? window.location.origin : 'https://unperturbable-fatherleess-annamae.ngrok-free.dev';
+export const API_BASE = isLocal ? window.location.origin : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
 
 /**
  * 전역 인증 헤더를 포함한 fetch 헬퍼 (필요시 확장 가능)
