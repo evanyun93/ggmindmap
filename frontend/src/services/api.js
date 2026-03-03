@@ -18,6 +18,7 @@ export async function apiFetch(endpoint, options = {}) {
 
     const headers = {
         'Content-Type': 'application/json',
+        'ngrok-skip-browser-warning': '1', // ngrok 경고 페이지 우회
         ...options.headers
     };
 
