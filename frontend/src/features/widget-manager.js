@@ -3,7 +3,7 @@
  * @description 동적 위젯(To-Do, 마일스톤 등)의 생성 및 상태 관리를 총괄합니다.
  */
 
-// import { setupDraggable, setupResizable, bringToFront } from './dashboard-grid.js'; // 순환 참조 방지를 위해 정적 임포트 제거
+import { apiFetch } from '../services/api.js';
 
 export class WidgetManager {
   constructor() {
@@ -46,9 +46,7 @@ export class WidgetManager {
       sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
 
     try {
-      const res = await fetch('/api/widgets', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await apiFetch('/api/widgets');
 
       if (!res.ok) {
         console.error(`[WidgetManager] 위젯 로드 실패 (HTTP ${res.status})`);
@@ -58,6 +56,11 @@ export class WidgetManager {
       const data = await res.json();
       if (data.success) {
         if (!data.widgets || data.widgets.length === 0) {
+          this.widgets = [];
+          console.log('[WidgetManager] 위젯 없음 - 초기 위젯 생성 시도');
+          await this.createWidget('todo');
+          return;
+        } else {
           console.warn('[WidgetManager] 저장된 위젯이 없습니다. 초기 배치를 진행합니다.');
           await this.createInitialWidgets();
           return;
@@ -100,12 +103,8 @@ export class WidgetManager {
   async createWidget(type, x = 100, y = 100, width, height) {
     console.log(`[WidgetManager] 새 위젯 생성 요청: type=${type}, x=${x}, y=${y}`);
     try {
-      const res = await fetch('/api/widgets', {
+      const res = await apiFetch('/api/widgets', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}`
-        },
         body: JSON.stringify({
           widgetType: type,
           x: Math.round(Number(x)),
@@ -343,9 +342,8 @@ export class WidgetManager {
   async deleteWidget(id) {
     if (!confirm('이 위젯을 삭제하시겠습니까?')) return;
     try {
-      const res = await fetch(`/api/widgets/${id}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}` }
+      const res = await apiFetch(`/api/widgets/${id}`, {
+        method: 'DELETE'
       });
       const data = await res.json();
       if (data.success) {

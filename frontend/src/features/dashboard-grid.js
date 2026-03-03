@@ -9,6 +9,7 @@ let maxZIndex = 100;
 import { contextMenu } from '../utils/context-menu.js';
 import { initMobileScrollController } from './dashboard-grid-mobile-scroll.js';
 import { initWelcomeSection, initTheme } from './dashboard-grid-ui.js';
+import { API_BASE, apiFetch } from '../services/api.js';
 
 export function initDashboardGrid() {
     console.log('[DashboardGrid] 그리드 초기화 시작');
@@ -79,9 +80,8 @@ export function initDashboardGrid() {
                 action: async () => {
                     if (confirm('현재 배치된 모든 위젯을 삭제하고 초기 상태로 되돌리시겠습니까?')) {
                         try {
-                            await fetch('/api/widgets/all', {
-                                method: 'DELETE',
-                                headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}` }
+                            await apiFetch('/api/widgets/all', {
+                                method: 'DELETE'
                             });
                             localStorage.removeItem('dashboard_layout_free_v1');
                             location.reload();
@@ -424,12 +424,8 @@ function reassignMobileZIndices() {
         if (!id) return;
 
         // 서버에 변경된 zIndex만 업데이트 (좌표는 건드리지 않음)
-        fetch(`/api/widgets/${id}`, {
+        apiFetch(`/api/widgets/${id}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}`
-            },
             body: JSON.stringify({ zIndex: newZ })
         }).catch(err => console.error(`[MobileReorder] 저장 실패 (ID: ${id}):`, err));
     });
@@ -519,12 +515,8 @@ function saveLayout() {
         };
 
         // 서버에 저장 (비동기로 실행되나 await 하지 않음 - 성능 위함)
-        fetch(`/api/widgets/${id}`, {
+        apiFetch(`/api/widgets/${id}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('mindmap_token') || sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token')}`
-            },
             body: JSON.stringify(layout)
         }).catch(err => console.error('레이아웃 저장 실패:', err));
     });
