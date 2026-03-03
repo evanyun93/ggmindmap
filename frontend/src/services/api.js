@@ -25,10 +25,15 @@ export async function apiFetch(endpoint, options = {}) {
         headers['Authorization'] = `Bearer ${token}`;
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const fullUrl = `${API_BASE}${endpoint}`;
+    console.log(`[apiFetch] 🔍 Request: ${options.method || 'GET'} ${fullUrl}`);
+
+    const response = await fetch(fullUrl, {
         ...options,
         headers
     });
+
+    console.log(`[apiFetch] 📥 Response: ${response.status} ${response.statusText}`);
 
     return response;
 }
@@ -40,7 +45,7 @@ export async function apiFetch(endpoint, options = {}) {
  */
 export async function fetchAdminUsers(token) {
     try {
-        const res = await fetch(`${API_BASE}/api/auth/admin/users`, {
+        const res = await apiFetch('/api/auth/admin/users', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
