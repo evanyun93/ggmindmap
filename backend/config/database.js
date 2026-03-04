@@ -74,6 +74,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS tba_todos (
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id) NOT NULL,
+          widget_id INTEGER REFERENCES tba_user_widgets(id),
           task TEXT NOT NULL,
           is_completed BOOLEAN DEFAULT FALSE,
           color VARCHAR(20) DEFAULT '#8B5CF6',
@@ -84,6 +85,7 @@ async function initDatabase() {
       // 기존 테이블에 컬럼이 없는 경우 추가 (Migration)
       await client.query(`
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT '#8B5CF6';
+        ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS widget_id INTEGER REFERENCES tba_user_widgets(id);
       `);
 
       // tba_user_widgets 테이블 생성 (동적 위젯 레이아웃 저장)

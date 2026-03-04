@@ -4,28 +4,35 @@ const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/authHandler');
 
 /**
- * 사용자별 To-Do 목록 조회
+ * 사용자별 To-Do 목록 조회 (widget별 필터링 가능)
  */
 router.get('/', authenticateToken, async (req, res) => {
     try {
+        const { widget_id } = req.query;
+
         // 1. 유저의 자동 삭제 설정 확인
         const userResult = await pool.query('SELECT todo_auto_delete FROM tba_users WHERE id = $1', [req.user.id]);
         const autoDelete = userResult.rows[0]?.todo_auto_delete;
 
         if (autoDelete) {
-            // 오늘(KST) 이전의 데이터 삭제 (서버 시간이 UTC인 경우를 대비해 INTERVAL 작업 필요 가능성 있음)
-            // 여기서는 단순하게 CURRENT_DATE(본일 0시) 이전 데이터를 삭제
             await pool.query(
                 'DELETE FROM tba_todos WHERE user_id = $1 AND created_at < CURRENT_DATE',
                 [req.user.id]
             );
         }
 
-        // 2. 목록 조회
-        const result = await pool.query(
-            'SELECT * FROM tba_todos WHERE user_id = $1 ORDER BY created_at DESC, id DESC',
-            [req.user.id]
-        );
+        // 2. 목록 조회 (widget_id로 필터링)
+        let query = 'SELECT * FROM tba_todos WHERE user_id = $1';
+        const params = [req.user.id];
+
+        if (widget_id) {
+            query += ' AND widget_id = $2';
+            params.push(widget_id);
+        }
+
+        query += ' ORDER BY created_at DESC, id DESC';
+
+        const result = await pool.query(query, params);
         res.json({ success: true, todos: result.rows });
     } catch (error) {
         console.error('To-Do 조회 에러:', error);
@@ -34,14 +41,14 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 /**
- * To-Do 추가
+ * To-Do 추가 (widget_id 연결)
  */
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { task, color } = req.body;
+        const { task, color, widget_id } = req.body;
         const result = await pool.query(
-            'INSERT INTO tba_todos (user_id, task, color) VALUES ($1, $2, $3) RETURNING id',
-            [req.user.id, task, color || '#8B5CF6']
+            'INSERT INTO tba_todos (user_id, widget_id, task, color) VALUES ($1, $2, $3, $4) RETURNING id',
+            [req.user.id, widget_id || null, task, color || '#8B5CF6']
         );
         res.status(201).json({ success: true, id: result.rows[0].id });
     } catch (error) {

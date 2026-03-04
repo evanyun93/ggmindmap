@@ -160,7 +160,11 @@ function setupTitleEdit(el, titleEl, editBtn) {
 
 async function loadTodoList(el) {
     try {
-        const res = await apiFetch('/api/todos');
+        // 위젯 ID 가져오기
+        const widgetId = el.closest('.draggable-widget')?.dataset?.id;
+        const query = widgetId ? `?widget_id=${widgetId}` : '';
+        
+        const res = await apiFetch(`/api/todos${query}`);
         const result = await res.json();
         if (result.success) renderTodos(el, result.todos);
     } catch (err) {
@@ -174,20 +178,19 @@ async function addTodo(el) {
     if (!task) return;
 
     const color = localStorage.getItem('todo_checkbox_color') || DEFAULT_CHECKBOX_COLOR;
+    // 위젯 ID 가져오기
+    const widgetId = el.closest('.draggable-widget')?.dataset?.id;
+    
     try {
         const res = await apiFetch('/api/todos', {
             method: 'POST',
-            body: JSON.stringify({ task, color })
+            body: JSON.stringify({ task, color, widget_id: widgetId })
         });
         const result = await res.json();
         if (result.success) {
             input.value = '';
             // 현재 위젯만 즉시 갱신 (진동 방지)
             loadTodoList(el);
-            // 다른 위젯들은 백그라운드 동기화
-            document.querySelectorAll('.widget-todo').forEach(w => {
-                if (w !== el) loadTodoList(w);
-            });
         }
     } catch (err) {
         console.error('[Todo] 추가 에러:', err);
