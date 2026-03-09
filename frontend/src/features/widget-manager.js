@@ -56,11 +56,6 @@ export class WidgetManager {
       const data = await res.json();
       if (data.success) {
         if (!data.widgets || data.widgets.length === 0) {
-          this.widgets = [];
-          console.log('[WidgetManager] 위젯 없음 - 초기 위젯 생성 시도');
-          await this.createWidget('todo');
-          return;
-        } else {
           console.warn('[WidgetManager] 저장된 위젯이 없습니다. 초기 배치를 진행합니다.');
           await this.createInitialWidgets();
           return;
@@ -109,16 +104,11 @@ export class WidgetManager {
           widgetType: type,
           x: Math.round(Number(x)),
           y: Math.round(Number(y)),
-          width: Math.round(Number(width || (type === 'todo' ? 400 : 700))),
-          height: Math.round(Number(height || (type === 'todo' ? 500 : 350))),
-          settings: type === 'milestone' ? {
-            syncWithMemo: false, summaryData: [
-              { label: '', value: '' },
-              { label: '', value: '' },
-              { label: '', value: '' },
-              { label: '', value: '' }
-            ]
-          } : {}
+          width: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
+          height: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
+          settings: type === 'milestone' 
+            ? { syncWithMemo: false, summaryData: [ { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' } ] } 
+            : (type === 'recipe' ? { recipes: [] } : {})
         })
       });
       const data = await res.json();
@@ -324,6 +314,28 @@ export class WidgetManager {
                 </div>
             `;
     }
+    if (data.widget_type === 'recipe') {
+      return `
+          <div class="widget-header clickable-header recipe-header">
+            <div class="header-main">
+              <div class="card-icon">🍳</div>
+              <h3 class="recipe-widget-title">나만의 레시피 북</h3>
+            </div>
+            <div class="header-actions">
+              <button class="btn-recipe-add" title="새 레시피 작성">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              </button>
+              <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+          </div>
+          <div class="recipe-content-wrapper">
+             <!-- 레시피 목록, 상세, 작성 뷰가 이곳에 렌더링됩니다 -->
+             <div class="recipe-view-container"></div>
+          </div>
+      `;
+    }
   }
 
   initWidgetLogic(el, data) {
@@ -335,6 +347,11 @@ export class WidgetManager {
     if (data.widget_type === 'milestone') {
       import('./milestone.js').then(m => {
         if (m.initMilestone) m.initMilestone(el, data);
+      });
+    }
+    if (data.widget_type === 'recipe') {
+      import('./recipe.js').then(m => {
+        if (m.initRecipe) m.initRecipe(el, data);
       });
     }
   }

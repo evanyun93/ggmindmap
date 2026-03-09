@@ -1,0 +1,358 @@
+/**
+ * @file mindmap.css
+ * @description 마인드맵 인터페이스 및 캔버스 요소들에 대한 프리미엄 스타일을 정의합니다.
+ */
+
+.mindmap-fullscreen-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 툴바 스타일 */
+.mindmap-toolbar {
+    height: 70px;
+    padding: 0 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    background: rgba(15, 23, 42, 0.8);
+    z-index: 2100;
+}
+
+.mindmap-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #8B5CF6, #06B6D4);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.mindmap-mode-selector {
+    display: flex;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 6px;
+    border-radius: 12px;
+}
+
+/* 힌트 배지 (모드 버튼 대신) */
+.mindmap-hints {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.hint-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.55);
+}
+
+.hint-badge kbd {
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 5px;
+    padding: 2px 7px;
+    font-size: 0.72rem;
+    color: rgba(255,255,255,0.8);
+    font-family: inherit;
+}
+
+.btn-mode {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.6);
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-mode:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+}
+
+.btn-mode.active {
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    color: white;
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+}
+
+.btn-mode svg {
+    transition: transform 0.3s ease;
+}
+
+.btn-mode:active svg {
+    transform: scale(0.9);
+}
+
+.tool-divider {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 0 15px;
+}
+
+.btn-tool {
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(139, 92, 246, 0.1);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-tool:hover {
+    background: #8B5CF6;
+    box-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+/* 캔버스 및 SVG */
+.mindmap-canvas-container {
+    flex: 1;
+    position: relative;
+    cursor: crosshair;
+}
+
+.drawing-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2050;
+}
+
+#mindmapSVG {
+    display: block;
+    background: 
+        radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.05) 1px, transparent 0);
+    background-size: 40px 40px;
+}
+
+/* 노드 스타일 */
+.node-group {
+    cursor: grab;
+    transition: filter 0.2s;
+    touch-action: manipulation; /* 더블클릭 지연 방지 */
+}
+
+.node-group:active {
+    cursor: grabbing;
+}
+
+.node-shape {
+    fill: rgba(30, 41, 59, 0.7);
+    stroke: rgba(139, 92, 246, 0.4);
+    stroke-width: 2;
+    backdrop-filter: blur(10px);
+}
+
+.node-group:hover .node-shape {
+    stroke: #8B5CF6;
+    stroke-width: 3;
+}
+
+.node-group.main .node-shape {
+    fill: rgba(139, 92, 246, 0.2);
+    stroke: #06B6D4;
+    stroke-width: 4;
+}
+
+.node-text {
+    fill: white;
+    font-size: 14px;
+    font-weight: 600;
+    pointer-events: none;
+    user-select: none;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.connecting-source .node-shape {
+    stroke: #F59E0B;
+    stroke-dasharray: 4;
+    animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+    to { stroke-dashoffset: -8; }
+}
+
+/* 연결선 */
+.mindmap-link {
+    fill: none;
+    stroke: rgba(139, 92, 246, 0.5);
+    stroke-width: 2.5;
+    transition: all 0.2s;
+}
+
+.mindmap-link:hover {
+    stroke: #8B5CF6;
+    stroke-width: 4;
+    filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.5));
+}
+
+/* 가이드 및 편집기 */
+.mindmap-guide {
+    position: absolute;
+    bottom: 30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(15px);
+    padding: 12px 24px;
+    border-radius: 40px;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.9rem;
+    font-weight: 500;
+    pointer-events: none;
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    z-index: 2200;
+}
+
+/* 인라인 노드 편집 오버레이 */
+.node-editor-inline {
+    position: fixed;
+    z-index: 2300;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    border: 2px solid rgba(139, 92, 246, 0.8);
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.5), 0 0 0 1px rgba(255,255,255,0.05);
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(12px);
+    pointer-events: auto;
+}
+
+.node-editor-inline input {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: white;
+    text-align: center;
+    font-weight: 600;
+    font-family: inherit;
+    caret-color: #8B5CF6;
+    padding: 0 8px;
+    width: 100%;
+    height: 100%;
+}
+
+.node-editor-inline input::placeholder {
+    color: rgba(255,255,255,0.35);
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.editor-btns {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.spacer { flex: 1; }
+
+.btn-primary-mini {
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-primary-mini:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 10px 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.btn-danger-mini {
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    padding: 10px 18px;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-danger-mini:hover {
+    background: #ef4444;
+    color: white;
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+    transform: translateY(-1px);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* 인라인 노드 편집 input 스타일 */
+.inline-node-input {
+    background: transparent !important;
+    border: none !important;
+    outline: none !important;
+    color: white !important;
+    text-align: center !important;
+    font-size: 14px !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    font-family: inherit !important;
+    caret-color: #8B5CF6;
+}
+
+/* 편집 중인 노드 강조 */
+.node-group.editing .node-shape {
+    stroke: #8B5CF6 !important;
+    stroke-width: 3 !important;
+    filter: drop-shadow(0 0 12px rgba(139, 92, 246, 0.6));
+}

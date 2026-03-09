@@ -1,6 +1,6 @@
 /**
- * @file mindmap.js
- * @description 마인드맵 캔버스 화면의 HTML 구조를 생성합니다.
+ * @file mindmap.js (components)
+ * @description 마인드맵 캔버스 화면의 HTML 구조 – 모드 버튼 제거, 단순화
  */
 
 export function getMindmapHTML() {
@@ -14,36 +14,50 @@ export function getMindmapHTML() {
                     <h2 class="mindmap-title">Mind Canvas</h2>
                 </div>
                 <div class="tool-center">
-                    <button class="btn-tool" id="addNodeBtn">노드 추가 (+)</button>
+                    <div class="mindmap-hints">
+                        <span class="hint-badge"><kbd>드래그</kbd> 노드 이동</span>
+                        <span class="hint-badge"><kbd>빈 곳 드래그</kbd> 도형 추가</span>
+                        <span class="hint-badge"><kbd>Shift+클릭</kbd> 연결</span>
+                        <span class="hint-badge"><kbd>더블클릭</kbd> 텍스트 편집</span>
+                    </div>
+                </div>
+                <div class="tool-right">
                     <button class="btn-tool" id="saveMindmapBtn">저장하기</button>
                     <span class="save-status" id="saveStatus"></span>
                 </div>
-                <div class="tool-right">
-                    <div class="zoom-controls">
-                        <button id="zoomOut">-</button>
-                        <span id="zoomLevel">100%</span>
-                        <button id="zoomIn">+</button>
-                    </div>
-                </div>
             </header>
-            
+
             <div class="mindmap-canvas-container" id="mindmapCanvasContainer">
                 <svg id="mindmapSVG" width="100%" height="100%">
+                    <defs>
+                        <filter id="glass-shadow" x="-20%" y="-20%" width="140%" height="140%">
+                            <feGaussianBlur in="SourceAlpha" stdDeviation="5" />
+                            <feOffset dx="2" dy="2" result="offsetblur" />
+                            <feComponentTransfer>
+                                <feFuncA type="linear" slope="0.3" />
+                            </feComponentTransfer>
+                            <feMerge>
+                                <feMergeNode />
+                                <feMergeNode in="SourceGraphic" />
+                            </feMerge>
+                        </filter>
+                        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="10" refY="3.5" orientation="auto">
+                            <polygon points="0 0, 10 3.5, 0 7" fill="rgba(139,92,246,0.6)" />
+                        </marker>
+                    </defs>
                     <g id="linksGroup"></g>
                     <g id="nodesGroup"></g>
                 </svg>
+                <!-- 자유 드로잉을 위한 오버레이 캔버스 -->
+                <canvas id="drawingCanvas" class="drawing-canvas"></canvas>
             </div>
 
-            <!-- 노드 편집 팝오버 -->
-            <div id="nodeEditor" class="node-editor hidden premium-glass">
-                <input type="text" id="nodeTextInput" placeholder="생각 입력...">
-                <div class="editor-btns">
-                    <button id="deleteNodeBtn" class="btn-danger-mini">삭제</button>
-                    <button id="closeEditorBtn">닫기</button>
-                </div>
+            <!-- 인라인 노드 편집 오버레이 -->
+            <div id="nodeEditor" class="node-editor-inline hidden">
+                <input type="text" id="nodeTextInput" placeholder="입력 후 Enter...">
             </div>
 
-            <div class="mindmap-guide">기본 노드를 더블클릭해서 시작하세요! (드래그로 이동 가능)</div>
+            <div class="mindmap-guide" id="mindmapGuide">빈 곳을 드래그하면 도형을 추가할 수 있습니다.</div>
         </div>
     `;
 }

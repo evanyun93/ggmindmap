@@ -73,6 +73,19 @@ export function initDashboardGrid() {
                     });
                 }
             },
+            {
+                label: '요리 레시피 북 추가',
+                icon: '🍳',
+                action: () => {
+                    console.log('[DashboardGrid] 요리 레시피 북 추가 요청');
+                    import('./widget-manager.js').then(m => {
+                        const rect = grid.getBoundingClientRect();
+                        const x = Math.max(0, clientX - rect.left - 100);
+                        const y = Math.max(0, clientY - rect.top - 10);
+                        m.widgetManager.createWidget('recipe', x, y, 500, 600);
+                    });
+                }
+            },
             { type: 'separator' },
             {
                 label: '전체 위젯 초기화 (기본 배치)',

@@ -205,17 +205,24 @@ function renderMilestoneData(el, settings) {
         targetDate.setHours(0, 0, 0, 0);
         baseDate.setHours(0, 0, 0, 0);
 
-        // 정확한 일수 계산 (기준일~목표일 전체 기간)
-        const totalMs = targetDate.getTime() - baseDate.getTime();
-        const totalProjectDays = Math.round(totalMs / (1000 * 60 * 60 * 24));
+        // 정확한 일수 계산 (오늘~목표일 남은 기간)
+        const diffMs = targetDate.getTime() - today.getTime();
+        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
 
-        const badgeText = totalProjectDays > 0 ? `D-${totalProjectDays}` : (totalProjectDays === 0 ? 'D-Day' : `D+${Math.abs(totalProjectDays)}`);
+        // 전체 프로젝트 기간 대비 진행률 계산
+        const totalMs = targetDate.getTime() - baseDate.getTime();
+        const totalDays = Math.max(1, Math.round(totalMs / (1000 * 60 * 60 * 24)));
+        const elapsedMs = today.getTime() - baseDate.getTime();
+        const elapsedDays = Math.round(elapsedMs / (1000 * 60 * 60 * 24));
+        const progressPercent = Math.min(100, Math.max(0, Math.round((elapsedDays / totalDays) * 100)));
+
+        const badgeText = diffDays > 0 ? `D-${diffDays}` : (diffDays === 0 ? 'D-Day' : `D+${Math.abs(diffDays)}`);
 
         if (ddayBadge) ddayBadge.textContent = badgeText;
         if (targetDateText) {
             const dayNames = ['일', '월', '화', '수', '목', '금', '토'];
             const dateStr = `${targetDate.getFullYear()}. ${targetDate.getMonth() + 1}. ${targetDate.getDate()}. (${dayNames[targetDate.getDay()]})`;
-            const rangeStr = !isSync && settings.baseDate ? `<br><small style="opacity:0.6; font-size:0.75rem;">기간: ${settings.baseDate} ~ ${settings.targetDate} (${totalProjectDays}일 간, ${progressPercent}% 진행)</small>` : '';
+            const rangeStr = !isSync && settings.baseDate ? `<br><small style="opacity:0.6; font-size:0.75rem;">기간: ${settings.baseDate} ~ ${settings.targetDate} (${totalDays}일 간, ${progressPercent}% 진행)</small>` : '';
             targetDateText.innerHTML = dateStr + rangeStr;
         }
 
