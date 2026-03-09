@@ -106,8 +106,8 @@ export class WidgetManager {
           y: Math.round(Number(y)),
           width: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
           height: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
-          settings: type === 'milestone' 
-            ? { syncWithMemo: false, summaryData: [ { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' } ] } 
+          settings: type === 'milestone'
+            ? { syncWithMemo: false, summaryData: [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }] }
             : (type === 'recipe' ? { recipes: [] } : {})
         })
       });
@@ -304,7 +304,7 @@ export class WidgetManager {
                 <div class="card-icon-mini">🧠</div>
                 <div class="cta-content-wrapper">
                   <div class="cta-text">
-                    <h3>생각 그리기(추후 업데이트)</h3>
+                    <h3>생각 그리기(베타 버전v.1.0)</h3>
                     <p>마인드맵으로 아이디어를 시각화하세요.</p>
                   </div>
                   <button class="cta-button-premium mindmap-start-btn">시작하기</button>
@@ -318,18 +318,27 @@ export class WidgetManager {
       return `
           <div class="widget-header clickable-header recipe-header">
             <div class="header-main">
-              <div class="card-icon">🍳</div>
-              <h3 class="recipe-widget-title">나만의 레시피 북</h3>
-            </div>
-            <div class="header-actions">
-              <button class="btn-recipe-add" title="새 레시피 작성">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              </button>
-              <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
+              <div class="recipe-icon-wrapper">
+                <div class="card-icon recipe-main-icon" style="cursor: pointer;" title="아이콘 변경">${data.settings?.icon || '🍳'}</div>
+                <div class="recipe-icon-palette hidden">
+                  <button class="icon-chip">🍳</button>
+                  <button class="icon-chip">🍚</button>
+                  <button class="icon-chip">🍜</button>
+                  <button class="icon-chip">🍝</button>
+                  <button class="icon-chip">🥩</button>
+                  <button class="icon-chip">🥗</button>
+                  <button class="icon-chip">🍰</button>
+                  <button class="icon-chip" title="아침">🌅</button>
+                  <button class="icon-chip" title="점심">☀️</button>
+                  <button class="icon-chip" title="저녁">🌙</button>
+                </div>
+              </div>
+              <h3 class="recipe-widget-title">${data.settings?.title || '나만의 레시피 북'}</h3>
             </div>
           </div>
+          <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
           <div class="recipe-content-wrapper">
              <!-- 레시피 목록, 상세, 작성 뷰가 이곳에 렌더링됩니다 -->
              <div class="recipe-view-container"></div>

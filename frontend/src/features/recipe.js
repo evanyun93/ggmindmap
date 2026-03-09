@@ -7,13 +7,47 @@ import { apiFetch } from '../services/api.js';
 
 export function initRecipe(el, data) {
     const container = el.querySelector('.recipe-view-container');
+    const header = el.querySelector('.recipe-header');
     const headerTitle = el.querySelector('.recipe-widget-title');
-    const addBtn = el.querySelector('.btn-recipe-add');
+    const editTitleBtn = el.querySelector('.edit-recipe-title-btn');
+    const iconBtn = el.querySelector('.recipe-main-icon');
+    const iconPalette = el.querySelector('.recipe-icon-palette');
     
     // 데이터 로드
     let settings = data.settings || {};
     let recipes = Array.isArray(settings.recipes) ? settings.recipes : [];
+    let customTitle = settings.title || '나만의 레시피 북';
+    let customIcon = settings.icon || '🍳';
     const widgetId = data.id;
+
+    // 1. 초기 접기 상태 복원
+    const isCollapsed = localStorage.getItem(`recipe_collapsed_${widgetId}`) === 'true';
+    if (isCollapsed) el.classList.add('collapsed');
+
+    // 2. 헤더 클릭 시 접기/펼치기
+    let isDragging = false;
+    el.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button, input, textarea') || e.target.closest('.recipe-icon-wrapper')) return;
+        isDragging = false;
+        const startX = e.clientX;
+        const startY = e.clientY;
+        const onMove = (moveEvent) => {
+            if (Math.abs(moveEvent.clientX - startX) > 5 || Math.abs(moveEvent.clientY - startY) > 5) {
+                isDragging = true;
+            }
+        };
+        const onUp = (upEvent) => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            
+            if (!isDragging && upEvent.target.closest('.recipe-header')) {
+                const collapsed = el.classList.toggle('collapsed');
+                localStorage.setItem(`recipe_collapsed_${widgetId}`, collapsed);
+            }
+        };
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+    });
 
     // View 상태 관리 ('list', 'detail', 'edit')
     let currentView = 'list';
@@ -26,7 +60,7 @@ export function initRecipe(el, data) {
         try {
             await apiFetch(`/api/widgets/${widgetId}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ settings: { ...settings, recipes } })
+                body: JSON.stringify({ settings: { ...settings, recipes, title: customTitle, icon: customIcon } })
             });
         } catch (e) {
             console.error('[Recipe] 위젯 설정 저장 실패', e);
@@ -42,62 +76,197 @@ export function initRecipe(el, data) {
         
         // 버튼 및 제목 갱신
         if (view === 'list') {
-            headerTitle.textContent = '나만의 레시피 북';
-            addBtn.style.display = 'flex';
-            addBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>';
-            addBtn.title = "새 레시피 작성";
-            addBtn.onclick = () => renderView('edit');
-            
+            headerTitle.textContent = customTitle;
+            if (editTitleBtn) editTitleBtn.style.display = 'flex';
             renderListView();
         } else if (view === 'detail') {
+            if (editTitleBtn) editTitleBtn.style.display = 'none';
             const r = recipes.find(x => x.id === currentRecipeId);
             headerTitle.textContent = r ? r.title : '레시피 상세';
-            addBtn.style.display = 'flex';
-            // 수정 모드 진입 아이콘
-            addBtn.innerHTML = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>';
-            addBtn.title = "레시피 수정";
-            addBtn.onclick = () => renderView('edit', currentRecipeId);
-            
             renderDetailView(r);
         } else if (view === 'edit') {
+            if (editTitleBtn) editTitleBtn.style.display = 'none';
             const isNew = !currentRecipeId;
             headerTitle.textContent = isNew ? '새 레시피 작성' : '레시피 수정';
-            addBtn.style.display = 'none'; // 작성 중엔 상단 플러스 버튼 숨김
-            
             renderEditView(isNew ? null : recipes.find(x => x.id === currentRecipeId));
         }
     };
 
     /**
+     * 메인 타이틀(위젯 제목) 수정 기능
+     */
+    if (editTitleBtn && headerTitle) {
+        editTitleBtn.onclick = (e) => {
+            if (currentView !== 'list') return; // 리스트 뷰에서만 수정 허용
+            // 이벤트 타겟이 아이콘이나 아이콘 래퍼인 경우 (CSS 겹침 등의 문제로) 무시.
+            if (e.target.closest('.recipe-icon-wrapper')) return;
+            e.stopPropagation();
+            
+            const current = customTitle;
+            const input = document.createElement('input');
+            input.value = current;
+            input.className = 'recipe-title-edit-input';
+            
+            Object.assign(input.style, {
+                background: 'rgba(0,0,0,0.4)', border: '1px solid #8B5CF6', color: 'white',
+                borderRadius: '6px', padding: '2px 8px', width: '150px', 
+                fontSize: '1.2rem', fontWeight: 'bold', outline: 'none'
+            });
+
+            headerTitle.replaceWith(input);
+            editTitleBtn.style.display = 'none';
+            input.focus();
+
+            const finish = () => {
+                const newTitle = input.value.trim() || '나만의 레시피 북';
+                customTitle = newTitle;
+                settings.title = customTitle;
+                headerTitle.textContent = customTitle;
+                input.replaceWith(headerTitle);
+                editTitleBtn.style.display = 'flex';
+                saveSettings(); // DB 저장
+            };
+
+            input.onblur = finish;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') finish();
+                if (e.key === 'Escape') { input.value = current; finish(); }
+            };
+        };
+    }
+
+    /**
+     * 메인 아이콘 수정 기능
+     */
+    if (iconBtn && iconPalette) {
+        iconBtn.onclick = (e) => {
+            if (currentView !== 'list') return; // 리스트 뷰에서만 허용
+            e.stopPropagation();
+            iconPalette.classList.toggle('hidden');
+        };
+
+        iconPalette.onclick = (e) => {
+            e.stopPropagation();
+            const chip = e.target.closest('.icon-chip');
+            if (chip) {
+                customIcon = chip.textContent;
+                settings.icon = customIcon;
+                iconBtn.textContent = customIcon;
+                iconPalette.classList.add('hidden');
+                saveSettings(); // DB 저장
+            }
+        };
+
+        // 외부 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+            if (!iconPalette.classList.contains('hidden') && !iconPalette.contains(e.target) && e.target !== iconBtn) {
+                iconPalette.classList.add('hidden');
+            }
+        });
+    }
+
+    /**
      * 목록 뷰 브랜치 렌더링
      */
     const renderListView = () => {
+        const addCardHTML = `
+            <div class="recipe-card recipe-add-card fade-in" id="btnAddNewRecipe">
+                <div class="add-card-icon">+</div>
+                <div class="add-card-text">새 레시피 작성</div>
+            </div>
+        `;
+
         if (recipes.length === 0) {
             container.innerHTML = `
                 <div class="recipe-empty-state fade-in">
                     <div class="empty-icon">🍽️</div>
                     <p>등록된 레시피가 없습니다.</p>
-                    <span class="empty-sub">오른쪽 위 + 버튼을 눌러 나만의 레시피를 추가해보세요!</span>
                 </div>
+                <div class="recipe-list-grid" style="margin-top: 20px;">${addCardHTML}</div>
             `;
-            return;
+        } else {
+            const listHTML = recipes.map((r, idx) => `
+                <div class="recipe-card fade-in" data-id="${r.id}" draggable="true" data-index="${idx}">
+                    <div class="drag-handle" title="순서 변경 이동" draggable="false">
+                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line></svg>
+                    </div>
+                    <div class="recipe-card-emoji">${r.emoji || '🍳'}</div>
+                    <div class="recipe-card-info">
+                        <h4 class="recipe-card-title">${r.title || '이름 없음'}</h4>
+                        <span class="recipe-card-meta">재료 ${r.ingredients?.length || 0}개 · 순서 ${r.steps?.length || 0}단계</span>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `<div class="recipe-list-grid">${listHTML}${addCardHTML}</div>`;
         }
 
-        const listHTML = recipes.map(r => `
-            <div class="recipe-card fade-in" data-id="${r.id}">
-                <div class="recipe-card-emoji">${r.emoji || '🍳'}</div>
-                <div class="recipe-card-info">
-                    <h4 class="recipe-card-title">${r.title || '이름 없음'}</h4>
-                    <span class="recipe-card-meta">재료 ${r.ingredients?.length || 0}개 · 순서 ${r.steps?.length || 0}단계</span>
-                </div>
-            </div>
-        `).join('');
+        const newBtn = container.querySelector('#btnAddNewRecipe');
+        if (newBtn) newBtn.onclick = () => renderView('edit');
 
-        container.innerHTML = `<div class="recipe-list-grid">${listHTML}</div>`;
+        let draggedItem = null;
+        container.querySelectorAll('.recipe-card[data-id]').forEach(card => {
+            card.onclick = (e) => {
+                if (e.target.closest('.drag-handle')) return;
+                renderView('detail', card.dataset.id);
+            };
 
-        // 카드 클릭 시 상세로
-        container.querySelectorAll('.recipe-card').forEach(card => {
-            card.onclick = () => renderView('detail', card.dataset.id);
+            card.ondragstart = (e) => {
+                draggedItem = card;
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', card.dataset.id);
+                setTimeout(() => card.classList.add('dragging'), 0);
+            };
+
+            card.ondragend = () => {
+                card.classList.remove('dragging');
+                draggedItem = null;
+                container.querySelectorAll('.recipe-card').forEach(c => c.classList.remove('drag-over', 'drag-over-after'));
+            };
+
+            card.ondragover = (e) => {
+                e.preventDefault();
+                container.querySelectorAll('.recipe-card').forEach(c => c.classList.remove('drag-over', 'drag-over-after'));
+                
+                if (card === draggedItem) return;
+                
+                const box = card.getBoundingClientRect();
+                const offset = e.clientX - box.left - (box.width / 2);
+                if (offset > 0) {
+                    card.classList.add('drag-over-after');
+                } else {
+                    card.classList.add('drag-over');
+                }
+            };
+
+            card.ondragleave = () => {
+                card.classList.remove('drag-over', 'drag-over-after');
+            };
+
+            card.ondrop = (e) => {
+                e.preventDefault();
+                const isAfter = card.classList.contains('drag-over-after');
+                card.classList.remove('drag-over', 'drag-over-after');
+                if (card === draggedItem) return;
+
+                const draggedId = e.dataTransfer.getData('text/plain');
+                if (!draggedId) return;
+
+                const draggedIndex = recipes.findIndex(r => r.id === draggedId);
+                const targetIndex = parseInt(card.dataset.index);
+
+                if (draggedIndex === -1 || isNaN(targetIndex)) return;
+
+                const [removed] = recipes.splice(draggedIndex, 1);
+                
+                let insertIndex = targetIndex;
+                if (isAfter) insertIndex++;
+                if (draggedIndex < insertIndex) insertIndex--;
+
+                recipes.splice(insertIndex, 0, removed);
+                saveSettings();
+                renderListView();
+            };
         });
     };
 
@@ -117,10 +286,15 @@ export function initRecipe(el, data) {
 
         container.innerHTML = `
             <div class="recipe-detail-pane fade-in">
-                <button class="btn-recipe-back">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg> 목록으로
-                </button>
-                <div class="recipe-detail-header">
+                <div class="recipe-detail-top-nav" style="display:flex; justify-content:space-between; align-items:center;">
+                    <button class="btn-recipe-back" style="margin-bottom:0; background:transparent; border:1px solid var(--border-color, #e5e7eb); padding:8px 16px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px; color:var(--text-primary, #374151);">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg> 목록
+                    </button>
+                    <button class="btn-recipe-edit-action" title="레시피 수정" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border:none; padding:10px 20px; border-radius:10px; cursor:pointer; color:white; font-weight:600; display:flex; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(102, 126, 234, 0.4); transition:transform 0.2s, box-shadow 0.2s;">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> 수정하기
+                    </button>
+                </div>
+                <div class="recipe-detail-header" style="margin-top:16px;">
                     <span class="recipe-detail-emoji">${recipe.emoji || '🍳'}</span>
                     <h3 class="recipe-detail-title">${recipe.title || '제목 없음'}</h3>
                 </div>
@@ -140,12 +314,13 @@ export function initRecipe(el, data) {
                 </div>
                 
                 <div class="recipe-detail-footer">
-                     <button class="btn-recipe-danger delete-current-recipe">이 레시피 삭제</button>
+                     <button class="btn-recipe-danger delete-current-recipe" style="background:transparent; border:1px solid #fee2e2; color:#dc2626; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:500; transition:all 0.2s;">이 레시피 삭제</button>
                 </div>
             </div>
         `;
 
         container.querySelector('.btn-recipe-back').onclick = () => renderView('list');
+        container.querySelector('.btn-recipe-edit-action').onclick = () => renderView('edit', currentRecipeId);
         container.querySelector('.delete-current-recipe').onclick = () => {
              if (confirm('이 레시피를 정말 삭제하시겠습니까?')) {
                  recipes = recipes.filter(x => x.id !== recipe.id);
@@ -167,7 +342,22 @@ export function initRecipe(el, data) {
         container.innerHTML = `
             <div class="recipe-edit-pane fade-in">
                 <div class="recipe-edit-header">
-                     <input type="text" id="recipeEmojiInput" class="recipe-emoji-input" value="${emoji}" maxlength="2" title="이모지를 입력하세요">
+                     <div class="recipe-item-icon-wrapper" style="position: relative;">
+                         <div id="recipeEmojiInput" class="recipe-emoji-input clickable-emoji" style="cursor: pointer; display: flex; align-items: center; justify-content: center;" title="아이콘 변경">${emoji}</div>
+                         <div class="recipe-icon-palette item-icon-palette hidden" style="width: 200px; flex-wrap: wrap;">
+                             <button class="icon-chip" type="button">🍳</button>
+                             <button class="icon-chip" type="button">🍚</button>
+                             <button class="icon-chip" type="button">🍜</button>
+                             <button class="icon-chip" type="button">🍝</button>
+                             <button class="icon-chip" type="button">🥩</button>
+                             <button class="icon-chip" type="button">🥗</button>
+                             <button class="icon-chip" type="button">🍰</button>
+                             <button class="icon-chip" type="button">🍞</button>
+                             <button class="icon-chip" type="button" title="아침">🌅</button>
+                             <button class="icon-chip" type="button" title="점심">☀️</button>
+                             <button class="icon-chip" type="button" title="저녁">🌙</button>
+                         </div>
+                     </div>
                      <input type="text" id="recipeTitleInput" class="recipe-title-input" placeholder="레시피 제목" value="${title}">
                 </div>
                 
@@ -193,9 +383,34 @@ export function initRecipe(el, data) {
             renderView(recipe ? 'detail' : 'list', recipe ? recipe.id : null);
         };
 
+        const emojiBtn = container.querySelector('#recipeEmojiInput');
+        const emojiPalette = container.querySelector('.item-icon-palette');
+        
+        if (emojiBtn && emojiPalette) {
+            emojiBtn.onclick = (e) => {
+                e.stopPropagation();
+                emojiPalette.classList.toggle('hidden');
+            };
+            emojiPalette.onclick = (e) => {
+                e.stopPropagation();
+                const chip = e.target.closest('.icon-chip');
+                if (chip) {
+                    emojiBtn.textContent = chip.textContent;
+                    emojiPalette.classList.add('hidden');
+                }
+            };
+            const closeEditPalette = (e) => {
+                if (!emojiPalette.classList.contains('hidden') && !emojiPalette.contains(e.target) && e.target !== emojiBtn) {
+                    emojiPalette.classList.add('hidden');
+                }
+            };
+            document.addEventListener('click', closeEditPalette);
+            // 뷰 변경 시 리스너 정리를 위해 나중에 이벤트 리스너를 제거하는 로직이 필요할 수 있으나, 위젯 SPA 상 생략
+        }
+
         container.querySelector('.btn-recipe-save').onclick = () => {
             const newTitle = container.querySelector('#recipeTitleInput').value.trim() || '이름 없음 레시피';
-            const newEmoji = container.querySelector('#recipeEmojiInput').value.trim() || '🍳';
+            const newEmoji = container.querySelector('#recipeEmojiInput').textContent.trim() || '🍳';
             const rawIngs = container.querySelector('#recipeIngInput').value;
             const rawSteps = container.querySelector('#recipeStepInput').value;
 
