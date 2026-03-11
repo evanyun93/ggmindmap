@@ -49,6 +49,47 @@ async function initDatabase() {
         ALTER TABLE tba_users ALTER COLUMN password DROP NOT NULL;
       `);
 
+      // email 필드 추가 (중복 가입 방지)
+      await client.query(`
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS email VARCHAR(255) UNIQUE;
+      `);
+
+      // social_ids JSONB 컬럼 추가 (다중 소셜 로그인 지원)
+      // 구조: [{"provider": "kakao", "socialId": "12345"}, {"provider": "naver", "socialId": "67890"}]
+      await client.query(`
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS social_ids JSONB DEFAULT '[]';
+      `);
+
+      // 기존 NULL 값을 빈 배열로 초기화
+      await client.query(`
+        UPDATE tba_users SET social_ids = '[]'::jsonb WHERE social_ids IS NULL;
+      `);
+
+      // social_ids 컬럼에 인덱스 추가 (검색 성능 향상)
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_tba_users_social_ids ON tba_users USING GIN (social_ids);
+      `);
+
+      // 기존 social_id + provider 데이터를 social_ids JSONB로 마이그레이션
+      await client.query(`
+        UPDATE tba_users
+        SET social_ids = COALESCE(social_ids, '[]'::jsonb) || jsonb_build_array(
+          jsonb_build_object(
+            'provider', provider,
+            'socialId', social_id
+          )
+        )
+        WHERE social_id IS NOT NULL 
+          AND social_id <> '' 
+          AND provider IS NOT NULL 
+          AND provider <> ''
+          AND (social_ids = '[]'::jsonb OR social_ids IS NULL);
+      `);
+
+      // 중복 소셜 로그인 방지를 위한 UNIQUE 제약조건 확인 (social_ids 기반)
+      // 주의: 기존 UNIQUE(social_id, provider) 제약조건은 유지
+      // 새로운 social_ids는 배열이므로 별도 처리 필요
+
       // tba_usage_logs 테이블 생성 (사용 시간 추적용)
       await client.query(`
         CREATE TABLE IF NOT EXISTS tba_usage_logs (

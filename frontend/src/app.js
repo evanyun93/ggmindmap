@@ -118,10 +118,11 @@ async function handleRegisterSubmit(e) {
     const username = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const displayName = document.getElementById('regDisplayName').value.trim();
+    const email = document.getElementById('regEmail')?.value.trim();
     const btn = document.getElementById('registerBtn');
 
     setLoading(btn, true);
-    const result = await register({ username, password, displayName });
+    const result = await register({ username, password, displayName, email });
     setLoading(btn, false);
 
     if (result.success) {

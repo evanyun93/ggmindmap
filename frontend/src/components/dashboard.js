@@ -9,6 +9,73 @@
  * @returns {string} 대시보드 HTML 문자열
  */
 export function getDashboardHTML(user) {
+  // 디버깅
+  console.log('[Dashboard] user info:', user);
+
+  // social_ids 배열에서 연결된 provider 목록 추출 (하위 호환성: socialProvider도 확인)
+  const socialIds = user.socialIds || [];
+  const connectedProviders = socialIds.map(s => s.provider).filter(Boolean);
+  
+  // 단일 provider 필드도 하위 호환성을 위해 확인
+  if (user.socialProvider && !connectedProviders.includes(user.socialProvider)) {
+    connectedProviders.push(user.socialProvider);
+  }
+
+  // 프로바이더 배지 생성 함수
+  const getProviderBadge = (provider, isLinked = true) => {
+    const label = provider === 'kakao' ? 'K' : (provider === 'naver' ? 'N' : (provider === 'github' ? 'G' : (provider === 'google' ? 'G' : provider.charAt(0).toUpperCase())));
+    const title = isLinked ? `${provider} 계정으로 연동되었습니다.` : `${provider} 계정 연동`;
+    const className = isLinked ? 'badge-social linked' : `btn-link-mini ${provider}`;
+    const content = isLinked ? label : `Link ${label}`;
+    const id = isLinked ? '' : `id="link${provider.charAt(0).toUpperCase() + provider.slice(1)}Btn"`;
+    return `<span class="${className} ${provider}" title="${title}" ${id}>${content}</span>`;
+  };
+
+  // 연결된 모든 프로바이더에 대한 배지 HTML 생성
+  const connectedBadgesHtml = connectedProviders
+    .map(provider => getProviderBadge(provider, true))
+    .join(' ');
+
+  // 연결되지 않은 프로바이ader에 대한 링크 버튼 생성
+  const allProviders = ['kakao', 'naver', 'github', 'google'];
+  const unconnectedProviders = allProviders.filter(p => !connectedProviders.includes(p));
+  const linkButtonsHtml = unconnectedProviders
+    .map(provider => `<button class="btn-link-mini ${provider}" id="link${provider.charAt(0).toUpperCase() + provider.slice(1)}Btn" title="${provider} 계정 연동">${provider === 'kakao' ? 'K' : (provider === 'naver' ? 'N' : (provider === 'github' ? 'G' : 'G'))}</button>`)
+    .join(' ');
+
+  // 이메일 미등록 알림 (이메일이 없는 모든 사용자)
+  const emailWarning = !user.email ? `
+    <div class="email-warning" style="
+      background: #fff3cd; color: #856404; padding: 12px 16px; 
+      border-radius: 8px; margin-bottom: 16px; display: flex; 
+      align-items: center; justify-content: space-between; gap: 12px;
+      border: 1px solid #ffeeba;
+    ">
+      <span>📧 이메일을 등록하면 KaiOS/네이버 계정과 연동할 수 있습니다.</span>
+      <button id="addEmailBtn" style="
+        background: #ffc107; border: none; padding: 6px 12px; 
+        border-radius: 4px; cursor: pointer; font-weight: 600;
+      ">이메일 추가</button>
+    </div>
+  ` : '';
+
+  // 비밀번호 미설정 알림 (tba_users 테이블의 password 필드가 비어있을 때만 표시)
+  console.log('[Dashboard] user.hasPassword:', user.hasPassword, 'user.socialIds:', user.socialIds);
+  const noPasswordWarning = !user.hasPassword ? `
+    <div class="password-warning" style="
+      background: #cce5ff; color: #004085; padding: 12px 16px; 
+      border-radius: 8px; margin-bottom: 16px; display: flex; 
+      align-items: center; justify-content: space-between; gap: 12px;
+      border: 1px solid #b8daff;
+    ">
+      <span>🔐 일반 로그인을 위해 비밀번호를 설정하세요.</span>
+      <button id="setPasswordBtn" style="
+        background: #007bff; color: white; border: none; padding: 6px 12px; 
+        border-radius: 4px; cursor: pointer; font-weight: 600;
+      ">비밀번호 설정</button>
+    </div>
+  ` : '';
+
   return `
     <div class="bg-particles" id="particles2"></div>
     <div class="dashboard-container">
@@ -19,13 +86,11 @@ export function getDashboardHTML(user) {
         </div>
         <div class="user-section">
           <div class="account-link-zone">
-            ${user.socialProvider ?
-      `<span class="badge-social linked ${user.socialProvider}" title="${user.socialProvider} 계정으로 연동되었습니다.">
-                ${user.socialProvider === 'kakao' ? 'K' : 'N'}
-               </span>` :
-      `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
+            ${connectedProviders.length > 0 ? 
+              `${connectedBadgesHtml} ${linkButtonsHtml}` : 
+              `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
                <button class="btn-link-mini naver" id="linkNaverBtn" title="네이버 계정 연동">N</button>`
-    }
+            }
           </div>
           <div class="nav-actions">
             <button class="btn-manual" id="manualBtn">매뉴얼</button>
@@ -33,10 +98,12 @@ export function getDashboardHTML(user) {
             ${(user && user.username && user.username.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
             <button class="btn-logout" id="logoutBtn">로그아웃</button>
           </div>
-          <span class="user-name mobile-hide" data-user-debug="${user.username}">안녕하세요, <strong>${user.displayName || user.username}</strong>님</span>
+          <span class="user-name mobile-hide" data-user-debug="${user.username}">안녕하세요, <strong>${user.displayName || user.username}</strong>님 ${connectedBadgesHtml}</span>
         </div>
       </header>
       <div class="dashboard-content" id="dashboardContent">
+        ${emailWarning}
+        ${noPasswordWarning}
         ${getMainDashboardContentHTML(user)}
       </div>
 
