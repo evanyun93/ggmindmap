@@ -93,6 +93,14 @@ function initUtilities() {
             }
             try {
                 const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+                console.log('[DEBUG] 토큰 확인 시도: localStorage/sessionStorage에서 토큰 읽기');
+                if (token) {
+                    console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
+                } else {
+                    console.log('[DEBUG] 토큰이 없습니다. 로그인이 필요합니다.');
+                    alert('로그인이 필요합니다');
+                    return;
+                }
                 const response = await apiFetch('/api/auth/settings', {
                     method: 'PATCH',
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -128,9 +136,24 @@ function initUtilities() {
                     ">
                         <h3 style="margin: 0 0 16px; color: #333;">비밀번호 설정</h4>
                         <p style="color: #666; margin-bottom: 20px;">
-                            일반 로그인을 위해 비밀번호를 설정하세요.<br>
+                            일반 로그인을 위해 아이디와 비밀번호를 설정하세요.<br>
                             설정 후에도 소셜 로그인은 계속 사용 가능합니다.
                         </p>
+                        <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <input type="text" id="newLoginId" placeholder="로그인 ID (4자 이상)" style="
+                                flex: 1; padding: 12px;
+                                border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
+                            ">
+                            <button id="checkLoginIdBtn" style="
+                                padding: 12px 16px; background: #6c757d;
+                                color: white; border: none; border-radius: 8px;
+                                cursor: pointer; white-space: nowrap;
+                            ">중복확인</button>
+                        </div>
+                        <div id="loginIdCheckResult" style="
+                            margin-bottom: 12px; font-size: 14px;
+                            display: none; min-height: 20px;
+                        "></div>
                         <input type="password" id="newPassword" placeholder="새 비밀번호 (4자 이상)" style="
                             width: 100%; padding: 12px; margin-bottom: 12px;
                             border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
@@ -143,7 +166,7 @@ function initUtilities() {
                             width: 100%; padding: 14px; background: #28a745;
                             color: white; border: none; border-radius: 8px;
                             font-size: 16px; cursor: pointer;
-                        ">비밀번호 설정</button>
+                        ">설정하기</button>
                         <button id="cancelSetPasswordBtn" style="
                             width: 100%; padding: 10px; margin-top: 10px;
                             background: #f5f5f5; color: #666; border: none;
@@ -155,9 +178,122 @@ function initUtilities() {
 
             document.body.insertAdjacentHTML('beforeend', modalHtml);
 
+            let isLoginIdChecked = false;
+
+            // setTimeout을 사용하여 DOM이 완전히 준비된 후 이벤트 리스너 연결
+            setTimeout(() => {
+                const checkBtn = document.getElementById('checkLoginIdBtn');
+                const resultDiv = document.getElementById('loginIdCheckResult');
+                const loginIdInput = document.getElementById('newLoginId');
+
+                if (!checkBtn || !resultDiv || !loginIdInput) {
+                    console.error('모달 요소를 찾을 수 없습니다.');
+                    return;
+                }
+
+                console.log('[DEBUG] 중복 확인 버튼 이벤트 연결됨');
+
+                // 중복 확인 버튼 이벤트
+                checkBtn.addEventListener('click', async () => {
+                    console.log('[DEBUG] 중복 확인 버튼 클릭됨');
+                    const newLoginId = loginIdInput.value.trim();
+
+                    // 방어 코드: resultDiv 요소 확인
+                    const resultDiv = document.getElementById('loginIdCheckResult');
+                    console.log('[DEBUG] resultDiv 요소 확인:', resultDiv);
+                    if (!resultDiv) {
+                        console.error('[DEBUG] loginIdCheckResult 요소를 찾을 수 없습니다!');
+                        return;
+                    }
+
+                    // 요소 확인을 위한 상세 디버그 로그
+                    console.log('[DEBUG] resultDiv.style.display (초기):', resultDiv.style.display);
+                    console.log('[DEBUG] resultDiv.parentElement:', resultDiv.parentElement);
+
+                    if (!newLoginId || newLoginId.length < 4) {
+                        resultDiv.textContent = '✗ 아이디는 4자 이상이어야 합니다.';
+                        resultDiv.style.color = '#dc3545';
+                        resultDiv.style.display = 'block';
+                        isLoginIdChecked = false;
+                        console.log('[DEBUG] 4자 미만 입력 처리 완료');
+                        return;
+                    }
+
+                     try {
+                         const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+                         console.log('[DEBUG] 토큰 확인 시도: localStorage/sessionStorage에서 토큰 읽기');
+                         if (token) {
+                             console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
+                         } else {
+                             console.log('[DEBUG] 토큰이 없습니다. 로그인이 필요합니다.');
+                             alert('로그인이 필요합니다');
+                             return;
+                         }
+                         console.log('[DEBUG] API 호출 시작: /api/auth/check-login-id?login_id=', newLoginId);
+                         const response = await apiFetch(`/api/auth/check-login-id?login_id=${encodeURIComponent(newLoginId)}`, {
+                             method: 'GET',
+                             headers: { 'Authorization': `Bearer ${token}` }
+                         });
+                         console.log('[DEBUG] API 호출 완료 - 상태 코드:', response.status);
+                         const result = await response.json();
+                         console.log('[DEBUG] 응답 데이터 전체:', result);
+                         console.log('[DEBUG] 중복 확인 결과 - available:', result.available);
+
+                         if (result.available) {
+                             resultDiv.textContent = '✓ 사용 가능한 ID입니다';
+                             resultDiv.style.color = '#28a745';
+                             resultDiv.style.fontWeight = 'bold';
+                             resultDiv.style.display = 'block';
+                             isLoginIdChecked = true;
+                             console.log('[DEBUG] 사용 가능한 ID - UI 업데이트 완료');
+                         } else {
+                             resultDiv.textContent = '✗ 이미 사용 중인 ID입니다';
+                             resultDiv.style.color = '#dc3545';
+                             resultDiv.style.fontWeight = 'bold';
+                             resultDiv.style.display = 'block';
+                             isLoginIdChecked = false;
+                             console.log('[DEBUG] 중복된 ID - UI 업데이트 완료');
+                         }
+
+                         // 최종 상태 확인
+                         console.log('[DEBUG] resultDiv.textContent (최종):', resultDiv.textContent);
+                         console.log('[DEBUG] resultDiv.style.display (최종):', resultDiv.style.display);
+                         console.log('[DEBUG] resultDiv.style.color (최종):', resultDiv.style.color);
+                     } catch (error) {
+                         console.error('[DEBUG] API 호출 중 오류 발생:', error);
+                         console.error('[DEBUG] 오류 상세 정보:', error.message, error.stack);
+                         resultDiv.textContent = '중복 확인 중 오류가 발생했습니다.';
+                         resultDiv.style.color = '#dc3545';
+                         resultDiv.style.display = 'block';
+                         isLoginIdChecked = false;
+                     }
+                });
+
+                // login_id 입력 시 중복 확인 상태 초기화
+                loginIdInput.addEventListener('input', () => {
+                    isLoginIdChecked = false;
+                    const resultDiv = document.getElementById('loginIdCheckResult');
+                    if (resultDiv) {
+                        resultDiv.textContent = '';
+                        resultDiv.style.display = 'none';
+                    }
+                });
+            }, 100);
+
             document.getElementById('doSetPasswordBtn').addEventListener('click', async () => {
+                const newLoginId = document.getElementById('newLoginId').value.trim();
                 const newPassword = document.getElementById('newPassword').value;
                 const confirmPassword = document.getElementById('confirmPassword').value;
+
+                if (!newLoginId || newLoginId.length < 4) {
+                    alert('아이디는 4자 이상이어야 합니다.');
+                    return;
+                }
+
+                if (!isLoginIdChecked) {
+                    alert('아이디 중복 확인을 해주세요.');
+                    return;
+                }
 
                 if (!newPassword || newPassword.length < 4) {
                     alert('비밀번호는 4자 이상이어야 합니다.');
@@ -174,7 +310,7 @@ function initUtilities() {
                     const response = await apiFetch('/api/auth/settings', {
                         method: 'PATCH',
                         headers: { 'Authorization': `Bearer ${token}` },
-                        body: JSON.stringify({ newPassword })
+                        body: JSON.stringify({ newLoginId, newPassword })
                     });
                     const result = await response.json();
 
@@ -184,7 +320,7 @@ function initUtilities() {
                         alert(result.message);
                         window.location.reload();
                     } else {
-                        alert(result.message || '비밀번호 설정에 실패했습니다.');
+                        alert(result.message || '설정에 실패했습니다.');
                     }
                 } catch (error) {
                     alert('서버와 통신할 수 없습니다.');

@@ -21,6 +21,12 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
+// ngrok 브라우저 경고 페이지 스킵
+app.use((req, res, next) => {
+  res.setHeader('ngrok-skip-browser-warning', 'true');
+  next();
+});
+
 // 프론트엔드 정적 파일 제공
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 

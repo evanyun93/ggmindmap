@@ -1,4 +1,5 @@
 const { Pool } = require('pg');
+const Database = require('better-sqlite3');
 require('dotenv').config();
 
 // PostgreSQL 연결 설정
@@ -28,7 +29,7 @@ async function initDatabase() {
       await client.query(`
         CREATE TABLE IF NOT EXISTS tba_users (
           id SERIAL PRIMARY KEY,
-          username VARCHAR(50) UNIQUE NOT NULL,
+          login_id VARCHAR(50) UNIQUE,
           password VARCHAR(255),
           display_name VARCHAR(100),
           social_id VARCHAR(100),
@@ -165,4 +166,27 @@ async function initDatabase() {
   }
 }
 
-module.exports = { pool, initDatabase };
+/**
+ * SQLite 마이그레이션: username 컬럼을 login_id로 이름 변경
+ */
+function migrateSqliteUsernameToLoginId(db) {
+  try {
+    // 테이블 존재 여부 확인
+    const tableInfo = db.prepare("PRAGMA table_info(tba_users)").all();
+    const columns = tableInfo.map(col => col.name);
+
+    if (columns.includes('username') && !columns.includes('login_id')) {
+      // username 컬럼을 login_id로 이름 변경 (SQLite 3.25.0 이상)
+      db.exec(`ALTER TABLE tba_users RENAME COLUMN username TO login_id;`);
+      console.log('✅ SQLite: username 컬럼을 login_id로 이름 변경 완료');
+    } else if (columns.includes('username') && columns.includes('login_id')) {
+      // 둘 다 있는 경우, username 데이터를 login_id로 복사
+      db.exec(`UPDATE tba_users SET login_id = username WHERE login_id IS NULL AND username IS NOT NULL;`);
+      console.log('✅ SQLite: username 데이터를 login_id로 마이그레이션 완료');
+    }
+  } catch (err) {
+    console.log('⚠️ SQLite 마이그레이션 건너뜀 (테이블이 존재하지 않거나 지원되지 않는 기능):', err.message);
+  }
+}
+
+module.exports = { pool, initDatabase, migrateSqliteUsernameToLoginId };

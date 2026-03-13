@@ -19,7 +19,7 @@ router.post('/social-check', async (req, res) => {
 
         // email 필드로 기존 사용자 확인
         const userResult = await pool.query(
-            'SELECT id, username, display_name, provider, email FROM tba_users WHERE email = $1',
+            'SELECT id, login_id, display_name, provider, email FROM tba_users WHERE email = $1',
             [email]
         );
         
@@ -59,11 +59,11 @@ router.post('/social-check', async (req, res) => {
 
 /**
  * 소셜 계정 연동 또는 가입 API
- * - 프론트엔드에서 username/password를 입력받아 연동 또는 가입 후 토큰 발급
+ * - 프론트엔드에서 login_id/password를 입력받아 연동 또는 가입 후 토큰 발급
  */
 router.post('/social-register', async (req, res) => {
     try {
-        const { socialId, provider, displayName, username, password, email, mode } = req.body;
+        const { socialId, provider, displayName, login_id, password, email, mode } = req.body;
 
         if (!socialId || !provider) {
             return res.status(400).json({ success: false, message: '소셜 정보가 부족합니다.' });
@@ -73,11 +73,11 @@ router.post('/social-register', async (req, res) => {
         
         if (mode === 'link') {
             // 기존 일반 계정에 소셜 연동
-            if (!username || !password) {
+            if (!login_id || !password) {
                 return res.status(400).json({ success: false, message: '아이디와 비밀번호를 입력해주세요.' });
             }
 
-            const userResult = await pool.query('SELECT * FROM tba_users WHERE username = $1', [username]);
+            const userResult = await pool.query('SELECT * FROM tba_users WHERE login_id = $1', [login_id]);
             const user = userResult.rows[0];
 
             if (!user) {
@@ -98,7 +98,7 @@ router.post('/social-register', async (req, res) => {
             );
 
             const token = jwt.sign(
-                { id: user.id, username: user.username, displayName: user.display_name },
+                { id: user.id, login_id: user.login_id, displayName: user.display_name },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -111,7 +111,7 @@ router.post('/social-register', async (req, res) => {
                 token,
                 user: {
                     id: user.id,
-                    username: user.username,
+                    login_id: user.login_id,
                     displayName: user.display_name,
                     email: user.email,
                     socialProvider: user.provider,
@@ -122,12 +122,12 @@ router.post('/social-register', async (req, res) => {
             });
         } else {
             // 새 회원가입
-            if (!username || !password) {
+            if (!login_id || !password) {
                 return res.status(400).json({ success: false, message: '아이디와 비밀번호를 입력해주세요.' });
             }
 
             // 아이디 중복 확인
-            const check = await pool.query('SELECT id FROM tba_users WHERE username = $1', [username]);
+            const check = await pool.query('SELECT id FROM tba_users WHERE login_id = $1', [login_id]);
             if (check.rows.length > 0) {
                 return res.status(409).json({ success: false, message: '이미 존재하는 아이디입니다.' });
             }
@@ -136,13 +136,13 @@ router.post('/social-register', async (req, res) => {
             const newSocialIds = [{ provider: provider, socialId: socialId }];
             
             const newUserResult = await pool.query(
-                'INSERT INTO tba_users (username, password, display_name, social_ids, social_id, provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-                [username, hashedPassword, displayName || username, JSON.stringify(newSocialIds), socialId, provider]
+                'INSERT INTO tba_users (login_id, password, display_name, social_ids, social_id, provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+                [login_id, hashedPassword, displayName || login_id, JSON.stringify(newSocialIds), socialId, provider]
             );
             const user = newUserResult.rows[0];
 
             const token = jwt.sign(
-                { id: user.id, username: user.username, displayName: user.display_name },
+                { id: user.id, login_id: user.login_id, displayName: user.display_name },
                 JWT_SECRET,
                 { expiresIn: '7d' }
             );
@@ -155,7 +155,7 @@ router.post('/social-register', async (req, res) => {
                 token,
                 user: {
                     id: user.id,
-                    username: user.username,
+                    login_id: user.login_id,
                     displayName: user.display_name,
                     email: user.email,
                     socialProvider: user.provider,
@@ -183,7 +183,7 @@ router.post('/social-register', async (req, res) => {
  */
 router.post('/social-login', async (req, res) => {
     try {
-        const { socialId, provider, displayName, username, email } = req.body;
+        const { socialId, provider, displayName, login_id, email } = req.body;
 
         if (!socialId || !provider) {
             return res.status(400).json({ success: false, message: '소셜 정보가 부족합니다.' });
@@ -222,7 +222,7 @@ router.post('/social-login', async (req, res) => {
         
         // 먼저 social_ids에서 찾기 (social_ids가 NULL이 아닌 경우만)
         let userResult = await pool.query(
-            'SELECT id, username, social_ids, email FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
+            'SELECT id, login_id, social_ids, email FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
             [JSON.stringify([{ provider: provider, socialId: String(socialId) }])]
         );
         console.log(`[Social Login] Found by social_ids: ${userResult.rows.length} users`);
@@ -235,7 +235,7 @@ router.post('/social-login', async (req, res) => {
         if (!user) {
             console.log(`[Social Login] Not found in social_ids, checking legacy columns...`);
             userResult = await pool.query(
-                'SELECT id, username, social_ids, email, social_id, provider FROM tba_users WHERE social_id = $1 AND provider = $2',
+                'SELECT id, login_id, social_ids, email, social_id, provider FROM tba_users WHERE social_id = $1 AND provider = $2',
                 [socialId, provider]
             );
             if (userResult.rows.length > 0) {
@@ -259,7 +259,7 @@ router.post('/social-login', async (req, res) => {
                     'UPDATE tba_users SET social_ids = $1 WHERE id = $2',
                     [JSON.stringify(socialIdsArray), user.id]
                 );
-                console.log(`[Social Login] Migrated old user to social_ids: ${user.username}`);
+                console.log(`[Social Login] Migrated old user to social_ids: ${user.login_id}`);
             }
         }
 
@@ -273,7 +273,7 @@ router.post('/social-login', async (req, res) => {
             const existingUser = userResult.rows[0];
             
             if (existingUser) {
-                console.log(`[Social Login] Found user by email: ${existingUser.username}, social_ids: ${JSON.stringify(existingUser.social_ids)}`);
+                console.log(`[Social Login] Found user by email: ${existingUser.login_id}, social_ids: ${JSON.stringify(existingUser.social_ids)}`);
                 
                 // 현재 사용자의 social_ids 배열 확인
                 const currentSocialIds = existingUser.social_ids || [];
@@ -283,7 +283,7 @@ router.post('/social-login', async (req, res) => {
                 if (hasSameProvider) {
                     // 그냥 로그인
                     user = existingUser;
-                    console.log(`[Social Login] 기존 ${provider} 계정으로 로그인: ${existingUser.username}`);
+                    console.log(`[Social Login] 기존 ${provider} 계정으로 로그인: ${existingUser.login_id}`);
                 }
                 // Case 2: 다른 소셜에 연동되어 있음 - 같은 이메일なので自動リンク + 데이터 병합
                 else if (currentSocialIds.length > 0) {
@@ -305,7 +305,7 @@ router.post('/social-login', async (req, res) => {
                     
                     userResult = await pool.query('SELECT * FROM tba_users WHERE id = $1', [existingUser.id]);
                     user = userResult.rows[0];
-                    console.log(`[Social Login] 기존 계정에 ${provider} 추가 연동: ${existingUser.username}`);
+                    console.log(`[Social Login] 기존 계정에 ${provider} 추가 연동: ${existingUser.login_id}`);
                 }
                 // Case 3: social_ids가 비어있으면 (일반 가입 or 첫 소셜 연동) - 소셜 연동
                 else {
@@ -317,24 +317,24 @@ router.post('/social-login', async (req, res) => {
                     );
                     userResult = await pool.query('SELECT * FROM tba_users WHERE id = $1', [existingUser.id]);
                     user = userResult.rows[0];
-                    console.log(`[Social Login] 일반 계정에 ${provider} 연동: ${existingUser.username}`);
+                    console.log(`[Social Login] 일반 계정에 ${provider} 연동: ${existingUser.login_id}`);
                 }
             }
         }
 
         // 3. 그래도 없으면 자동 회원가입
         if (!user) {
-            // email이 있으면 username으로 사용, 없으면 socialId 기반
-            const uniqueUsername = email || username || `${provider}_${socialId.substring(0, 10)}`;
+            // email이 있으면 login_id으로 사용, 없으면 socialId 기반
+            const uniqueLogin_id = email || login_id || `${provider}_${socialId.substring(0, 10)}`;
             
             const newSocialIds = [{ provider: provider, socialId: socialId }];
             
             const newUserResult = await pool.query(
-                'INSERT INTO tba_users (username, email, display_name, social_ids, social_id, provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-                [uniqueUsername, email || null, displayName || uniqueUsername, JSON.stringify(newSocialIds), socialId, provider]
+                'INSERT INTO tba_users (login_id, email, display_name, social_ids, social_id, provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+                [uniqueLogin_id, email || null, displayName || uniqueLogin_id, JSON.stringify(newSocialIds), socialId, provider]
             );
             user = newUserResult.rows[0];
-            console.log(`[Social Login] 자동 회원가입: ${uniqueUsername}`);
+            console.log(`[Social Login] 자동 회원가입: ${uniqueLogin_id}`);
         } else {
             // 기존 유저 - 마지막 로그인 시간 업데이트
             // display_name이 기본값이거나 비어있으면 Naver 닉네임으로 업데이트
@@ -346,12 +346,12 @@ router.post('/social-login', async (req, res) => {
                 user.display_name = displayName;
                 console.log(`[Social Login] Updated display_name to: ${displayName}`);
             }
-            console.log(`[Social Login] 기존 계정 로그인: ${user.username}`);
+            console.log(`[Social Login] 기존 계정 로그인: ${user.login_id}`);
         }
 
         // JWT 토큰 발급
         const token = jwt.sign(
-            { id: user.id, username: user.username, displayName: user.display_name },
+            { id: user.id, login_id: user.login_id, displayName: user.display_name },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -364,7 +364,7 @@ router.post('/social-login', async (req, res) => {
             token,
             user: {
                 id: user.id,
-                username: user.username,
+                login_id: user.login_id,
                 displayName: user.display_name,
                 email: user.email,
                 socialProvider: user.provider,
@@ -383,48 +383,48 @@ router.post('/social-login', async (req, res) => {
  * 로그인 API
  * - 일반 로그인
  * - social_ids JSONB 컬럼 사용 (신规)
- * - KaiOS로 가입한 회원이 일반 로그인으로 로그인 시도 시 KaiOS 계정으로 로그인
+ * - 카카오로 가입한 회원이 일반 로그인으로 로그인 시도 시 카카오 계정으로 로그인
  */
 router.post('/login', async (req, res) => {
     try {
-        const { username, password } = req.body;
-        if (!username || !password) {
+        const { login_id, password } = req.body;
+        if (!login_id || !password) {
             return res.status(400).json({ success: false, message: '아이디와 비밀번호를 모두 입력해주세요.' });
         }
 
-        const result = await pool.query('SELECT * FROM tba_users WHERE username = $1', [username]);
+        const result = await pool.query('SELECT * FROM tba_users WHERE login_id = $1', [login_id]);
         const user = result.rows[0];
 
         if (!user) {
-            // 사용자가 없으면 KaiOS로 가입한 회원이 일반 로그인으로 로그인 시도하는 것일 수 있음
-            // social_ids JSONB 컬럼에서 KaiOS 계정 확인
+            // 사용자가 없으면 카카오로 가입한 회원이 일반 로그인으로 로그인 시도하는 것일 수 있음
+            // social_ids JSONB 컬럼에서 카카오 계정 확인
             let kakaoResult = await pool.query(
                 'SELECT * FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
-                [JSON.stringify([{ provider: 'kakao', socialId: username }])]
+                [JSON.stringify([{ provider: 'kakao', socialId: login_id }])]
             );
             
             // Fallback: 기존 social_id + provider 컬럼 확인 (하위 호환)
             if (kakaoResult.rows.length === 0) {
                 kakaoResult = await pool.query(
                     'SELECT * FROM tba_users WHERE social_id = $1 AND provider = $2',
-                    [username, 'kakao']
+                    [login_id, 'kakao']
                 );
             }
             
             if (kakaoResult.rows.length > 0) {
-                // KaiOS 계정을 일반 로그인으로 전환
+                // 카카오 계정을 일반 로그인으로 전환
                 const kakaoUser = kakaoResult.rows[0];
                 const hashedPassword = await bcrypt.hash(password, 10);
                 await pool.query(
-                    'UPDATE tba_users SET username = $1, password = $2, social_ids = $4, social_id = NULL, provider = NULL WHERE id = $3',
-                    [username, hashedPassword, kakaoUser.id, JSON.stringify([])]
+                    'UPDATE tba_users SET login_id = $1, password = $2, social_ids = $4, social_id = NULL, provider = NULL WHERE id = $3',
+                    [login_id, hashedPassword, kakaoUser.id, JSON.stringify([])]
                 );
                 // 업데이트된 사용자 조회
                 const updatedResult = await pool.query('SELECT * FROM tba_users WHERE id = $1', [kakaoUser.id]);
                 const updatedUser = updatedResult.rows[0];
                 
                 const token = jwt.sign(
-                    { id: updatedUser.id, username: updatedUser.username, displayName: updatedUser.display_name },
+                    { id: updatedUser.id, login_id: updatedUser.login_id, displayName: updatedUser.display_name },
                     JWT_SECRET,
                     { expiresIn: '7d' }
                 );
@@ -432,11 +432,11 @@ router.post('/login', async (req, res) => {
                 
                 return res.json({
                     success: true,
-                    message: 'KaiOS 계정을 일반 로그인으로 전환했습니다!',
+                    message: '카카오 계정을 일반 로그인으로 전환했습니다!',
                     token,
                     user: {
                         id: updatedUser.id,
-                        username: updatedUser.username,
+                        login_id: updatedUser.login_id,
                         displayName: updatedUser.display_name,
                         socialProvider: updatedUser.provider,
                         socialIds: updatedUser.social_ids || [],
@@ -465,7 +465,7 @@ router.post('/login', async (req, res) => {
         }
 
         const token = jwt.sign(
-            { id: user.id, username: user.username, displayName: user.display_name },
+            { id: user.id, login_id: user.login_id, displayName: user.display_name },
             JWT_SECRET,
             { expiresIn: '7d' }
         );
@@ -478,7 +478,7 @@ router.post('/login', async (req, res) => {
             token,
             user: {
                 id: user.id,
-                username: user.username,
+                login_id: user.login_id,
                 displayName: user.display_name,
                 email: user.email,
                 socialProvider: user.provider,
@@ -507,7 +507,7 @@ router.get('/verify', async (req, res) => {
         const decoded = jwt.verify(token, JWT_SECRET);
 
         const userResult = await pool.query(
-            'SELECT id, username, display_name, provider, email, todo_auto_delete, social_ids, password FROM tba_users WHERE id = $1',
+            'SELECT id, login_id, display_name, provider, email, todo_auto_delete, social_ids, password FROM tba_users WHERE id = $1',
             [decoded.id]
         );
         const user = userResult.rows[0];
@@ -520,7 +520,7 @@ router.get('/verify', async (req, res) => {
             success: true,
             user: {
                 id: user.id,
-                username: user.username,
+                login_id: user.login_id,
                 displayName: user.display_name,
                 email: user.email,
                 socialProvider: user.provider,
@@ -551,14 +551,14 @@ router.post('/link-social', authenticateToken, async (req, res) => {
         // 1. 해당 socialId가 다른 사용자에게 연동되어 있는지 확인 (social_ids JSONB 컬럼)
         console.log(`[Link Social] Checking - provider=${provider}, socialId=${socialId}, email=${email}`);
         let checkResult = await pool.query(
-            'SELECT id, username, social_ids FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
+            'SELECT id, login_id, social_ids FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
             [JSON.stringify([{ provider: provider, socialId: socialId }])]
         );
 
         // Fallback: 기존 social_id + provider 컬럼 확인 (하위 호환)
         if (checkResult.rows.length === 0) {
             checkResult = await pool.query(
-                'SELECT id, username FROM tba_users WHERE social_id = $1 AND provider = $2',
+                'SELECT id, login_id FROM tba_users WHERE social_id = $1 AND provider = $2',
                 [socialId, provider]
             );
         }
@@ -575,7 +575,7 @@ router.post('/link-social', authenticateToken, async (req, res) => {
         // 2. email로도 확인 (다른 소셜에 연동된 경우)
         if (email) {
             const emailCheck = await pool.query(
-                'SELECT id, username, provider FROM tba_users WHERE email = $1 AND id != $2',
+                'SELECT id, login_id, provider FROM tba_users WHERE email = $1 AND id != $2',
                 [email, userId]
             );
             if (emailCheck.rows.length > 0) {
@@ -608,7 +608,7 @@ router.post('/link-social', authenticateToken, async (req, res) => {
             message: `${provider} 계정이 연동되었습니다!`,
             user: {
                 id: user.id,
-                username: user.username,
+                login_id: user.login_id,
                 displayName: user.display_name,
                 email: user.email,
                 socialProvider: user.provider,
@@ -658,8 +658,8 @@ router.post('/naver-user-info', async (req, res) => {
 /**
  * 소셜 계정 연동 API (legacy - 로그인 안 한 상태에서 연동)
  * - social_ids JSONB 컬럼 사용 (신规)
- * - 이미 KaiOS로 가입한 회원이 일반 로그인 후 KaiOS 연동을 시도할 때
- * - KaiOS 이메일이 현재 username과 일치하면 연동 허용
+ * - 이미 카카오로 가입한 회원이 일반 로그인 후 카카오 연동을 시도할 때
+ * - 카카오 이메일이 현재 login_id과 일치하면 연동 허용
  */
 router.post('/link-social-legacy', async (req, res) => {
     try {
@@ -678,32 +678,32 @@ router.post('/link-social-legacy', async (req, res) => {
             return res.status(400).json({ success: false, message: '소셜 정보가 부족합니다.' });
         }
 
-        // 1. KaiOS socialId가 다른 계정에 연동되어 있는지 확인 (social_ids JSONB 컬럼)
+        // 1. 카카오 socialId가 다른 계정에 연동되어 있는지 확인 (social_ids JSONB 컬럼)
         let checkResult = await pool.query(
-            'SELECT id, username, social_ids FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
+            'SELECT id, login_id, social_ids FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
             [JSON.stringify([{ provider: provider, socialId: socialId }])]
         );
 
         // Fallback: 기존 social_id + provider 컬럼 확인 (하위 호환)
         if (checkResult.rows.length === 0) {
             checkResult = await pool.query(
-                'SELECT id, username FROM tba_users WHERE social_id = $1 AND provider = $2',
+                'SELECT id, login_id FROM tba_users WHERE social_id = $1 AND provider = $2',
                 [socialId, provider]
             );
         }
 
         if (checkResult.rows.length > 0) {
             const linkedUser = checkResult.rows[0];
-            // 만약 KaiOS 계정의 username이 현재 사용자의 username과 같으면 (같은 이메일)
+            // 만약 카카오 계정의 login_id이 현재 사용자의 login_id과 같으면 (같은 이메일)
             // 이는 같은 사람으로 보고 연동 허용
-            if (linkedUser.username === decoded.username || (email && linkedUser.username === email)) {
+            if (linkedUser.login_id === decoded.login_id || (email && linkedUser.login_id === email)) {
                 // 이미 연동되어 있음 - 그대로 성공 응답
                 return res.json({ success: true, message: '이미 연동되어 있습니다.' });
             }
             return res.status(409).json({ success: false, message: '이미 다른 계정에 연동된 소셜 정보입니다.' });
         }
 
-        // 2. 현재 사용자에게 KaiOS 정보 연동 (social_ids 배열에 추가)
+        // 2. 현재 사용자에게 카카오 정보 연동 (social_ids 배열에 추가)
         const userResult = await pool.query('SELECT social_ids FROM tba_users WHERE id = $1', [userId]);
         const currentSocialIds = userResult.rows[0]?.social_ids || [];
         const newSocialIds = [...currentSocialIds, { provider: provider, socialId: socialId }];
@@ -726,12 +726,12 @@ router.post('/link-social-legacy', async (req, res) => {
  */
 router.post('/register', async (req, res) => {
     try {
-        const { username, password, displayName, email } = req.body;
-        if (!username || !password) {
+        const { login_id, password, displayName, email } = req.body;
+        if (!login_id || !password) {
             return res.status(400).json({ success: false, message: '필수 정보를 모두 입력해주세요.' });
         }
 
-        const check = await pool.query('SELECT id FROM tba_users WHERE username = $1', [username]);
+        const check = await pool.query('SELECT id FROM tba_users WHERE login_id = $1', [login_id]);
         if (check.rows.length > 0) {
             return res.status(409).json({ success: false, message: '이미 존재하는 아이디입니다.' });
         }
@@ -746,8 +746,8 @@ router.post('/register', async (req, res) => {
 
         const hashedPassword = await bcrypt.hash(password, 10);
         await pool.query(
-            'INSERT INTO tba_users (username, password, display_name, email) VALUES ($1, $2, $3, $4)',
-            [username, hashedPassword, displayName || username, email || null]
+            'INSERT INTO tba_users (login_id, password, display_name, email) VALUES ($1, $2, $3, $4)',
+            [login_id, hashedPassword, displayName || login_id, email || null]
         );
 
         res.status(201).json({ success: true, message: '회원가입 성공!' });
@@ -769,7 +769,7 @@ router.get('/admin/users', async (req, res) => {
         const query = `
             SELECT 
                 u.id, 
-                u.username, 
+                u.login_id, 
                 u.display_name, 
                 u.provider, 
                 u.created_at, 

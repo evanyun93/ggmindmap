@@ -10,7 +10,7 @@ const { JWT_SECRET } = require('../middleware/authHandler');
 router.get('/', async (req, res) => {
     try {
         const result = await pool.query(`
-      SELECT f.id, f.content, f.created_at, u.display_name, u.username
+      SELECT f.id, f.content, f.created_at, u.display_name, u.login_id
       FROM tba_feedback f
       LEFT JOIN tba_users u ON f.user_id = u.id
       ORDER BY f.created_at DESC
@@ -70,7 +70,7 @@ router.delete('/:id', async (req, res) => {
         const token = authHeader.split(' ')[1];
         const decoded = jwt.verify(token, JWT_SECRET);
 
-        if (decoded.username !== 'admin') {
+        if (decoded.login_id !== 'admin') {
             return res.status(403).json({ success: false, message: '관리자만 삭제할 수 있습니다.' });
         }
 

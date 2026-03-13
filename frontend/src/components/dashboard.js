@@ -15,7 +15,7 @@ export function getDashboardHTML(user) {
   // social_ids 배열에서 연결된 provider 목록 추출 (하위 호환성: socialProvider도 확인)
   const socialIds = user.socialIds || [];
   const connectedProviders = socialIds.map(s => s.provider).filter(Boolean);
-  
+
   // 단일 provider 필드도 하위 호환성을 위해 확인
   if (user.socialProvider && !connectedProviders.includes(user.socialProvider)) {
     connectedProviders.push(user.socialProvider);
@@ -51,7 +51,7 @@ export function getDashboardHTML(user) {
       align-items: center; justify-content: space-between; gap: 12px;
       border: 1px solid #ffeeba;
     ">
-      <span>📧 이메일을 등록하면 KaiOS/네이버 계정과 연동할 수 있습니다.</span>
+      <span>📧 이메일을 등록하면 카카오/네이버 계정과 연동할 수 있습니다.</span>
       <button id="addEmailBtn" style="
         background: #ffc107; border: none; padding: 6px 12px; 
         border-radius: 4px; cursor: pointer; font-weight: 600;
@@ -68,7 +68,7 @@ export function getDashboardHTML(user) {
       align-items: center; justify-content: space-between; gap: 12px;
       border: 1px solid #b8daff;
     ">
-      <span>🔐 일반 로그인을 위해 비밀번호를 설정하세요.</span>
+      <span>🔐 일반 로그인을 위해 아이디와 비밀번호를 설정 해보세요.</span>
       <button id="setPasswordBtn" style="
         background: #007bff; color: white; border: none; padding: 6px 12px; 
         border-radius: 4px; cursor: pointer; font-weight: 600;
@@ -86,19 +86,19 @@ export function getDashboardHTML(user) {
         </div>
         <div class="user-section">
           <div class="account-link-zone">
-            ${connectedProviders.length > 0 ? 
-              `${connectedBadgesHtml} ${linkButtonsHtml}` : 
-              `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
+            ${connectedProviders.length > 0 ?
+      `${connectedBadgesHtml} ${linkButtonsHtml}` :
+      `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
                <button class="btn-link-mini naver" id="linkNaverBtn" title="네이버 계정 연동">N</button>`
-            }
+    }
           </div>
           <div class="nav-actions">
             <button class="btn-manual" id="manualBtn">매뉴얼</button>
             <button class="btn-feedback" id="feedbackBtn">소리함</button>
-            ${(user && user.username && user.username.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
+            ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
             <button class="btn-logout" id="logoutBtn">로그아웃</button>
           </div>
-          <span class="user-name mobile-hide" data-user-debug="${user.username}">안녕하세요, <strong>${user.displayName || user.username}</strong>님 ${connectedBadgesHtml}</span>
+          <span class="user-name mobile-hide" data-user-debug="${user.login_id}">안녕하세요, <strong>${user.displayName || user.login_id}</strong>님 ${connectedBadgesHtml}</span>
         </div>
       </header>
       <div class="dashboard-content" id="dashboardContent">
@@ -228,7 +228,7 @@ export function getMainDashboardContentHTML(user) {
               <div class="mega-logo">
                 ${getLogoSVG()}
               </div>
-              <h1>${user.displayName || user.username}'s MindMap</h1>
+              <h1>${user.displayName || user.login_id}'s MindMap</h1>
             </div>
           </div>
 

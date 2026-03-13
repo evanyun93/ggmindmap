@@ -106,7 +106,7 @@ function loginWithKakao() {
             Kakao.API.request({
                 url: '/v2/user/me',
                 success: async function (res) {
-                    let nickname = '카카오 사용자';
+                    let nickname = null;
                     if (res.kakao_account?.profile?.nickname) nickname = res.kakao_account.profile.nickname;
                     else if (res.properties?.nickname) nickname = res.properties.nickname;
 
@@ -118,7 +118,7 @@ function loginWithKakao() {
                         socialId: res.id.toString(),
                         provider: 'kakao',
                         displayName: nickname,
-                        username: email || `kakao_${res.id}`,
+                        login_id: null,
                         email: email
                     });
                 }
@@ -167,19 +167,18 @@ window.addEventListener('message', async (e) => {
             
             if (result.success && result.data) {
                 const naverUser = result.data;
-                console.log('[Naver Login] User data:', naverUser);
-                
-                // Naver ID는 고유하므로 이를 사용 (형식: naver_user_xxx)
-                const naverId = 'naver_user_' + naverUser.id;
-                console.log('[Naver Login] Using socialId:', naverId);
+                console.log('[Naver Login] Raw Naver API response:', naverUser);
+                console.log('[Naver Login] Name:', naverUser.name);
+                console.log('[Naver Login] Email:', naverUser.email);
+                console.log('[Naver Login] Using socialId:', naverUser.id);
                 
                 // 이메일이 있어도 우선 로그인 시도 (백엔드에서 기존 계정 확인)
                 // 백엔드가 자동으로 기존 계정 여부를 확인하고 처리
                 await processSocialLogin({
-                    socialId: naverId,
+                    socialId: naverUser.id,
                     provider: 'naver',
-                    displayName: naverUser.nickname || '네이버 사용자',
-                    username: naverUser.email?.split('@')[0] || naverId,
+                    displayName: naverUser.name,
+                    login_id: null,
                     email: naverUser.email || null
                 });
             } else {
@@ -246,8 +245,8 @@ function showEmailInputModal(naverUser) {
         await processSocialLogin({
             socialId: naverId,
             provider: 'naver',
-            displayName: naverUser.nickname || '네이버 사용자',
-            username: email.split('@')[0],
+            displayName: naverUser.nickname || displayName,
+            login_id: null,
             email: email
         });
     });
@@ -329,7 +328,7 @@ async function doSocialLogin(socialData, mode) {
             if (token) {
                 try {
                     const payload = JSON.parse(atob(token.split('.')[1]));
-                    socialData.currentUsername = payload.username;
+                    socialData.currentLoginId = payload.login_id;
                 } catch (e) {
                     console.error('JWT 디코드 실패:', e);
                 }
@@ -400,10 +399,10 @@ function showSocialLinkModal(socialData, email) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     document.getElementById('doLinkBtn').addEventListener('click', async () => {
-        const username = document.getElementById('linkUsername').value;
+        const login_id = document.getElementById('linkUsername').value;
         const password = document.getElementById('linkPassword').value;
 
-        if (!username || !password) {
+        if (!login_id || !password) {
             alert('아이디와 비밀번호를 모두 입력해 주세요.');
             return;
         }
@@ -414,7 +413,7 @@ function showSocialLinkModal(socialData, email) {
                 method: 'POST',
                 body: JSON.stringify({
                     ...socialData,
-                    username,
+                    login_id,
                     password,
                     mode: 'link'
                 })
@@ -443,8 +442,8 @@ function showSocialLinkModal(socialData, email) {
  * 소셜 회원가입 모달 표시
  */
 function showSocialRegisterModal(socialData) {
-    // 기본 이메일에서 username 제안
-    const suggestedUsername = socialData.email ? socialData.email.split('@')[0] : '';
+    // 기본 이메일에서 login_id 제안
+    const suggestedLoginId = socialData.email ? socialData.email.split('@')[0] : '';
 
     const modalHtml = `
         <div id="socialRegisterModal" style="
@@ -460,7 +459,7 @@ function showSocialRegisterModal(socialData) {
                 <p style="color: #666; margin-bottom: 20px;">
                     사용할 아이디와 비밀번호를 입력해 주세요.
                 </p>
-                <input type="text" id="socialRegUsername" placeholder="아이디" value="${suggestedUsername}" style="
+                <input type="text" id="socialRegLoginId" placeholder="아이디" value="${suggestedLoginId}" style="
                     width: 100%; padding: 12px; margin-bottom: 12px;
                     border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box;
                 ">
@@ -485,12 +484,12 @@ function showSocialRegisterModal(socialData) {
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
     document.getElementById('socialDoRegisterBtn').addEventListener('click', async () => {
-        const username = document.getElementById('socialRegUsername').value;
+        const login_id = document.getElementById('socialRegLoginId').value;
         const password = document.getElementById('socialRegPassword').value;
 
-        console.log('가입 시도 - username:', username, 'password:', password);
+        console.log('가입 시도 - login_id:', login_id, 'password:', password);
 
-        if (!username || !password) {
+        if (!login_id || !password) {
             alert('아이디와 비밀번호를 모두 입력해 주세요.');
             return;
         }
