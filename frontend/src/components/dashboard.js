@@ -213,6 +213,10 @@ export function getDashboardHTML(user) {
           <div class="nav-actions">
             <button class="btn-manual" id="manualBtn">매뉴얼</button>
             <button class="btn-feedback" id="feedbackBtn">소리함</button>
+            <button class="btn-reorder mobile-only-btn" id="mobileReorderBtn" title="위젯 이동 모드">
+                <span class="btn-icon">🔄</span>
+                <span class="btn-text">이동</span>
+            </button>
             ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
             <button class="btn-logout" id="logoutBtn">로그아웃</button>
           </div>
@@ -359,13 +363,6 @@ export function getMainDashboardContentHTML(user) {
           <!-- 하단: 위젯 섹션 (Wide Whiteboard) -->
           <div class="widgets-section wide-layout">
             <div class="dashboard-grid-v2" id="widgetGrid">
-              <!-- 테마 선택 UI: 화이트보드 우상단으로 이동 -->
-              <div class="theme-picker-premium whiteboard-theme-picker">
-                <button class="theme-chip midnight active" data-theme="midnight" title="Midnight"></button>
-                <button class="theme-chip blueprint" data-theme="blueprint" title="Blueprint"></button>
-                <button class="theme-chip classic" data-theme="classic" title="Classic"></button>
-                <button class="theme-chip dark" data-theme="dark" title="Dark"></button>
-              </div>
               <!-- 동적 위젯이 여기에 렌더링됩니다 -->
             </div>
           </div>

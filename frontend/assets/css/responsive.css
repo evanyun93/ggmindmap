@@ -140,6 +140,45 @@
     transition: transform 0.4s cubic-bezier(0.23, 1, 0.32, 1), scale 0.3s ease !important;
   }
 
+  /* 이동 모드 활성화 시 위젯 스타일 */
+  .move-mode-active .draggable-widget {
+    border: 1px solid rgba(139, 92, 246, 0.5) !important;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2) !important;
+    animation: widget-vibrate 0.3s infinite ease-in-out;
+  }
+
+  .move-mode-active .draggable-widget::after {
+    content: '🖐️ Drag to Move';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    pointer-events: none;
+    z-index: 10;
+    opacity: 0.8;
+  }
+
+  @keyframes widget-vibrate {
+    0% { transform: rotate(0.1deg); }
+    50% { transform: rotate(-0.1deg); }
+    100% { transform: rotate(0.1deg); }
+  }
+
+  /* 위젯 내부 조작 방해 금지 */
+  .move-mode-active .draggable-widget * {
+    pointer-events: none !important;
+  }
+  
+  .move-mode-active .draggable-widget .drag-handle {
+    pointer-events: auto !important;
+  }
+
   /* 위젯 내부 요소 조정 */
   .widget-header {
     height: auto !important;
@@ -276,20 +315,7 @@
   }
 }
 
-.whiteboard-theme-picker {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  z-index: 100;
-  display: flex;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 10px 20px;
-  border-radius: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-}
+/* .whiteboard-theme-picker는 제거됨 */
 
 .draggable-widget {
   position: absolute;

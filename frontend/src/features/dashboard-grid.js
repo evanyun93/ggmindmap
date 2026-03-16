@@ -11,6 +11,9 @@ import { initMobileScrollController } from './dashboard-grid-mobile-scroll.js';
 import { initWelcomeSection, initTheme } from './dashboard-grid-ui.js';
 import { API_BASE, apiFetch } from '../services/api.js';
 
+// 모바일 이동 모드 상태
+let isMoveModeActive = false;
+
 export function initDashboardGrid() {
     console.log('[DashboardGrid] 그리드 초기화 시작');
     const grid = document.getElementById('widgetGrid');
@@ -18,6 +21,23 @@ export function initDashboardGrid() {
     const dashboardContent = document.getElementById('dashboardContent');
     const widgetsSection = grid.closest('.widgets-section');
     const longPressScope = dashboardContent || widgetsSection || grid;
+
+    // 모바일 이동 모드 버튼 연결
+    const mobileReorderBtn = document.getElementById('mobileReorderBtn');
+    if (mobileReorderBtn) {
+        mobileReorderBtn.onclick = () => {
+            isMoveModeActive = !isMoveModeActive;
+            mobileReorderBtn.classList.toggle('active', isMoveModeActive);
+            grid.classList.toggle('move-mode-active', isMoveModeActive);
+            
+            // 모드 변경 시 간단한 햅틱 피드백
+            if (window.navigator.vibrate) window.navigator.vibrate(50);
+            
+            // 버튼 텍스트 변경
+            const btnText = mobileReorderBtn.querySelector('.btn-text');
+            if (btnText) btnText.textContent = isMoveModeActive ? '완료' : '이동';
+        };
+    }
 
     const TOUCH_DEBUG = false;
     const logTouchDebug = (label, extra = {}) => {
@@ -45,6 +65,9 @@ export function initDashboardGrid() {
     let touchStartY = 0;
 
     const openGridContextMenu = (clientX, clientY) => {
+        // 이동 모드 중에는 컨텍스트 메뉴 차단
+        if (window.innerWidth <= 768 && isMoveModeActive) return;
+
         logTouchDebug('openGridContextMenu', { clientX, clientY });
         contextMenu.show(clientX, clientY, [
             {
@@ -172,6 +195,10 @@ export function initDashboardGrid() {
         });
 
         clearLongPressTimer();
+        
+        // 이동 모드 활성 중이면 롱프레스(컨텍스트 메뉴) 차단
+        if (window.innerWidth <= 768 && isMoveModeActive) return;
+
         longPressTimer = setTimeout(() => {
             logTouchDebug('longPressTimer fired', { x: touchStartX, y: touchStartY });
             openGridContextMenu(touchStartX, touchStartY);
@@ -320,9 +347,12 @@ export function setupDraggable(widget, grid) {
 
     function startDrag(e) {
         if (isDragStarted) return;
-        isDragStarted = true;
-
+        
         const isMobile = window.innerWidth <= 768;
+        // 모바일인 경우 이동 모드가 활성화되어 있어야만 드래그 시작
+        if (isMobile && !isMoveModeActive) return;
+
+        isDragStarted = true;
         let ghost = null;
 
         if (isMobile) {
