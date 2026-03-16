@@ -36,45 +36,120 @@ export function getDashboardHTML(user) {
     .map(provider => getProviderBadge(provider, true))
     .join(' ');
 
-  // 연결되지 않은 프로바이ader에 대한 링크 버튼 생성
-  const allProviders = ['kakao', 'naver', 'github', 'google'];
+  // 연결되지 않은 프로바이더에 대한 링크 버튼 생성 (모달 창 내부용)
+  const allProviders = ['kakao', 'naver', 'google'];
   const unconnectedProviders = allProviders.filter(p => !connectedProviders.includes(p));
-  const linkButtonsHtml = unconnectedProviders
-    .map(provider => `<button class="btn-link-mini ${provider}" id="link${provider.charAt(0).toUpperCase() + provider.slice(1)}Btn" title="${provider} 계정 연동">${provider === 'kakao' ? 'K' : (provider === 'naver' ? 'N' : (provider === 'github' ? 'G' : 'G'))}</button>`)
-    .join(' ');
+  
+  const socialLinkCards = unconnectedProviders.map(provider => {
+      let bgColor, textColor, label, icon;
+      if (provider === 'kakao') { bgColor = '#FEE500'; textColor = '#000000'; label = '카카오 계정 연동'; icon = 'K'; }
+      else if (provider === 'naver') { bgColor = '#03C75A'; textColor = '#FFFFFF'; label = '네이버 계정 연동'; icon = 'N'; }
+      else if (provider === 'google') { bgColor = '#FFFFFF'; textColor = '#000000'; label = 'Google 계정 연동'; icon = 'G'; }
+      
+      return `
+        <button id="link${provider.charAt(0).toUpperCase() + provider.slice(1)}Btn" style="
+            width: 100%; padding: 12px; margin-bottom: 8px; border: ${provider==='google'?'1px solid #ddd':'none'};
+            border-radius: 8px; background: ${bgColor}; color: ${textColor};
+            font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;
+            transition: opacity 0.2s;
+        " onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+            <span style="font-weight: 800; font-size: 16px;">${icon}</span> ${label}
+        </button>
+      `;
+  }).join('');
+  
+  const connectedSocialCards = connectedProviders.map(provider => {
+      let label = provider === 'kakao' ? '카카오' : (provider === 'naver' ? '네이버' : (provider === 'github' ? 'GitHub' : 'Google'));
+      return `
+        <div style="width: 100%; padding: 12px; margin-bottom: 8px; border: 1px solid #eee; border-radius: 8px; background: #f8f9fa; color: #6c757d; font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
+            <span>✔️ ${label} 연동됨</span>
+            <span style="font-size: 12px; color: #17a2b8; font-weight: 600;">연결됨</span>
+        </div>
+      `;
+  }).join('');
 
-  // 이메일 미등록 알림 (이메일이 없는 모든 사용자)
-  const emailWarning = !user.email ? `
-    <div class="email-warning" style="
-      background: #fff3cd; color: #856404; padding: 12px 16px; 
-      border-radius: 8px; margin-bottom: 16px; display: flex; 
-      align-items: center; justify-content: space-between; gap: 12px;
-      border: 1px solid #ffeeba;
-    ">
-      <span>📧 이메일을 등록하면 카카오/네이버 계정과 연동할 수 있습니다.</span>
-      <button id="addEmailBtn" style="
-        background: #ffc107; border: none; padding: 6px 12px; 
-        border-radius: 4px; cursor: pointer; font-weight: 600;
-      ">이메일 추가</button>
+  const socialIntegrationSection = `
+    <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">소셜 계정 연동</h4>
+        ${connectedSocialCards}
+        ${socialLinkCards}
     </div>
-  ` : '';
+  `;
 
-  // 비밀번호 미설정 알림 (tba_users 테이블의 password 필드가 비어있을 때만 표시)
-  console.log('[Dashboard] user.hasPassword:', user.hasPassword, 'user.socialIds:', user.socialIds);
-  const noPasswordWarning = !user.hasPassword ? `
-    <div class="password-warning" style="
-      background: #cce5ff; color: #004085; padding: 12px 16px; 
-      border-radius: 8px; margin-bottom: 16px; display: flex; 
-      align-items: center; justify-content: space-between; gap: 12px;
-      border: 1px solid #b8daff;
-    ">
-      <span>🔐 일반 로그인을 위해 아이디와 비밀번호를 설정 해보세요.</span>
-      <button id="setPasswordBtn" style="
-        background: #007bff; color: white; border: none; padding: 6px 12px; 
-        border-radius: 4px; cursor: pointer; font-weight: 600;
-      ">비밀번호 설정</button>
+  // 이메일 미등록 알림
+  const needsEmail = !user.email;
+  const needsPassword = !user.hasPassword;
+
+  let warningsCards = '';
+  if (needsEmail) {
+    warningsCards += `
+      <div style="background: #fff3cd; color: #856404; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #ffeeba; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 14px;">📧 이메일을 등록하면 카카오/네이버 계정과 연동할 수 있습니다.</span>
+        <button id="addEmailBtn" style="background: #ffc107; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: 600; text-align: center;">이메일 추가</button>
+      </div>
+    `;
+  }
+  if (needsPassword) {
+    warningsCards += `
+      <div style="background: #cce5ff; color: #004085; padding: 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #b8daff; display: flex; flex-direction: column; gap: 8px;">
+        <span style="font-size: 14px;">🔐 일반 로그인을 위해 아이디와 비밀번호를 설정 해보세요.</span>
+        <button id="setPasswordBtn" style="background: #007bff; color: white; border: none; padding: 8px; border-radius: 4px; cursor: pointer; font-weight: 600; text-align: center;">비밀번호 설정</button>
+      </div>
+    `;
+  }
+  
+  if (!needsEmail && !needsPassword) {
+      warningsCards = `
+        <div style="text-align: center; padding: 24px; color: #28a745; background: #e8f5e9; border-radius: 8px; margin-bottom: 16px; font-weight: 500;">
+           ✔️ 모든 권장 설정이 완료되었습니다.
+        </div>
+      `;
+  }
+
+  const passwordResetSection = `
+    <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">보안</h4>
+        <button id="openPasswordResetSubBtn" style="width: 100%; padding: 10px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px;">🔒 비밀번호 변경</button>
     </div>
-  ` : '';
+  `;
+
+  // --- Sub-View (Hidden by default) for Password Reset ---
+  const passwordResetSubView = `
+    <div id="passwordResetSubView" style="display: none; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: #333; font-size: 16px;">비밀번호 변경</h4>
+            <button id="closePasswordResetSubBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        <div id="pwdResetStep1">
+            <input type="email" id="resetEmail" placeholder="가입한 이메일 입력" value="${user.email || ''}" ${user.email ? 'readonly' : ''} style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; background: ${user.email ? '#f8f9fa' : '#fff'}; color: ${user.email ? '#6c757d' : '#000'};">
+            <button id="sendResetCodeBtn" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">인증번호 발송</button>
+        </div>
+        <div id="pwdResetStep2" style="display: none; margin-top: 12px; background: #f8f9fa; padding: 12px; border-radius: 8px; border: 1px solid #e9ecef;">
+            <p style="font-size: 12px; color: #28a745; margin-top: 0; margin-bottom: 8px;">✔️ 인증번호가 이메일로 발송되었습니다. (10분 유효)</p>
+            <input type="text" id="resetCode" placeholder="6자리 인증번호" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+            <input type="password" id="resetNewPassword" placeholder="새 비밀번호 입력 (4자 이상)" style="width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box;">
+            <button id="verifyAndResetPwdBtn" style="width: 100%; padding: 10px; background: #28a745; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">비밀번호 변경 완료</button>
+        </div>
+    </div>
+  `;
+
+  const setupModalOverlay = `
+    <div id="setupWarningModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9000; justify-content: center; align-items: center;">
+      <div style="background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+        
+        <div id="mainSettingsView">
+            <h3 style="margin-top: 0; color: #333; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 12px;">내 정보 / 설정</h3>
+            ${warningsCards}
+            ${socialIntegrationSection}
+            ${passwordResetSection}
+            <button id="closeSetupWarningBtn" style="width: 100%; padding: 10px; background: #f1f3f5; color: #495057; border: none; border-radius: 6px; cursor: pointer; margin-top: 16px; font-weight: 600; transition: background 0.2s;">닫기</button>
+        </div>
+        
+        ${passwordResetSubView}
+
+      </div>
+    </div>
+  `;
 
   return `
     <div class="bg-particles" id="particles2"></div>
@@ -85,25 +160,23 @@ export function getDashboardHTML(user) {
           <h2>MindMap</h2>
         </div>
         <div class="user-section">
-          <div class="account-link-zone">
-            ${connectedProviders.length > 0 ?
-      `${connectedBadgesHtml} ${linkButtonsHtml}` :
-      `<button class="btn-link-mini kakao" id="linkKakaoBtn" title="카카오 계정 연동">K</button>
-               <button class="btn-link-mini naver" id="linkNaverBtn" title="네이버 계정 연동">N</button>`
-    }
-          </div>
           <div class="nav-actions">
             <button class="btn-manual" id="manualBtn">매뉴얼</button>
             <button class="btn-feedback" id="feedbackBtn">소리함</button>
             ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
             <button class="btn-logout" id="logoutBtn">로그아웃</button>
           </div>
-          <span class="user-name mobile-hide" data-user-debug="${user.login_id}">안녕하세요, <strong>${user.displayName || user.login_id}</strong>님 ${connectedBadgesHtml}</span>
+          <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
+            <div class="avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              ${(user.displayName || user.login_id).charAt(0).toUpperCase()}
+            </div>
+            <span class="user-name mobile-hide" data-user-debug="${user.login_id}" style="font-size: 14px; font-weight: 500;"><strong>${user.displayName || user.login_id}</strong>님</span>
+            <span class="badges-wrapper mobile-hide" style="display: flex; gap: 4px;">${connectedBadgesHtml}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-left: 4px;"><path d="M11.4 18.16l-7.2-7.2a2 2 0 0 1 0-2.83l7.2-7.2a2 2 0 0 1 2.83 2.83L8.66 9.4h11.18a2 2 0 0 1 2 2v1.2a2 2 0 0 1-2 2H8.66l5.57 5.57a2 2 0 0 1-2.83 2.83z" display="none"/><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
         </div>
       </header>
       <div class="dashboard-content" id="dashboardContent">
-        ${emailWarning}
-        ${noPasswordWarning}
         ${getMainDashboardContentHTML(user)}
       </div>
 
@@ -161,6 +234,7 @@ export function getDashboardHTML(user) {
 
       <div id="spreadsheet-widget"></div>
       </div>
+      ${setupModalOverlay}
     </div>
     </div>
   `;

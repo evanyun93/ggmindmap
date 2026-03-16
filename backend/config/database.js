@@ -37,6 +37,8 @@ async function initDatabase() {
           last_login_at TIMESTAMP,
           todo_auto_delete BOOLEAN DEFAULT FALSE,
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          reset_code VARCHAR(10),
+          reset_code_expires_at TIMESTAMP,
           UNIQUE(social_id, provider)
         );
       `);
@@ -48,6 +50,8 @@ async function initDatabase() {
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS social_id VARCHAR(100);
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS provider VARCHAR(20);
         ALTER TABLE tba_users ALTER COLUMN password DROP NOT NULL;
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10);
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMP;
       `);
 
       // email 필드 추가 (중복 가입 방지)

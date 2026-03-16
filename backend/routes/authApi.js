@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../config/database');
 const { JWT_SECRET, authenticateToken } = require('../middleware/authHandler');
+const { sendPasswordResetEmail } = require('../utils/emailService');
 
 /**
  * 소셜 로그인 시도 전 기존 사용자 확인 API (legacy - 이제 사용 안 함)
@@ -865,6 +866,131 @@ router.patch('/settings', authenticateToken, async (req, res) => {
     } catch (error) {
         console.error('설정 업데이트 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 비밀번호 재설정 - 1. 인증번호 요청 API
+ * POST /api/auth/request-password-reset
+ */
+router.post('/request-password-reset', async (req, res) => {
+    try {
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({ success: false, message: '이메일을 입력해 주세요.' });
+        }
+
+        // 1. 해당 이메일로 가입된 유저 찾기
+        const userResult = await pool.query('SELECT id, login_id FROM tba_users WHERE email = $1', [email]);
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: '해당 이메일로 가입된 계정을 찾을 수 없습니다.' });
+        }
+
+        const user = userResult.rows[0];
+
+        // 2. 6자리 랜덤 인증번호 생성
+        const resetCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // 3. 만료 시간 설정 (10분 후)
+        const expiresAt = new Date();
+        expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+        // 4. DB에 인증번호와 만료 시간 저장
+        await pool.query(
+            'UPDATE tba_users SET reset_code = $1, reset_code_expires_at = $2 WHERE id = $3',
+            [resetCode, expiresAt, user.id]
+        );
+
+        // 5. 이메일 발송
+        await sendPasswordResetEmail(email, resetCode);
+
+        res.json({ success: true, message: '이메일로 인증번호가 발송되었습니다. 10분 내에 입력해 주세요.' });
+    } catch (error) {
+        console.error('인증번호 요청 에러:', error);
+        res.status(500).json({ success: false, message: '인증번호 발송 중 서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 비밀번호 재설정 - 2. 인증번호 확인 및 비밀번호 변경 API
+ * POST /api/auth/verify-password-reset
+ */
+router.post('/verify-password-reset', async (req, res) => {
+    try {
+        const { email, code, newPassword } = req.body;
+
+        if (!email || !code || !newPassword) {
+            return res.status(400).json({ success: false, message: '모든 정보를 입력해 주세요.' });
+        }
+
+        if (newPassword.length < 4) {
+            return res.status(400).json({ success: false, message: '새 비밀번호는 4자 이상이어야 합니다.' });
+        }
+
+        // 1. 사용자 찾기 및 인증번호 확인
+        const userResult = await pool.query(
+            'SELECT id, reset_code, reset_code_expires_at FROM tba_users WHERE email = $1',
+            [email]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(404).json({ success: false, message: '사용자를 찾을 수 없습니다.' });
+        }
+
+        const user = userResult.rows[0];
+
+        // 2. 인증번호 검증
+        if (!user.reset_code || user.reset_code !== code) {
+            return res.status(400).json({ success: false, message: '잘못된 인증번호입니다.' });
+        }
+
+        // 3. 만료 시간 검증
+        if (new Date() > new Date(user.reset_code_expires_at)) {
+            // 토큰 만료됨, 초기화
+            await pool.query(
+                'UPDATE tba_users SET reset_code = NULL, reset_code_expires_at = NULL WHERE id = $1',
+                [user.id]
+            );
+            return res.status(400).json({ success: false, message: '인증번호가 만료되었습니다. 다시 요청해 주세요.' });
+        }
+
+        // 4. 비밀번호 암호화 및 업데이트 (인증 정보 초기화 포함)
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await pool.query(
+            'UPDATE tba_users SET password = $1, reset_code = NULL, reset_code_expires_at = NULL WHERE id = $2',
+            [hashedPassword, user.id]
+        );
+
+        res.json({ success: true, message: '비밀번호가 성공적으로 변경되었습니다! 새 비밀번호로 로그인해 주세요.' });
+    } catch (error) {
+        console.error('비밀번호 변경 에러:', error);
+        res.status(500).json({ success: false, message: '비밀번호 변경 중 서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 아이디 중복 확인 API
+ * GET /api/auth/check-login-id?login_id=...
+ */
+router.get('/check-login-id', async (req, res) => {
+    try {
+        const { login_id } = req.query;
+
+        if (!login_id) {
+            return res.status(400).json({ success: false, message: '아이디를 입력해 주세요.' });
+        }
+
+        const userResult = await pool.query('SELECT id FROM tba_users WHERE login_id = $1', [login_id]);
+
+        if (userResult.rows.length > 0) {
+            res.json({ available: false, message: '이미 사용 중인 아이디입니다.' });
+        } else {
+            res.json({ available: true, message: '사용 가능한 아이디입니다.' });
+        }
+    } catch (error) {
+        console.error('아이디 중복 확인 에러:', error);
+        res.status(500).json({ success: false, message: '아이디 중복 확인 중 서버 오류가 발생했습니다.' });
     }
 });
 

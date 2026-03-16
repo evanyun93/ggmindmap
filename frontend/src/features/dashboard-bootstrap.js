@@ -119,7 +119,152 @@ function initUtilities() {
         };
     }
 
-    // 비밀번호 설정 버튼
+    // 사용자 프로필 버튼 클릭 시 설정 모달 띄우기
+    const userProfileBtn = document.getElementById('userProfileBtn');
+    if (userProfileBtn) {
+        userProfileBtn.addEventListener('click', () => {
+            const modal = document.getElementById('setupWarningModal');
+            if (modal) {
+                modal.style.display = 'flex';
+            }
+        });
+        
+        // 닫기 버튼 효과 (선택적)
+        userProfileBtn.addEventListener('mouseenter', () => {
+            userProfileBtn.style.background = 'rgba(255,255,255,0.15)';
+        });
+        userProfileBtn.addEventListener('mouseleave', () => {
+            userProfileBtn.style.background = 'rgba(255,255,255,0.08)';
+        });
+    }
+
+    // 모달 닫기 버튼
+    const closeSetupWarningBtn = document.getElementById('closeSetupWarningBtn');
+    if (closeSetupWarningBtn) {
+        closeSetupWarningBtn.addEventListener('click', () => {
+            const modal = document.getElementById('setupWarningModal');
+            if (modal) {
+                modal.style.display = 'none';
+                
+                // 모달 닫힐 때 메인 뷰로 초기화 (다시 열 때를 대비)
+                const mainView = document.getElementById('mainSettingsView');
+                const pResetView = document.getElementById('passwordResetSubView');
+                if (mainView && pResetView) {
+                    mainView.style.display = 'block';
+                    pResetView.style.display = 'none';
+                }
+            }
+        });
+    }
+
+    // --- 비밀번호 재설정 관련 로직 ---
+    const openPasswordResetSubBtn = document.getElementById('openPasswordResetSubBtn');
+    const closePasswordResetSubBtn = document.getElementById('closePasswordResetSubBtn');
+    const mainSettingsView = document.getElementById('mainSettingsView');
+    const passwordResetSubView = document.getElementById('passwordResetSubView');
+
+    if (openPasswordResetSubBtn && mainSettingsView && passwordResetSubView) {
+        openPasswordResetSubBtn.addEventListener('click', () => {
+            mainSettingsView.style.display = 'none';
+            passwordResetSubView.style.display = 'block';
+        });
+    }
+
+    if (closePasswordResetSubBtn && mainSettingsView && passwordResetSubView) {
+        closePasswordResetSubBtn.addEventListener('click', () => {
+            passwordResetSubView.style.display = 'none';
+            mainSettingsView.style.display = 'block';
+        });
+    }
+
+    const sendResetCodeBtn = document.getElementById('sendResetCodeBtn');
+    if (sendResetCodeBtn) {
+        sendResetCodeBtn.addEventListener('click', async () => {
+            const emailInput = document.getElementById('resetEmail');
+            const email = emailInput ? emailInput.value.trim() : '';
+
+            if (!email || !email.includes('@')) {
+                alert('유효한 이메일을 입력해 주세요.');
+                return;
+            }
+
+            const originalText = sendResetCodeBtn.textContent;
+            sendResetCodeBtn.textContent = '전송 중...';
+            sendResetCodeBtn.disabled = true;
+
+            try {
+                const response = await apiFetch('/api/auth/request-password-reset', {
+                    method: 'POST',
+                    body: JSON.stringify({ email })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(result.message || '인증번호가 발송되었습니다.');
+                    // UI 변경: 인증번호 입력 단계 노출, 이메일 변경 불가
+                    document.getElementById('pwdResetStep1').style.display = 'none';
+                    document.getElementById('pwdResetStep2').style.display = 'block';
+                    if (emailInput) {
+                        emailInput.readOnly = true;
+                        emailInput.style.background = '#f8f9fa';
+                    }
+                } else {
+                    alert(result.message || '인증번호 전송에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('인증번호 요청 에러:', error);
+                alert('서버 오류가 발생했습니다.');
+            } finally {
+                sendResetCodeBtn.textContent = originalText;
+                sendResetCodeBtn.disabled = false;
+            }
+        });
+    }
+
+    const verifyAndResetPwdBtn = document.getElementById('verifyAndResetPwdBtn');
+    if (verifyAndResetPwdBtn) {
+        verifyAndResetPwdBtn.addEventListener('click', async () => {
+            const email = document.getElementById('resetEmail').value.trim();
+            const code = document.getElementById('resetCode').value.trim();
+            const newPassword = document.getElementById('resetNewPassword').value;
+
+            if (!code) {
+                alert('인증번호를 입력해 주세요.');
+                return;
+            }
+            if (!newPassword || newPassword.length < 4) {
+                alert('새 비밀번호는 4자 이상이어야 합니다.');
+                return;
+            }
+
+            const originalText = verifyAndResetPwdBtn.textContent;
+            verifyAndResetPwdBtn.textContent = '처리 중...';
+            verifyAndResetPwdBtn.disabled = true;
+
+            try {
+                const response = await apiFetch('/api/auth/verify-password-reset', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, code, newPassword })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('비밀번호가 성공적으로 변경되었습니다!');
+                    window.location.reload();
+                } else {
+                    alert(result.message || '비밀번호 변경에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('비밀번호 변경 에러:', error);
+                alert('서버 통신 중 오류가 발생했습니다.');
+            } finally {
+                verifyAndResetPwdBtn.textContent = originalText;
+                verifyAndResetPwdBtn.disabled = false;
+            }
+        });
+    }
+
+    // 비밀번호 설정 버튼 (모달이 아닌 별도 비밀번호 설정 플로우 유지 - 필요시 유지)
     const setPasswordBtn = document.getElementById('setPasswordBtn');
     if (setPasswordBtn) {
         setPasswordBtn.onclick = async () => {
