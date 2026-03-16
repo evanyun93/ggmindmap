@@ -338,8 +338,14 @@ router.post('/social-login', async (req, res) => {
             console.log(`[Social Login] 자동 회원가입: ${uniqueLogin_id}`);
         } else {
             // 기존 유저 - 마지막 로그인 시간 업데이트
-            // display_name이 기본값이거나 비어있으면 Naver 닉네임으로 업데이트
-            if (displayName && displayName !== '네이버 사용자' && (!user.display_name || user.display_name === '네이버 사용자')) {
+            // display_name이 기본값이거나 비어있으면 새로 전달받은 소셜 이름으로 업데이트
+            const isGenericName = !user.display_name || 
+                                 user.display_name === '네이버 사용자' || 
+                                 user.display_name === '카카오 사용자' || 
+                                 user.display_name === '사용자' ||
+                                 user.display_name.startsWith('google_');
+
+            if (displayName && isGenericName && displayName !== user.display_name) {
                 await pool.query(
                     'UPDATE tba_users SET display_name = $1 WHERE id = $2',
                     [displayName, user.id]

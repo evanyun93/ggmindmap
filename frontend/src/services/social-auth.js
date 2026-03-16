@@ -8,6 +8,7 @@ import { apiFetch } from './api.js';
 // ⚠️ 보안을 위해 키 값은 백엔드 .env 및 API를 통해 동적으로 로드합니다.
 let KAKAO_JS_KEY = null;
 let NAVER_CLIENT_ID = null;
+let GOOGLE_CLIENT_ID = null;
 let currentMode = 'login'; // 'login' 또는 'link'
 
 /**
@@ -17,16 +18,20 @@ export async function initSocialAuth() {
     // 1. 버튼 이벤트 연결 (로그인 화면용)
     const kakaoBtn = document.getElementById('kakaoLoginBtn');
     const naverBtn = document.getElementById('naverLoginBtn');
+    const googleBtn = document.getElementById('googleLoginBtn');
 
     if (kakaoBtn) kakaoBtn.addEventListener('click', () => { currentMode = 'login'; loginWithKakao(); });
     if (naverBtn) naverBtn.addEventListener('click', () => { currentMode = 'login'; loginWithNaver(); });
+    if (googleBtn) googleBtn.addEventListener('click', () => { currentMode = 'login'; loginWithGoogle(); });
 
     // 2. 대시보드 내 연동 버튼 연결
     const linkKakaoBtn = document.getElementById('linkKakaoBtn');
     const linkNaverBtn = document.getElementById('linkNaverBtn');
+    const linkGoogleBtn = document.getElementById('linkGoogleBtn');
 
     if (linkKakaoBtn) linkKakaoBtn.addEventListener('click', () => { currentMode = 'link'; loginWithKakao(); });
     if (linkNaverBtn) linkNaverBtn.addEventListener('click', () => { currentMode = 'link'; loginWithNaver(); });
+    if (linkGoogleBtn) linkGoogleBtn.addEventListener('click', () => { currentMode = 'link'; loginWithGoogle(); });
 
     // 3. 대시보드에서 연동 버튼 처리 (이미 로그인된 상태에서 다른 소셜 연동)
     // 이 부분은 이제 사용 안 함 - 대신 직접 연동 API 호출
@@ -69,6 +74,7 @@ export async function initSocialAuth() {
 
         KAKAO_JS_KEY = config.kakaoJsKey;
         NAVER_CLIENT_ID = config.naverClientId;
+        GOOGLE_CLIENT_ID = config.googleClientId;
 
         // 4. SDK 로드 (키가 있을 때만)
         if (KAKAO_JS_KEY) {
@@ -85,6 +91,14 @@ export async function initSocialAuth() {
         if (NAVER_CLIENT_ID) {
             const script = document.createElement('script');
             script.src = 'https://static.nid.naver.com/js/naveridlogin_js_sdk_2.0.2.js';
+            document.head.appendChild(script);
+        }
+
+        if (GOOGLE_CLIENT_ID) {
+            const script = document.createElement('script');
+            script.src = 'https://accounts.google.com/gsi/client';
+            script.async = true;
+            script.defer = true;
             document.head.appendChild(script);
         }
     } catch (err) {
@@ -135,6 +149,51 @@ function loginWithNaver() {
     if (!NAVER_CLIENT_ID) { alert('💡 설정을 확인해 주세요.'); return; }
     const url = `https://nid.naver.com/oauth2.0/authorize?response_type=token&client_id=${NAVER_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin)}&state=STATE_STRING`;
     window.open(url, 'naverLoginPopup', 'width=500,height=600');
+}
+
+/**
+ * 구글 로그인 실행
+ */
+function loginWithGoogle() {
+    if (!GOOGLE_CLIENT_ID) { alert('💡 구글 클라이언트 ID가 설정되지 않았습니다.'); return; }
+    if (typeof google === 'undefined') { alert('💡 구글 SDK를 로드하는 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
+
+    google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse
+    });
+
+    google.accounts.id.prompt(); // One Tap 띄우기 (또는 아래 선택창 바로 띄우기 가능)
+}
+
+/**
+ * 구글 로그인 응답 처리
+ */
+async function handleGoogleResponse(response) {
+    if (!response || !response.credential) return;
+
+    try {
+        // JWT 디코드 (구글에서 준 credential은 JWT임)
+        // atob는 UTF-8 한글을 제대로 처리하지 못하므로 URI 인코딩 방식을 사용
+        const base64Url = response.credential.split('.')[1];
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+        
+        const payload = JSON.parse(jsonPayload);
+        
+        await processSocialLogin({
+            socialId: payload.sub, // 구글 고유 ID
+            provider: 'google',
+            displayName: payload.name,
+            login_id: null,
+            email: payload.email
+        });
+    } catch (error) {
+        console.error('구글 데이터 처리 에러:', error);
+        alert('구글 로그인 데이터 처리에 실패했습니다.');
+    }
 }
 
 /**

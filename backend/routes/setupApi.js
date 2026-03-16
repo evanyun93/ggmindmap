@@ -8,7 +8,8 @@ router.get('/social', (req, res) => {
     res.json({
         success: true,
         kakaoJsKey: process.env.KAKAO_JS_KEY || null,
-        naverClientId: process.env.NAVER_CLIENT_ID || null
+        naverClientId: process.env.NAVER_CLIENT_ID || null,
+        googleClientId: process.env.GOOGLE_CLIENT_ID || null
     });
 });
 
