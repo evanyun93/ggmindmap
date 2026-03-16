@@ -34,11 +34,11 @@ export async function checkAutoLogin() {
  * @param {string} password 
  * @param {boolean} rememberMe 
  */
-export async function login(username, password, rememberMe) {
+export async function login(login_id, password, rememberMe) {
     try {
         const res = await apiFetch('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ username, password })
+            body: JSON.stringify({ login_id, password })
         });
 
         const data = await res.json();

@@ -138,6 +138,50 @@ function initUtilities() {
         });
     }
 
+    // 닉네임 변경 버튼
+    const submitNicknameBtn = document.getElementById('submitNicknameBtn');
+    const changeDisplayNameInput = document.getElementById('changeDisplayNameInput');
+    if (submitNicknameBtn && changeDisplayNameInput) {
+        submitNicknameBtn.onclick = async () => {
+            const newNickname = changeDisplayNameInput.value.trim();
+            if (!newNickname) {
+                alert('변경할 닉네임을 입력해 주세요.');
+                return;
+            }
+
+            try {
+                const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+                if (!token) {
+                    alert('로그인이 필요합니다.');
+                    return;
+                }
+
+                submitNicknameBtn.disabled = true;
+                submitNicknameBtn.textContent = '변경 중...';
+
+                const response = await apiFetch('/api/auth/settings', {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ displayName: newNickname })
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    alert('닉네임이 성공적으로 변경되었습니다!');
+                    window.location.reload();
+                } else {
+                    alert(result.message || '닉네임 변경에 실패했습니다.');
+                }
+            } catch (error) {
+                console.error('닉네임 변경 에러:', error);
+                alert('서버와 통신할 수 없습니다.');
+            } finally {
+                submitNicknameBtn.disabled = false;
+                submitNicknameBtn.textContent = '변경';
+            }
+        };
+    }
+
     // 모달 닫기 버튼
     const closeSetupWarningBtn = document.getElementById('closeSetupWarningBtn');
     if (closeSetupWarningBtn) {
@@ -149,18 +193,39 @@ function initUtilities() {
                 // 모달 닫힐 때 메인 뷰로 초기화 (다시 열 때를 대비)
                 const mainView = document.getElementById('mainSettingsView');
                 const pResetView = document.getElementById('passwordResetSubView');
-                if (mainView && pResetView) {
-                    mainView.style.display = 'block';
-                    pResetView.style.display = 'none';
-                }
+                const nChangeView = document.getElementById('nicknameChangeSubView');
+                if (mainView) mainView.style.display = 'block';
+                if (pResetView) pResetView.style.display = 'none';
+                if (nChangeView) nChangeView.style.display = 'none';
             }
         });
     }
 
-    // --- 비밀번호 재설정 관련 로직 ---
+    // --- 설정 서브 뷰 관련 로직 ---
+    const mainSettingsView = document.getElementById('mainSettingsView');
+    
+    // 1. 닉네임 변경 서브 뷰
+    const openNicknameChangeSubBtn = document.getElementById('openNicknameChangeSubBtn');
+    const closeNicknameChangeSubBtn = document.getElementById('closeNicknameChangeSubBtn');
+    const nicknameChangeSubView = document.getElementById('nicknameChangeSubView');
+
+    if (openNicknameChangeSubBtn && mainSettingsView && nicknameChangeSubView) {
+        openNicknameChangeSubBtn.addEventListener('click', () => {
+            mainSettingsView.style.display = 'none';
+            nicknameChangeSubView.style.display = 'block';
+        });
+    }
+
+    if (closeNicknameChangeSubBtn && mainSettingsView && nicknameChangeSubView) {
+        closeNicknameChangeSubBtn.addEventListener('click', () => {
+            nicknameChangeSubView.style.display = 'none';
+            mainSettingsView.style.display = 'block';
+        });
+    }
+
+    // 2. 비밀번호 재설정 관련 로직
     const openPasswordResetSubBtn = document.getElementById('openPasswordResetSubBtn');
     const closePasswordResetSubBtn = document.getElementById('closePasswordResetSubBtn');
-    const mainSettingsView = document.getElementById('mainSettingsView');
     const passwordResetSubView = document.getElementById('passwordResetSubView');
 
     if (openPasswordResetSubBtn && mainSettingsView && passwordResetSubView) {

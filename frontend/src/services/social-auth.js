@@ -564,7 +564,7 @@ function showSocialRegisterModal(socialData) {
                 method: 'POST',
                 body: JSON.stringify({
                     ...socialData,
-                    username,
+                    login_id,
                     password,
                     mode: 'register'
                 })

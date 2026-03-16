@@ -94,8 +94,8 @@ router.post('/social-register', async (req, res) => {
             const newSocialIds = [...currentSocialIds, { provider: provider, socialId: socialId }];
             
             await pool.query(
-                'UPDATE tba_users SET social_ids = $1, social_id = $2, provider = $3, display_name = COALESCE($5, display_name) WHERE id = $4',
-                [JSON.stringify(newSocialIds), socialId, provider, user.id, displayName]
+                'UPDATE tba_users SET social_ids = $1, social_id = $2, provider = $3 WHERE id = $4',
+                [JSON.stringify(newSocialIds), socialId, provider, user.id]
             );
 
             const token = jwt.sign(
@@ -223,7 +223,7 @@ router.post('/social-login', async (req, res) => {
         
         // 먼저 social_ids에서 찾기 (social_ids가 NULL이 아닌 경우만)
         let userResult = await pool.query(
-            'SELECT id, login_id, social_ids, email FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
+            'SELECT id, login_id, display_name, social_ids, email FROM tba_users WHERE (social_ids IS NOT NULL) AND (social_ids @> $1)',
             [JSON.stringify([{ provider: provider, socialId: String(socialId) }])]
         );
         console.log(`[Social Login] Found by social_ids: ${userResult.rows.length} users`);
@@ -236,7 +236,7 @@ router.post('/social-login', async (req, res) => {
         if (!user) {
             console.log(`[Social Login] Not found in social_ids, checking legacy columns...`);
             userResult = await pool.query(
-                'SELECT id, login_id, social_ids, email, social_id, provider FROM tba_users WHERE social_id = $1 AND provider = $2',
+                'SELECT id, login_id, display_name, social_ids, email, social_id, provider FROM tba_users WHERE social_id = $1 AND provider = $2',
                 [socialId, provider]
             );
             if (userResult.rows.length > 0) {
@@ -325,34 +325,17 @@ router.post('/social-login', async (req, res) => {
 
         // 3. 그래도 없으면 자동 회원가입
         if (!user) {
-            // email이 있으면 login_id으로 사용, 없으면 socialId 기반
-            const uniqueLogin_id = email || login_id || `${provider}_${socialId.substring(0, 10)}`;
-            
+            // login_id와 password는 사용자가 나중에 직접 설정하도록 NULL로 비워둠
             const newSocialIds = [{ provider: provider, socialId: socialId }];
             
             const newUserResult = await pool.query(
-                'INSERT INTO tba_users (login_id, email, display_name, social_ids, social_id, provider) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
-                [uniqueLogin_id, email || null, displayName || uniqueLogin_id, JSON.stringify(newSocialIds), socialId, provider]
+                'INSERT INTO tba_users (login_id, password, email, display_name, social_ids, social_id, provider) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *',
+                [null, null, email || null, displayName || '사용자', JSON.stringify(newSocialIds), socialId, provider]
             );
             user = newUserResult.rows[0];
-            console.log(`[Social Login] 자동 회원가입: ${uniqueLogin_id}`);
+            console.log(`[Social Login] 자동 회원가입 완료 (소셜 전용 계정): ID ${user.id}`);
         } else {
-            // 기존 유저 - 마지막 로그인 시간 업데이트
-            // display_name이 기본값이거나 비어있으면 새로 전달받은 소셜 이름으로 업데이트
-            const isGenericName = !user.display_name || 
-                                 user.display_name === '네이버 사용자' || 
-                                 user.display_name === '카카오 사용자' || 
-                                 user.display_name === '사용자' ||
-                                 user.display_name.startsWith('google_');
-
-            if (displayName && isGenericName && displayName !== user.display_name) {
-                await pool.query(
-                    'UPDATE tba_users SET display_name = $1 WHERE id = $2',
-                    [displayName, user.id]
-                );
-                user.display_name = displayName;
-                console.log(`[Social Login] Updated display_name to: ${displayName}`);
-            }
+            // 기존 유저 - 마지막 로그인 시간 업데이트 등 (display_name 업데이트는 하지 않음)
             console.log(`[Social Login] 기존 계정 로그인: ${user.login_id}`);
         }
 
@@ -809,7 +792,15 @@ router.get('/admin/users', async (req, res) => {
  */
 router.patch('/settings', authenticateToken, async (req, res) => {
     try {
-        const { todoAutoDelete, email, newPassword } = req.body;
+        const { todoAutoDelete, email, newPassword, displayName } = req.body;
+
+        // 닉네임 업데이트
+        if (displayName !== undefined) {
+            await pool.query(
+                'UPDATE tba_users SET display_name = $1 WHERE id = $2',
+                [displayName || null, req.user.id]
+            );
+        }
 
         // 이메일 업데이트
         if (email !== undefined) {

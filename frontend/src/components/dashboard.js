@@ -111,10 +111,25 @@ export function getDashboardHTML(user) {
       `;
   }
 
-  const passwordResetSection = `
+  const securitySection = `
     <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
         <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">보안</h4>
+        <button id="openNicknameChangeSubBtn" style="width: 100%; padding: 10px; margin-bottom: 8px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px;">👤 닉네임 변경</button>
         <button id="openPasswordResetSubBtn" style="width: 100%; padding: 10px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px;">🔒 비밀번호 변경</button>
+    </div>
+  `;
+
+  // --- Sub-View for Nickname Change ---
+  const nicknameChangeSubView = `
+    <div id="nicknameChangeSubView" style="display: none; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: #333; font-size: 16px;">닉네임 변경</h4>
+            <button id="closeNicknameChangeSubBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            <input type="text" id="changeDisplayNameInput" value="${user.displayName || ''}" placeholder="새 닉네임 입력" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; font-size: 14px;">
+            <button id="submitNicknameBtn" style="width: 100%; padding: 12px; background: #8B5CF6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px;">닉네임 변경 적용</button>
+        </div>
     </div>
   `;
 
@@ -146,10 +161,11 @@ export function getDashboardHTML(user) {
             <h3 style="margin-top: 0; color: #333; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 12px;">내 정보 / 설정</h3>
             ${warningsCards}
             ${socialIntegrationSection}
-            ${passwordResetSection}
+            ${securitySection}
             <button id="closeSetupWarningBtn" style="width: 100%; padding: 10px; background: #f1f3f5; color: #495057; border: none; border-radius: 6px; cursor: pointer; margin-top: 16px; font-weight: 600; transition: background 0.2s;">닫기</button>
         </div>
         
+        ${nicknameChangeSubView}
         ${passwordResetSubView}
 
       </div>

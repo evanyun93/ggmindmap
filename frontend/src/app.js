@@ -91,13 +91,13 @@ async function handleLoginSubmit(e) {
     e.preventDefault();
     hideMessage(loginError);
 
-    const username = document.getElementById('loginUsername').value.trim();
+    const login_id = document.getElementById('loginUsername').value.trim();
     const password = document.getElementById('loginPassword').value;
     const rememberMe = document.getElementById('rememberMe').checked;
     const btn = document.getElementById('loginBtn');
 
     setLoading(btn, true);
-    const result = await login(username, password, rememberMe);
+    const result = await login(login_id, password, rememberMe);
     setLoading(btn, false);
 
     if (result.success) {
@@ -115,14 +115,14 @@ async function handleRegisterSubmit(e) {
     hideMessage(registerError);
     hideMessage(registerSuccess);
 
-    const username = document.getElementById('regUsername').value.trim();
+    const login_id = document.getElementById('regUsername').value.trim();
     const password = document.getElementById('regPassword').value;
     const displayName = document.getElementById('regDisplayName').value.trim();
     const email = document.getElementById('regEmail')?.value.trim();
     const btn = document.getElementById('registerBtn');
 
     setLoading(btn, true);
-    const result = await register({ username, password, displayName, email });
+    const result = await register({ login_id, password, displayName, email });
     setLoading(btn, false);
 
     if (result.success) {
@@ -130,7 +130,7 @@ async function handleRegisterSubmit(e) {
         registerForm.reset();
         setTimeout(() => {
             switchCard('login', loginCard, registerCard, clearAuthMessages);
-            document.getElementById('loginUsername').value = username;
+            document.getElementById('loginUsername').value = login_id;
         }, 1500);
     } else {
         showMessage(registerError, result.message);

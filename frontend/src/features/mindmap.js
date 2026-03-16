@@ -102,8 +102,8 @@ function openEditor(nodeId) {
     const sy = svgRect.top  + node.y;  // 화면 Y
 
     // 노드 크기 계산
-    const nW = node.type === 'rect' ? (node.width  || 120) : (node.radius || 50) * 2;
-    const nH = node.type === 'rect' ? (node.height || 60)  : (node.radius || 50) * 2;
+    const nW = node.type === 'rect' || node.type === 'triangle' ? (node.width  || 120) : (node.radius || 50) * 2;
+    const nH = node.type === 'rect' || node.type === 'triangle' ? (node.height || 60)  : (node.radius || 50) * 2;
 
     // 편집 input을 노드 도형에 정확히 오버레이
     const edW = Math.max(nW + 24, 160);
@@ -157,6 +157,17 @@ function edgePoint(from, to) {
                             ny ? hh / Math.abs(ny) : Infinity);
         return { x: from.x + nx * t, y: from.y + ny * t };
     }
+    if (from.type === 'triangle') {
+        // 삼각형 경계점 계산 (이등변 삼각형 근사)
+        const w = from.width || 120;
+        const h = from.height || 100;
+        // 단순화된 사각형 바운딩 박스 기반 경계점 (삼각형의 경우 조금 더 안쪽으로 들어오게 유도)
+        const hw = w * 0.4; 
+        const hh = h * 0.4;
+        const t  = Math.min(nx ? hw / Math.abs(nx) : Infinity,
+                            ny ? hh / Math.abs(ny) : Infinity);
+        return { x: from.x + nx * t, y: from.y + ny * t };
+    }
     const r = from.radius || 50;
     return { x: from.x + nx * r, y: from.y + ny * r };
 }
@@ -181,7 +192,10 @@ function renderMindmap() {
             ? `<rect x="${-(node.width||120)/2}" y="${-(node.height||60)/2}"
                      width="${node.width||120}" height="${node.height||60}"
                      rx="10" class="node-shape" filter="url(#glass-shadow)"/>`
-            : `<circle r="${node.radius||50}" class="node-shape" filter="url(#glass-shadow)"/>`;
+            : (node.type === 'triangle' 
+                ? `<polygon points="0,${-(node.height||100)/2} ${-(node.width||120)/2},${(node.height||100)/2} ${(node.width||120)/2},${(node.height||100)/2}" 
+                            class="node-shape" filter="url(#glass-shadow)"/>`
+                : `<circle r="${node.radius||50}" class="node-shape" filter="url(#glass-shadow)"/>`);
 
         const isConnSrc = connectSourceId === node.id;
         return `

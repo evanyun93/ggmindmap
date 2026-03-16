@@ -94,8 +94,8 @@ async function loadUserList() {
             <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
               <td style="padding: 15px; color: #64748b;">${u.id}</td>
               <td style="padding: 15px;">
-                <div style="font-weight: 600;">${u.display_name || u.username}</div>
-                <div style="font-size: 0.8rem; color: #64748b;">@${u.username} (${u.provider || 'local'})</div>
+                <div style="font-weight: 600;">${u.display_name || u.login_id}</div>
+                <div style="font-size: 0.8rem; color: #64748b;">@${u.login_id} (${u.provider || 'local'})</div>
               </td>
               <td style="padding: 15px; color: #94a3b8;">${formatDate(u.created_at)}</td>
               <td style="padding: 15px; color: #a78bfa; font-weight: 500;">${formatDate(u.last_login_at)}</td>

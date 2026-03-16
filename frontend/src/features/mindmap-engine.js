@@ -54,17 +54,44 @@ export class MindmapEngine {
             rectError += Math.min(dx, dy);
         });
         const avgRectError = rectError / this.points.length;
+        
+        // 삼각형 판별: 하단(minX, maxY ~ maxX, maxY), 좌측(centerX, minY ~ minX, maxY), 우측(centerX, minY ~ maxX, maxY) 세 변과의 거리
+        let triError = 0;
+        const distToLine = (p, p1, p2) => {
+            const num = Math.abs((p2.x - p1.x) * (p1.y - p.y) - (p1.x - p.x) * (p2.y - p1.y));
+            const den = Math.sqrt(Math.pow(p2.x - p1.x, 2) + Math.pow(p2.y - p1.y, 2));
+            return num / den;
+        };
+        const pTop = { x: centerX, y: minY };
+        const pLeft = { x: minX, y: maxY };
+        const pRight = { x: maxX, y: maxY };
+        
+        this.points.forEach(p => {
+            const d1 = distToLine(p, pLeft, pRight);
+            const d2 = distToLine(p, pTop, pLeft);
+            const d3 = distToLine(p, pTop, pRight);
+            triError += Math.min(d1, d2, d3);
+        });
+        const avgTriError = triError / this.points.length;
 
-        console.log(`[MindmapEngine] Circle Error: ${avgCircleError.toFixed(2)}, Rect Error: ${avgRectError.toFixed(2)}`);
+        console.log(`[MindmapEngine] Circle Error: ${avgCircleError.toFixed(2)}, Rect Error: ${avgRectError.toFixed(2)}, Tri Error: ${avgTriError.toFixed(2)}`);
 
-        // 에러값이 낮은 쪽으로 결정 (임계값 설정 필요)
-        if (avgCircleError < avgRectError && avgCircleError < radius * 0.3) {
-            return { type: 'circle', x: centerX, y: centerY, radius };
-        } else if (avgRectError < avgCircleError && avgRectError < Math.min(width, height) * 0.3) {
-            return { type: 'rect', x: minX, y: minY, width, height };
+        // 에러값이 가장 낮은 도형으로 결정
+        const threshold = Math.min(width, height) * 0.35;
+        const errors = [
+            { type: 'circle', error: avgCircleError, data: { type: 'circle', x: centerX, y: centerY, radius } },
+            { type: 'rect', error: avgRectError, data: { type: 'rect', x: minX, y: minY, width, height } },
+            { type: 'triangle', error: avgTriError, data: { type: 'triangle', x: centerX, y: centerY, width, height } }
+        ];
+        
+        // 필터링 및 정렬
+        const validShapes = errors.filter(s => s.error < threshold).sort((a, b) => a.error - b.error);
+        
+        if (validShapes.length > 0) {
+            return validShapes[0].data;
         }
 
-        // 기본적으로 인식이 모호하면 사각형으로 간주하거나 null 반환
+        // 도저히 인식이 안 되면 기본적으로 사각형 반환
         return { type: 'rect', x: minX, y: minY, width, height };
     }
 
