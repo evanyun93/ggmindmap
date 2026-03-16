@@ -119,6 +119,33 @@ export function getDashboardHTML(user) {
     </div>
   `;
 
+  const displaySection = `
+    <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">디스플레이</h4>
+        <button id="openThemeChangeSubBtn" style="width: 100%; padding: 10px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px;">🎨 테마 변경</button>
+    </div>
+  `;
+
+  // --- Sub-View for Theme Change ---
+  const themeChangeSubView = `
+    <div id="themeChangeSubView" style="display: none; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: #333; font-size: 16px;">테마 변경</h4>
+            <button id="closeThemeChangeSubBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: #666; margin-bottom: 16px;">대시보드의 분위기를 선택해 보세요.</p>
+        <div class="theme-picker-premium" style="display: flex; justify-content: space-around; background: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #eee;">
+            <button class="theme-chip midnight" data-theme="midnight" title="Midnight" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #0f172a; transition: all 0.2s;"></button>
+            <button class="theme-chip blueprint" data-theme="blueprint" title="Blueprint" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #1e293b; transition: all 0.2s;"></button>
+            <button class="theme-chip classic" data-theme="classic" title="Classic" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #f8fafc; transition: all 0.2s;"></button>
+            <button class="theme-chip dark" data-theme="dark" title="Dark" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #050505; transition: all 0.2s;"></button>
+        </div>
+        <style>
+            .theme-chip.active { border-color: #8B5CF6 !important; transform: scale(1.1); box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
+        </style>
+    </div>
+  `;
+
   // --- Sub-View for Nickname Change ---
   const nicknameChangeSubView = `
     <div id="nicknameChangeSubView" style="display: none; margin-top: 16px;">
@@ -162,9 +189,11 @@ export function getDashboardHTML(user) {
             ${warningsCards}
             ${socialIntegrationSection}
             ${securitySection}
+            ${displaySection}
             <button id="closeSetupWarningBtn" style="width: 100%; padding: 10px; background: #f1f3f5; color: #495057; border: none; border-radius: 6px; cursor: pointer; margin-top: 16px; font-weight: 600; transition: background 0.2s;">닫기</button>
         </div>
         
+        ${themeChangeSubView}
         ${nicknameChangeSubView}
         ${passwordResetSubView}
 

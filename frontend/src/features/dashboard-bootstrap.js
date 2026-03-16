@@ -194,9 +194,11 @@ function initUtilities() {
                 const mainView = document.getElementById('mainSettingsView');
                 const pResetView = document.getElementById('passwordResetSubView');
                 const nChangeView = document.getElementById('nicknameChangeSubView');
+                const tChangeView = document.getElementById('themeChangeSubView');
                 if (mainView) mainView.style.display = 'block';
                 if (pResetView) pResetView.style.display = 'none';
                 if (nChangeView) nChangeView.style.display = 'none';
+                if (tChangeView) tChangeView.style.display = 'none';
             }
         });
     }
@@ -223,7 +225,26 @@ function initUtilities() {
         });
     }
 
-    // 2. 비밀번호 재설정 관련 로직
+    // 2. 테마 변경 서브 뷰
+    const openThemeChangeSubBtn = document.getElementById('openThemeChangeSubBtn');
+    const closeThemeChangeSubBtn = document.getElementById('closeThemeChangeSubBtn');
+    const themeChangeSubView = document.getElementById('themeChangeSubView');
+
+    if (openThemeChangeSubBtn && mainSettingsView && themeChangeSubView) {
+        openThemeChangeSubBtn.addEventListener('click', () => {
+            mainSettingsView.style.display = 'none';
+            themeChangeSubView.style.display = 'block';
+        });
+    }
+
+    if (closeThemeChangeSubBtn && mainSettingsView && themeChangeSubView) {
+        closeThemeChangeSubBtn.addEventListener('click', () => {
+            themeChangeSubView.style.display = 'none';
+            mainSettingsView.style.display = 'block';
+        });
+    }
+
+    // 3. 비밀번호 재설정 관련 로직
     const openPasswordResetSubBtn = document.getElementById('openPasswordResetSubBtn');
     const closePasswordResetSubBtn = document.getElementById('closePasswordResetSubBtn');
     const passwordResetSubView = document.getElementById('passwordResetSubView');

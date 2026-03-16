@@ -45,15 +45,15 @@ export function initTheme() {
     const savedTheme = localStorage.getItem('dashboard_theme') || 'midnight';
     applyTheme(savedTheme);
 
-    const themePicker = document.querySelector('.theme-picker-premium');
-    if (!themePicker) return;
+    const themePickers = document.querySelectorAll('.theme-picker-premium');
+    themePickers.forEach(picker => {
+        picker.addEventListener('click', (e) => {
+            const chip = e.target.closest('.theme-chip');
+            if (!chip) return;
 
-    themePicker.addEventListener('click', (e) => {
-        const chip = e.target.closest('.theme-chip');
-        if (!chip) return;
-
-        const theme = chip.dataset.theme;
-        applyTheme(theme);
+            const theme = chip.dataset.theme;
+            applyTheme(theme);
+        });
     });
 }
 
