@@ -276,22 +276,28 @@ export function setupDraggable(widget, grid) {
         // 우클릭 제외 (마우스인 경우)
         if (e.type === 'mousedown' && e.button !== 0) return;
 
-        bringToFront(widget); // 조작 시 즉시 앞으로
-
         const touch = e.type === 'touchstart' ? e.touches[0] : e;
         const initialX = touch.clientX;
         const initialY = touch.clientY;
+        const startTime = Date.now();
 
         const onMoveAttempt = (moveEvent) => {
             const currentTouch = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
-            const dist = Math.sqrt(
-                Math.pow(currentTouch.clientX - initialX, 2) +
-                Math.pow(currentTouch.clientY - initialY, 2)
-            );
+            const diffX = Math.abs(currentTouch.clientX - initialX);
+            const diffY = Math.abs(currentTouch.clientY - initialY);
+            const dist = Math.sqrt(diffX * diffX + diffY * diffY);
+            const duration = Date.now() - startTime;
 
-            if (dist > 5) {
+            // 모바일에서 수직 이동이 크면 스크롤 의도로 간주하여 드래그 무시
+            if (e.type === 'touchstart' && diffY > diffX && diffY > 10) {
                 cleanup();
-                startDrag(e); // 첫 이벤트 객체 전달
+                return;
+            }
+
+            if (dist > 7 || (e.type === 'touchstart' && duration > 200)) {
+                cleanup();
+                bringToFront(widget);
+                startDrag(e); 
             }
         };
 
@@ -316,68 +322,99 @@ export function setupDraggable(widget, grid) {
         if (isDragStarted) return;
         isDragStarted = true;
 
-        widget.classList.add('dragging');
+        const isMobile = window.innerWidth <= 768;
+        let ghost = null;
+
+        if (isMobile) {
+            widget.classList.add('placeholder');
+            // 고스트 요소 생성 (복제)
+            ghost = widget.cloneNode(true);
+            ghost.classList.remove('placeholder');
+            ghost.classList.add('widget-ghost');
+            document.body.appendChild(ghost);
+
+            const rect = widget.getBoundingClientRect();
+            ghost.style.width = `${rect.width}px`;
+            ghost.style.height = `${rect.height}px`;
+            ghost.style.left = `${rect.left}px`;
+            ghost.style.top = `${rect.top}px`;
+        } else {
+            widget.classList.add('dragging');
+        }
+
+        document.body.style.userSelect = 'none'; // 전체 텍스트 선택 방지
+        document.body.style.webkitUserSelect = 'none';
+
+        if (window.navigator.vibrate) window.navigator.vibrate(5); // 햅틱 피드백 (지원되는 경우)
 
         const gridRect = grid.getBoundingClientRect();
         const rect = widget.getBoundingClientRect();
 
         const touch = e.type === 'touchstart' ? e.touches[0] : e;
-        let initialTouchY = touch.clientY;
-        let currentTranslateY = 0;
+        const initialTouchX = touch.clientX;
+        const initialTouchY = touch.clientY;
+        
+        let lastTouchX = initialTouchX;
+        let lastTouchY = initialTouchY;
+        let currentX = initialTouchX;
+        let currentY = initialTouchY;
+        let rafId = null;
+
+        const updateGhost = () => {
+            if (!isDragStarted || !ghost) return;
+            // 부드러운 추적을 위한 Lerp(선형 보간) 적용
+            const lerpFactor = 0.15; 
+            currentX += (lastTouchX - currentX) * lerpFactor;
+            currentY += (lastTouchY - currentY) * lerpFactor;
+
+            const dx = currentX - initialTouchX;
+            const dy = currentY - initialTouchY;
+            
+            // 3D 틸트(기울기) 계산: 이동 속도와 방향에 따라 입체적으로 반응
+            const vx = (lastTouchX - currentX) * 0.8;
+            const vy = (lastTouchY - currentY) * 0.8;
+            
+            // 회전(Z), 기울기(X, Y) 조합으로 입체감 구현
+            const rotateZ = Math.max(-15, Math.min(15, vx)); 
+            const rotateX = Math.max(-15, Math.min(15, -vy));
+            const rotateY = Math.max(-15, Math.min(15, vx));
+            
+            ghost.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.08) perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`;
+            rafId = requestAnimationFrame(updateGhost);
+        };
+
+        if (isMobile && ghost) {
+            rafId = requestAnimationFrame(updateGhost);
+        }
 
         const onMove = (moveEvent) => {
             // 드래그 중 스크롤 방지
             if (moveEvent.cancelable) moveEvent.preventDefault();
 
             const currentTouch = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
+            lastTouchX = currentTouch.clientX;
+            lastTouchY = currentTouch.clientY;
 
             // 모바일 수직 스택 모드 체크 (768px 이하)
-            const isMobile = window.innerWidth <= 768;
-
-            if (isMobile) {
-                // 1. 실시간 시각적 추적 (Hardware Accelerated)
-                currentTranslateY = currentTouch.clientY - initialTouchY;
-                widget.style.transform = `translate3d(0, ${currentTranslateY}px, 0) scale(1.02)`;
-
-                // 2. 물리적 순서 변경 체크
+            if (isMobile && ghost) {
+                // 1. 물리적 순서 변경 체크 (플레이스홀더 기준)
                 const widgetCenterY = currentTouch.clientY;
-                const siblings = Array.from(grid.querySelectorAll('.draggable-widget:not(.dragging)'));
+                const siblings = Array.from(grid.querySelectorAll('.draggable-widget:not(.placeholder)'));
 
                 const nextSibling = siblings.find(sibling => {
                     const siblingRect = sibling.getBoundingClientRect();
                     return widgetCenterY < siblingRect.top + siblingRect.height / 2;
                 });
 
-                // 현재 위치 저장 (보정용)
-                const preRect = widget.getBoundingClientRect();
-                const oldIndex = Array.from(grid.children).indexOf(widget);
-
                 if (nextSibling) {
                     if (widget.nextElementSibling !== nextSibling) {
-                        grid.insertBefore(widget, nextSibling);
+                        animateReorder(grid, () => grid.insertBefore(widget, nextSibling));
                     }
                 } else if (siblings.length > 0) {
                     if (widget.nextElementSibling !== null) {
-                        grid.appendChild(widget);
+                        animateReorder(grid, () => grid.appendChild(widget));
                     }
                 }
-
-                const newIndex = Array.from(grid.children).indexOf(widget);
-
-                // 3. 순서가 바뀌었을 때 위치 튐(Jump) 방지 보정 (정밀 보정)
-                if (oldIndex !== newIndex) {
-                    const postRect = widget.getBoundingClientRect();
-                    // 레이아웃 이동만큼 initialTouchY를 보정하여 손가락 위치와의 동기화 유지
-                    const layoutDeltaY = postRect.top - preRect.top;
-                    initialTouchY += layoutDeltaY;
-
-                    // 보정된 기준점 기반으로 transform 즉시 업데이트
-                    currentTranslateY = currentTouch.clientY - initialTouchY;
-                    widget.style.transform = `translate3d(0, ${currentTranslateY}px, 0) scale(1.02)`;
-                }
-
-                // [중요] 모바일에서는 인라인 left, top을 0으로 덮어쓰지 않음. 
-                // CSS !important가 이미 처리하고 있으며, 여기서 건드리면 PC 버전 복구 시 좌표가 유실됨.
             } else {
                 // PC용 자유 좌표 이동
                 const offsetX = touch.clientX - rect.left;
@@ -395,8 +432,27 @@ export function setupDraggable(widget, grid) {
         };
 
         const onEnd = () => {
-            widget.classList.remove('dragging');
-            widget.style.transform = ''; // 스타일 초기화
+            if (rafId) cancelAnimationFrame(rafId);
+            
+            if (isMobile && ghost) {
+                // 고스트가 플레이스홀더 위치로 스냅되는 효과
+                const pRect = widget.getBoundingClientRect();
+                ghost.style.transition = 'all 0.3s cubic-bezier(0.2, 0, 0, 1)';
+                ghost.style.left = `${pRect.left}px`;
+                ghost.style.top = `${pRect.top}px`;
+                ghost.style.transform = 'translate3d(0, 0, 0) scale(1)';
+                ghost.style.opacity = '0';
+
+                setTimeout(() => {
+                    if (ghost && ghost.parentNode) ghost.remove();
+                    widget.classList.remove('placeholder');
+                }, 300);
+            } else {
+                widget.classList.remove('dragging');
+            }
+
+            document.body.style.userSelect = ''; 
+            document.body.style.webkitUserSelect = '';
 
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('touchmove', onMove);
@@ -405,7 +461,7 @@ export function setupDraggable(widget, grid) {
             isDragStarted = false;
 
             // 모바일인 경우 현재 DOM 순서에 따라 zIndex 재할당하여 순서 저장
-            if (window.innerWidth <= 768) {
+            if (isMobile) {
                 reassignMobileZIndices();
             } else {
                 saveLayout();
@@ -417,6 +473,61 @@ export function setupDraggable(widget, grid) {
         document.addEventListener('mouseup', onEnd);
         document.addEventListener('touchend', onEnd);
     }
+}
+
+/**
+ * FLIP 기법을 이용한 부드러운 위젯 순서 변경 애니메이션
+ */
+function animateReorder(grid, action) {
+    const children = Array.from(grid.querySelectorAll('.draggable-widget'));
+    
+    // 1. First: 현재 위치 기록
+    const firstRects = children.map(c => c.getBoundingClientRect());
+
+    // 2. DOM 변경 실행
+    action();
+
+    // 3. Last: 변경 후 위치 기록
+    const lastRects = children.map(c => c.getBoundingClientRect());
+
+    // 4. Invert & Play
+    children.forEach((child, i) => {
+        // 고스트 요소는 무시
+        if (child.classList.contains('widget-ghost')) return;
+
+        const dx = firstRects[i].left - lastRects[i].left;
+        const dy = firstRects[i].top - lastRects[i].top;
+
+        if (dx || dy) {
+            // 위치가 변한 요소에 대해 역변환 적용
+            child.style.transition = 'none';
+            child.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
+            
+            // 리플로우 강제 수행
+            child.getClientRects();
+
+            // 목표 위치로 부드럽게 이동 (더 쫀득하고 부드러운 cubic-bezier 적용)
+            child.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
+            child.style.transform = 'translate3d(0, 0, 0)';
+            
+            // 위치 이동 시 약간의 스케일 효과 추가 (생동감 부여)
+            if (child.classList.contains('placeholder')) {
+                child.style.scale = '1';
+            }
+            
+            // 애니메이션 종료 후 스타일 정리 (충돌 방지)
+            const handleFinish = (e) => {
+                if (e.propertyName === 'transform') {
+                    if (!child.classList.contains('placeholder')) {
+                        child.style.transition = '';
+                        child.style.transform = '';
+                    }
+                    child.removeEventListener('transitionend', handleFinish);
+                }
+            };
+            child.addEventListener('transitionend', handleFinish);
+        }
+    });
 }
 
 /**

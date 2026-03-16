@@ -18,7 +18,8 @@ export function getMindmapHTML() {
                         <span class="hint-badge"><kbd>드래그</kbd> 노드 이동</span>
                         <span class="hint-badge"><kbd>빈 곳 드래그</kbd> 도형 추가</span>
                         <span class="hint-badge"><kbd>Shift+클릭</kbd> 연결</span>
-                        <span class="hint-badge"><kbd>더블클릭</kbd> 텍스트 편집</span>
+                        <span class="hint-badge"><kbd>더블클릭</kbd> 편집</span>
+                        <span class="hint-badge"><kbd>Delete</kbd> 노드 삭제</span>
                     </div>
                 </div>
                 <div class="tool-right">

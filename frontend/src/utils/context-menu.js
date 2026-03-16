@@ -36,7 +36,7 @@ export class ContextMenu {
         this.isInitialized = true;
     }
 
-    bindGlobalListeners() {
+    bindGlobalListeners(containerSelector = '#widgetGrid') {
         this.handleDocumentClick = () => this.hide();
         this.handleDocumentTouchStart = (e) => {
             if (!e.target.closest('#customContextMenu')) {
@@ -44,7 +44,8 @@ export class ContextMenu {
             }
         };
         this.handleDocumentContextMenu = (e) => {
-            if (!e.target.closest('#widgetGrid')) {
+            // 컨테이너 외부 우클릭 시에만 닫기 (컨테이너 내부는 각 모듈에서 처리)
+            if (!e.target.closest(containerSelector)) {
                 this.hide();
             }
         };

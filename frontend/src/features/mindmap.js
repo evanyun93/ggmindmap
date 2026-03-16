@@ -1,10 +1,12 @@
 import { apiFetch } from '../services/api.js';
 import { getMindmapHTML } from '../components/mindmap.js';
 import { mindmapEngine } from './mindmap-engine.js';
+import { contextMenu } from '../utils/context-menu.js';
 
 let nodes = [];
 let links = [];
 let ctx   = null;
+let selectedNodeId = null; // 선택된 노드 (Delete 키 삭제용)
 
 // ── 상태 ────────────────────────────────────────────────────────
 let draggingNodeId = null;
@@ -40,6 +42,10 @@ export async function initMindmap() {
     renderMindmap();
     setupEvents();
     initEditorEvents();
+
+    // 마인드맵 컨테이너에 맞게 컨텍스트 메뉴 초기화
+    contextMenu.init();
+    contextMenu.bindGlobalListeners('#mindmapCanvasContainer');
 }
 
 // ── 편집기 이벤트 ─────────────────────────────────────────────
@@ -188,6 +194,18 @@ function renderMindmap() {
     }).join('');
 
     ng.innerHTML = nodes.map(node => {
+        const isSelected = selectedNodeId === node.id;
+        const nW = node.type === 'rect' || node.type === 'triangle' ? (node.width || 120) : (node.radius || 50) * 2;
+        const nH = node.type === 'rect' || node.type === 'triangle' ? (node.height || 60) : (node.radius || 50) * 2;
+
+        const selectionOverlay = isSelected 
+            ? (node.type === 'rect' 
+                ? `<rect x="${-(node.width||120)/2 - 4}" y="${-(node.height||60)/2 - 4}" width="${(node.width||120)+8}" height="${(node.height||60)+8}" rx="12" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="4 2"/>`
+                : (node.type === 'triangle'
+                    ? `<polygon points="0,${-(node.height||100)/2 - 8} ${-(node.width||120)/2 - 8},${(node.height||100)/2 + 4} ${(node.width||120)/2 + 8},${(node.height||100)/2 + 4}" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="4 2"/>`
+                    : `<circle r="${(node.radius||50) + 4}" fill="none" stroke="#8B5CF6" stroke-width="2" stroke-dasharray="4 2"/>`))
+            : '';
+
         const shape = node.type === 'rect'
             ? `<rect x="${-(node.width||120)/2}" y="${-(node.height||60)/2}"
                      width="${node.width||120}" height="${node.height||60}"
@@ -199,9 +217,11 @@ function renderMindmap() {
 
         const isConnSrc = connectSourceId === node.id;
         return `
-            <g class="node-group${node.isMain ? ' main' : ''}${isConnSrc ? ' connecting-source' : ''}"
+            <g class="node-group${node.isMain ? ' main' : ''}${isConnSrc ? ' connecting-source' : ''}${isSelected ? ' selected' : ''}"
                transform="translate(${node.x},${node.y})"
-               onmousedown="window._nodeMouseDown(event,${node.id})">
+               onmousedown="window._nodeMouseDown(event,${node.id})"
+               oncontextmenu="window._nodeContextMenu(event,${node.id})">
+                ${selectionOverlay}
                 ${shape}
                 <text text-anchor="middle" dy="5" class="node-text">${node.text||''}</text>
             </g>`;
@@ -218,6 +238,9 @@ function setupEvents() {
         if (e.target.closest('.node-group')) return;  // 노드 클릭은 _nodeMouseDown이 처리
         if (window._editNodeId != null) { closeEditor(); return; }
         if (connectSourceId != null) return; // 연결 대기 중엔 그리기 무시
+
+        selectedNodeId = null; // 빈 곳 클릭 시 선택 해제
+        renderMindmap();
 
         isDrawing = true;
         mindmapEngine.clearPoints();
@@ -271,24 +294,43 @@ function setupEvents() {
         }
     });
 
-    // ─ ESC: 모든 액션 취소 ─
+    // ─ ESC & Delete: 액션 취소 및 삭제 ─
     document.addEventListener('keydown', e => {
-        if (e.key !== 'Escape') return;
+        if (e.key === 'Escape') {
+            let changed = false;
+            if (connectSourceId != null) {
+                connectSourceId = null;
+                changed = true;
+            }
+            if (draggingNodeId != null) {
+                draggingNodeId = null;
+            }
+            if (isDrawing) {
+                isDrawing = false;
+                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            }
+            if (selectedNodeId != null) {
+                selectedNodeId = null;
+                changed = true;
+            }
+            closeEditor();
+            if (changed) renderMindmap();
+            return;
+        }
 
-        let changed = false;
-        if (connectSourceId != null) {
-            connectSourceId = null;
-            changed = true;
+        if (e.key === 'Delete' || e.key === 'Backspace') {
+            // 텍스트 편집 중이면 처리 안 함 (기존 로직 유지)
+            if (window._editNodeId != null) return;
+
+            if (selectedNodeId != null) {
+                const node = nodes.find(n => n.id === selectedNodeId);
+                if (!node || node.isMain) {
+                    if (node?.isMain) alert('중심 노드는 삭제할 수 없습니다.');
+                    return;
+                }
+                deleteNode(selectedNodeId);
+            }
         }
-        if (draggingNodeId != null) {
-            draggingNodeId = null;
-        }
-        if (isDrawing) {
-            isDrawing = false;
-            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        }
-        closeEditor();
-        if (changed) renderMindmap();
     });
 
     document.getElementById('saveMindmapBtn').onclick        = saveMindmap;
@@ -302,6 +344,18 @@ async function saveMindmap() {
             body: JSON.stringify({ data: { nodes, links } })
         });
     } catch (_) {}
+}
+
+function deleteNode(id) {
+    const node = nodes.find(n => n.id === id);
+    if (!node || node.isMain) return;
+
+    nodes = nodes.filter(n => n.id !== id);
+    links = links.filter(l => l.source !== id && l.target !== id);
+    if (selectedNodeId === id) selectedNodeId = null;
+    
+    renderMindmap();
+    saveMindmap();
 }
 
 // ── 노드 mousedown 전역 핸들러 ───────────────────────────────────
@@ -348,9 +402,42 @@ window._nodeMouseDown = (e, id) => {
 
     // 드래그 이동 시작
     draggingNodeId = id;
+    selectedNodeId = id; // 노드 클릭 시 선택 상태로 변경
+    renderMindmap();
+
     const node = nodes.find(n => n.id === id);
     if (node) {
         dragOffsetX = e.clientX - node.x;
         dragOffsetY = e.clientY - node.y;
     }
+};
+
+// ── 노드 우클릭 전역 핸들러 ─────────────────────────────────────
+window._nodeContextMenu = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    selectedNodeId = id;
+    renderMindmap();
+
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+
+    const menuItems = [
+        { label: '✏️ 이름 변경', action: () => openEditor(id) }
+    ];
+
+    if (!node.isMain) {
+        menuItems.push({ type: 'separator' });
+        menuItems.push({ 
+            label: '🗑️ 노드 삭제', 
+            action: () => {
+                if (confirm(`'${node.text || '이름 없음'}' 노드를 삭제하시겠습니까?`)) {
+                    deleteNode(id);
+                }
+            } 
+        });
+    }
+
+    contextMenu.show(e.clientX, e.clientY, menuItems);
 };
