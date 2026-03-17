@@ -27,6 +27,11 @@ app.use((req, res, next) => {
   next();
 });
 
+// 헬스체크 API
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', version: '1.8.0', time: new Date().toISOString() });
+});
+
 // 프론트엔드 정적 파일 제공
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
