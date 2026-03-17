@@ -218,20 +218,18 @@ export function getDashboardHTML(user) {
         </div>
         <div class="user-section">
           <div class="nav-actions">
-            <!-- 사용 빈도가 낮은 매뉴얼을 가장 왼쪽에 배치 -->
-            <button class="btn-manual" id="manualBtn">매뉴얼</button>
-            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none;" title="모든 위젯 접기/펴기">모두 접기</button>
-            <button class="btn-feedback mobile-hide" id="feedbackBtn">소리함</button>
-            ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
-            <button class="btn-logout mobile-hide" id="logoutBtn">로그아웃</button>
-            <!-- 대시보드 조작과 직결된 이동 버튼을 우측(중앙쪽)에 배치 -->
-            <button class="btn-reorder mobile-only-btn" id="mobileReorderBtn" title="위젯 이동 모드">
+            <!-- PC 표준 순서 유지 -->
+            <button class="btn-manual" id="manualBtn" style="order: 1;">매뉴얼</button>
+            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none; order: 2;" title="모든 위젯 접기/펴기">모두 접기</button>
+            <button class="btn-feedback mobile-hide" id="feedbackBtn" style="order: 3;">소리함</button>
+            <button class="btn-reorder mobile-only-btn" id="mobileReorderBtn" style="order: 4;" title="위젯 이동 모드">
                 <span class="btn-icon">🔄</span>
                 <span class="btn-text">이동</span>
             </button>
+            ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? `<button class="btn-admin" id="adminBtn" style="order: 5;">관리자</button>` : ''}
+            <button class="btn-logout mobile-hide" id="logoutBtn" style="order: 6;">로그아웃</button>
           </div>
-          <!-- 사용자 프로필을 가장 오른쪽 끝(Top Right)에 배치 -->
-          <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
+          <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="order: 7; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
             <div class="avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
               ${(user.displayName || user.login_id).charAt(0).toUpperCase()}
             </div>

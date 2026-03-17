@@ -1,3 +1,7 @@
+.mobile-only-btn {
+  display: none !important;
+}
+
 /* ─── [모바일 전용] 반응형 최적화 및 수직 레이아웃 ───────────────── */
 @media (max-width: 768px) {
   /* 루트 변수 조정 */
@@ -61,28 +65,38 @@
   .dashboard-header .user-profile-btn {
     padding: 4px 10px 4px 6px !important;
     gap: 6px !important;
-    margin-left: 8px; /* 버튼들과의 최소 간격 */
+    order: 1 !important; /* 모바일에서 프로필을 왼쪽으로 스왑 */
+    margin-right: 8px !important;
+    margin-left: 0 !important;
   }
 
   .user-section {
-    justify-content: flex-end; /* 모든 요소를 우측으로 밀림 */
-    flex: 1;
-    gap: 10px !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+    flex: 1 !important;
+    gap: 6px !important;
   }
 
   .nav-actions {
-    display: flex;
-    align-items: center;
-    gap: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    order: 10 !important; /* 버튼 그룹을 오른쪽으로 스왑 */
   }
 
+  /* 각 버튼별 세부 순서 조정 (사용 빈도 기반) */
+  .btn-manual { order: 1 !important; }
+  .btn-collapse-all { order: 2 !important; }
+  .btn-reorder { order: 3 !important; }
+
   .btn-manual, .btn-collapse-all, .btn-reorder {
-    padding: 8px 10px !important;
-    height: 36px !important;
+    padding: 6px 10px !important;
+    height: 34px !important;
     font-size: 11px !important;
     display: flex;
     align-items: center;
     justify-content: center;
+    white-space: nowrap;
   }
 
   .avatar {
@@ -408,36 +422,6 @@
   .insta-icon {
     width: 0.9rem !important;
     height: 0.9rem !important;
-  }
-
-  /* 최하단 도달 표시 UI */
-  .dashboard-end-indicator {
-    padding: 40px 0;
-    text-align: center;
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    font-weight: 500;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.6s cubic-bezier(0.23, 1, 0.32, 1);
-    pointer-events: none;
-    letter-spacing: 0.1em;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .dashboard-end-indicator.visible {
-    opacity: 0.5;
-    transform: translateY(0);
-  }
-
-  .dashboard-end-indicator svg {
-    width: 20px;
-    height: 20px;
-    stroke: currentColor;
-    opacity: 0.6;
   }
 
   /* 게시판(소리함) 모바일 최적화 */

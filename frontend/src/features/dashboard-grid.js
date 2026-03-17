@@ -253,11 +253,8 @@ export function initDashboardGrid() {
     // 환영 세션 초기화
     initWelcomeSection();
 
-    // 최하단 도달 표시 UI 초기화 (모바일 전용)
-    initScrollEndIndicator(dashboardContent, grid);
-
-    // 최하단 바운스(Bounce) 효과 초기화 (모바일 전용)
-    initScrollBounceEffect(dashboardContent, grid);
+    // 최상단/최하단 바운스 효과 초기화
+    initScrollBounceEffect(dashboardContent || widgetsSection || grid, grid);
 
     // 동적 위젯 로드 (WidgetManager 시스템)
     import('./widget-manager.js').then(m => {
@@ -759,41 +756,6 @@ function setInitialLayout(grid) {
     saveLayout();
 }
 
-/**
- * 최하단 도달 표시 UI 초기화
- */
-function initScrollEndIndicator(container, grid) {
-    if (window.innerWidth > 768 || !container || !grid) return;
-
-    const indicator = document.createElement('div');
-    indicator.className = 'dashboard-end-indicator';
-    indicator.innerHTML = `
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
-        </svg>
-        <span>End of Dashboard</span>
-    `;
-    
-    // 그리드 하단이 아닌 컨텐츠 영역 끝에 추가 (z-index 고려)
-    grid.appendChild(indicator);
-
-    let lastScrollTop = 0;
-    container.addEventListener('scroll', () => {
-        const scrollTop = container.scrollTop;
-        const scrollHeight = container.scrollHeight;
-        const clientHeight = container.clientHeight;
-
-        // 최하단 도달 조건 (약간의 오차 허용)
-        const isBottom = scrollHeight - scrollTop <= clientHeight + 10;
-        
-        if (isBottom) {
-            indicator.classList.add('visible');
-        } else {
-            indicator.classList.remove('visible');
-        }
-        lastScrollTop = scrollTop;
-    }, { passive: true });
-}
 
 /**
  * 최하단 바운스(Bounce) 효과 초기화
