@@ -32,16 +32,25 @@ function extractVideoId(url) {
  */
 async function fetchVideoInfo(videoId) {
     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${YOUTUBE_API_KEY}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    if (data.items && data.items.length > 0) {
-        const snippet = data.items[0].snippet;
-        return {
-            title: snippet.title || '',
-            description: snippet.description || '',
-            channelTitle: snippet.channelTitle || '',
-            tags: snippet.tags || []
-        };
+    try {
+        const res = await fetch(url);
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`[RecipeAI] YouTube Video Info API failed (${res.status}):`, text.substring(0, 200));
+            return { title: '', description: '', channelTitle: '', tags: [] };
+        }
+        const data = await res.json();
+        if (data.items && data.items.length > 0) {
+            const snippet = data.items[0].snippet;
+            return {
+                title: snippet.title || '',
+                description: snippet.description || '',
+                channelTitle: snippet.channelTitle || '',
+                tags: snippet.tags || []
+            };
+        }
+    } catch (err) {
+        console.error('[RecipeAI] fetchVideoInfo Error:', err.message);
     }
     return { title: '', description: '', channelTitle: '', tags: [] };
 }
@@ -53,6 +62,11 @@ async function fetchCaptionList(videoId) {
     const url = `https://www.googleapis.com/youtube/v3/captions?part=snippet&videoId=${videoId}&key=${YOUTUBE_API_KEY}`;
     try {
         const res = await fetch(url);
+        if (!res.ok) {
+            const text = await res.text();
+            console.error(`[RecipeAI] YouTube Caption List API failed (${res.status}):`, text.substring(0, 200));
+            return [];
+        }
         const data = await res.json();
         if (data.items && data.items.length > 0) {
             return data.items.map(item => ({

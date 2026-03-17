@@ -625,7 +625,15 @@ export function initRecipe(el, data) {
                         body: JSON.stringify({ url: youtubeUrl.trim() })
                     });
 
-                    const data = await response.json();
+                    let data;
+                    const responseText = await response.text();
+                    
+                    try {
+                        data = JSON.parse(responseText);
+                    } catch (e) {
+                        console.error('[RecipeAI] JSON Parse Error. Raw response:', responseText);
+                        throw new Error(`서버 응답이 올바른 형식이 아닙니다. (Status: ${response.status})\n응답 내용: ${responseText.substring(0, 50)}...`);
+                    }
 
                     if (!response.ok) {
                         throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
