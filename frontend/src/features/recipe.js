@@ -609,7 +609,7 @@ export function initRecipe(el, data) {
 
         if (btnAiGenerate) {
             btnAiGenerate.onclick = async () => {
-                const youtubeUrl = prompt('🎬 유튜브 URL을 입력하세요:\n(예: https://www.youtube.com/watch?v=xxxx)');
+                const youtubeUrl = prompt('🎬 유튜브 URL을 입력하세요:\n(예: https://youtu.be/xxxx 또는 https://www.youtube.com/watch?v=xxxx)');
                 if (!youtubeUrl || !youtubeUrl.trim()) return;
 
                 setLoading(true, 'YouTube 영상 정보를 가져오는 중...');

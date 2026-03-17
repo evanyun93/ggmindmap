@@ -18,8 +18,7 @@ const YOUTUBE_API_KEY = process.env.YOUTUBE_API_KEY;
  */
 function extractVideoId(url) {
     const patterns = [
-        /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/shorts\/)([A-Za-z0-9_-]{11})/,
-        /youtube\.com\/embed\/([A-Za-z0-9_-]{11})/,
+        /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?.*v=|shorts\/))([A-Za-z0-9_-]{11})/
     ];
     for (const pattern of patterns) {
         const match = url.match(pattern);
