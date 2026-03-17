@@ -301,16 +301,22 @@ export class WidgetManager {
     }
     if (data.widget_type === 'mindmap') {
       return `
-                <div class="card-icon-mini">🧠</div>
+                <div class="widget-header clickable-header mindmap-cta-header">
+                  <div class="header-main">
+                    <div class="card-icon">🧠</div>
+                    <h3 class="mindmap-widget-title">생각 그리기</h3>
+                  </div>
+                  <div class="header-actions">
+                    <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
+                      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                  </div>
+                </div>
                 <div class="cta-content-wrapper">
                   <div class="cta-text">
-                    <h3>생각 그리기(베타 버전v.1.0)</h3>
                     <p>마인드맵으로 아이디어를 시각화하세요.</p>
                   </div>
                   <button class="cta-button-premium mindmap-start-btn">시작하기</button>
-                  <button class="btn-del-widget btn-del-floating" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
-                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                  </button>
                 </div>
             `;
     }
@@ -335,10 +341,12 @@ export class WidgetManager {
               </div>
               <h3 class="recipe-widget-title">${data.settings?.title || '나만의 레시피 북'}</h3>
             </div>
+            <div class="header-actions">
+              <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
           </div>
-          <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-          </button>
           <div class="recipe-content-wrapper">
              <!-- 레시피 목록, 상세, 작성 뷰가 이곳에 렌더링됩니다 -->
              <div class="recipe-view-container"></div>

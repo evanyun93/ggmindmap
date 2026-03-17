@@ -1,23 +1,44 @@
 /* ─── 위젯 공통 헤더 및 접힘 기능 ──────────────────────────── */
 .dashboard-card .widget-header,
-
-/* 게시판 카드 아이템 (글래스 디자인) */
 .premium-glass-card .widget-header,
 .widget-milestone .widget-header,
-.widget-todo .widget-header {
-  align-items: center;
+.widget-todo .widget-header,
+.widget-recipe .widget-header,
+.widget-mindmap .widget-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
   min-height: 64px;
   height: 64px;
   margin: 0;
-  transition: background 0.3s, color 0.3s;
+  padding: 0 16px;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
 }
 
+.header-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* 위젯 접힘(Collapsed) 상태 */
 .dashboard-card.collapsed,
 .premium-glass-card.collapsed,
 .widget-milestone.collapsed,
 .widget-todo.collapsed,
-.widget-mindmap-cta.collapsed {
-  max-height: 72px !important;
+.widget-recipe.collapsed,
+.widget-mindmap.collapsed {
+  max-height: 64px !important; /* 헤더 높이와 일치 */
   min-height: 0 !important;
   height: auto !important;
   overflow: hidden !important;
@@ -25,21 +46,12 @@
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s;
 }
 
-.dashboard-card.collapsed .widget-header,
-.premium-glass-card.collapsed .widget-header,
-.widget-milestone.collapsed .widget-header,
-.widget-todo.collapsed .widget-header {
-  display: flex !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  position: relative;
-  z-index: 2;
-}
-
 .dashboard-card.collapsed .milestone-collapsible-wrapper,
 .premium-glass-card.collapsed .milestone-collapsible-wrapper,
 .widget-milestone.collapsed .milestone-collapsible-wrapper,
-.widget-todo.collapsed .todo-collapsible-wrapper {
+.widget-todo.collapsed .todo-collapsible-wrapper,
+.widget-recipe.collapsed .recipe-content-wrapper,
+.widget-mindmap.collapsed .cta-content-wrapper {
   max-height: 0 !important;
   opacity: 0 !important;
   pointer-events: none !important;
@@ -48,16 +60,6 @@
 
 
 /* ─── 마인드맵 노드 상태 스타일 ────────────────────────────── */
-svg .node-group.collapsed .node-rect {
-  fill: #222b;
-  stroke: #8B5CF6;
-  filter: brightness(0.9) blur(0.5px);
-}
-
-svg .node-group.collapsed .node-text {
-  font-weight: bold;
-  fill: #8B5CF6;
-}
 
 svg .node-group.collapsed {
   opacity: 0.85;
