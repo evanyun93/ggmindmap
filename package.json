@@ -9,5 +9,17 @@
     },
     "keywords": [],
     "author": "@yun.boy",
-    "license": "ISC"
+    "license": "ISC",
+    "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "bcryptjs": "^2.4.3",
+        "better-sqlite3": "^12.6.2",
+        "cors": "^2.8.5",
+        "dotenv": "^17.3.1",
+        "express": "^4.18.2",
+        "jsonwebtoken": "^9.0.2",
+        "nodemailer": "^6.10.1",
+        "pg": "^8.18.0",
+        "youtube-captions-scraper": "^2.0.3"
+    }
 }

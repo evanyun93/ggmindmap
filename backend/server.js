@@ -73,6 +73,10 @@ app.get('*', (req, res) => {
 
 // ─── 서버 시작 ─────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT} `);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT} `);
+  });
+}
+
+module.exports = app;
