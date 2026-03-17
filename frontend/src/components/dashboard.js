@@ -190,7 +190,14 @@ export function getDashboardHTML(user) {
             ${socialIntegrationSection}
             ${securitySection}
             ${displaySection}
-            <button id="closeSetupWarningBtn" style="width: 100%; padding: 10px; background: #f1f3f5; color: #495057; border: none; border-radius: 6px; cursor: pointer; margin-top: 16px; font-weight: 600; transition: background 0.2s;">닫기</button>
+            <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: none; align-items: center; gap: 8px;">
+                <span style="font-size: 16px;">📢</span> 고객의 소리함 (Q&A)
+            </button>
+            <button id="modalLogoutBtn" class="btn-logout-modal mobile-only-btn" style="width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; cursor: pointer; margin-top: 12px; font-weight: 600; display: none; align-items: center; justify-content: center; gap: 8px;">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                로그아웃
+            </button>
+            <button id="closeSetupWarningBtn" style="width: 100%; padding: 10px; background: #f1f3f5; color: #495057; border: none; border-radius: 6px; cursor: pointer; margin-top: 8px; font-weight: 600; transition: background 0.2s;">닫기</button>
         </div>
         
         ${themeChangeSubView}
@@ -211,15 +218,19 @@ export function getDashboardHTML(user) {
         </div>
         <div class="user-section">
           <div class="nav-actions">
+            <!-- 사용 빈도가 낮은 매뉴얼을 가장 왼쪽에 배치 -->
             <button class="btn-manual" id="manualBtn">매뉴얼</button>
-            <button class="btn-feedback" id="feedbackBtn">소리함</button>
+            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none;" title="모든 위젯 접기/펴기">모두 접기</button>
+            <button class="btn-feedback mobile-hide" id="feedbackBtn">소리함</button>
+            ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
+            <button class="btn-logout mobile-hide" id="logoutBtn">로그아웃</button>
+            <!-- 대시보드 조작과 직결된 이동 버튼을 우측(중앙쪽)에 배치 -->
             <button class="btn-reorder mobile-only-btn" id="mobileReorderBtn" title="위젯 이동 모드">
                 <span class="btn-icon">🔄</span>
                 <span class="btn-text">이동</span>
             </button>
-            ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? '<button class="btn-admin" id="adminBtn">관리자</button>' : ''}
-            <button class="btn-logout" id="logoutBtn">로그아웃</button>
           </div>
+          <!-- 사용자 프로필을 가장 오른쪽 끝(Top Right)에 배치 -->
           <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
             <div class="avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
               ${(user.displayName || user.login_id).charAt(0).toUpperCase()}
@@ -367,27 +378,6 @@ export function getMainDashboardContentHTML(user) {
             </div>
           </div>
 
-          <div class="mobile-scroll-controller" id="mobileScrollController" aria-label="대시보드 스크롤 컨트롤러">
-            <div class="mobile-scroll-fader" id="mobileScrollFader">
-              <div class="mobile-scroll-fader-track" id="mobileScrollTrack" aria-hidden="true">
-                <div class="mobile-scroll-fader-fill" id="mobileScrollFill"></div>
-                <button
-                  type="button"
-                  class="mobile-scroll-fader-thumb"
-                  id="mobileScrollThumb"
-                  role="slider"
-                  tabindex="0"
-                  aria-label="대시보드 세로 스크롤 페이더"
-                  aria-valuemin="0"
-                  aria-valuemax="100"
-                  aria-valuenow="0"
-                  aria-valuetext="0%"
-                  title="스크롤 페이더"
-                ></button>
-              </div>
-              <div class="mobile-scroll-fader-indicator" id="mobileScrollIndicator" aria-hidden="true">0%</div>
-            </div>
-          </div>
         </div>
   `;
 }

@@ -27,6 +27,7 @@ export function initDashboardFeatures(user) {
 
     // 3. 도구 및 메뉴 초기화
     initUtilities(user);
+    initCollapseAll();
 
     console.log('[Init] 모든 피처 초기화 완료.');
 }
@@ -64,6 +65,30 @@ function initWidgets() {
 function initUtilities() {
     setupManualPopup();
 
+    // 고객의 소리 (헤더 및 모달 버튼 통합)
+    const feedbackBtns = [
+        document.getElementById('feedbackBtn'),
+        document.getElementById('modalFeedbackBtn')
+    ].filter(Boolean);
+
+    feedbackBtns.forEach(btn => {
+        btn.onclick = () => {
+            // 모달 내 버튼일 경우 모달을 먼저 닫음
+            if (btn.id === 'modalFeedbackBtn') {
+                const modal = document.getElementById('setupWarningModal');
+                if (modal) modal.style.display = 'none';
+            }
+            // 기존 feedbackBtn의 클릭 시뮬레이션 또는 직접 호출
+            const originalFeedbackBtn = document.getElementById('feedbackBtn');
+            if (originalFeedbackBtn) {
+                // feedbackBtn이 initFeedback에서 이벤트를 가져가므로 직접 클릭 트리거
+                if (btn !== originalFeedbackBtn) {
+                    originalFeedbackBtn.click();
+                }
+            }
+        };
+    });
+
     // 마인드맵 진입 버튼
     const startBtn = document.getElementById('realStartMindmapBtn');
     if (startBtn) {
@@ -75,7 +100,9 @@ function initUtilities() {
 
     // 로그아웃 시스템
     const logoutBtn = document.getElementById('logoutBtn');
+    const modalLogoutBtn = document.getElementById('modalLogoutBtn');
     if (logoutBtn) logoutBtn.onclick = logout;
+    if (modalLogoutBtn) modalLogoutBtn.onclick = logout;
 
     // 관리자 전용 기능 (Admin 계정 체크는 상위에서 수행)
     const adminBtn = document.getElementById('adminBtn');
@@ -563,5 +590,46 @@ function initUtilities() {
             });
         };
     }
+}
+
+/**
+ * 모든 위젯을 한 번에 접거나 펴는 기능을 초기화합니다.
+ */
+function initCollapseAll() {
+    const collapseAllBtn = document.getElementById('collapseAllBtn');
+    if (!collapseAllBtn) return;
+
+    collapseAllBtn.onclick = () => {
+        const widgets = document.querySelectorAll('.draggable-widget');
+        if (widgets.length === 0) return;
+
+        // 하나라도 펼쳐진 위젯이 있는지 확인
+        const anyExpanded = Array.from(widgets).some(w => !w.classList.contains('collapsed'));
+
+        widgets.forEach(w => {
+            const widgetId = w.dataset.id;
+            if (anyExpanded) {
+                // 모두 접기
+                w.classList.add('collapsed');
+                if (widgetId) {
+                    localStorage.setItem(`todo_collapsed_${widgetId}`, 'true');
+                    localStorage.setItem(`milestone_collapsed_${widgetId}`, 'true');
+                }
+            } else {
+                // 모두 펴기
+                w.classList.remove('collapsed');
+                if (widgetId) {
+                    localStorage.setItem(`todo_collapsed_${widgetId}`, 'false');
+                    localStorage.setItem(`milestone_collapsed_${widgetId}`, 'false');
+                }
+            }
+        });
+
+        // 버튼 텍스트 변경
+        collapseAllBtn.textContent = anyExpanded ? '모두 펴기' : '모두 접기';
+        
+        // 햅틱 피드백
+        if (window.navigator.vibrate) window.navigator.vibrate(5);
+    };
 }
 

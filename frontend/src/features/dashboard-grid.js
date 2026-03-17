@@ -7,7 +7,6 @@
 let maxZIndex = 100;
 
 import { contextMenu } from '../utils/context-menu.js';
-import { initMobileScrollController } from './dashboard-grid-mobile-scroll.js';
 import { initWelcomeSection, initTheme } from './dashboard-grid-ui.js';
 import { API_BASE, apiFetch } from '../services/api.js';
 
@@ -15,9 +14,19 @@ import { API_BASE, apiFetch } from '../services/api.js';
 let isMoveModeActive = false;
 
 export function initDashboardGrid() {
-    console.log('[DashboardGrid] 그리드 초기화 시작');
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
+
+    // 중복 초기화 방지
+    if (grid._isGridInitialized) {
+        console.log('[DashboardGrid] 이미 초기화된 그리드입니다. 중복 방지.');
+        return;
+    }
+    grid._isGridInitialized = true;
+
+    // 모바일 이동 모드 상태 초기화 (재진입 시 일관성 유지)
+    isMoveModeActive = false;
+
     const dashboardContent = document.getElementById('dashboardContent');
     const widgetsSection = grid.closest('.widgets-section');
     const longPressScope = dashboardContent || widgetsSection || grid;
@@ -57,9 +66,9 @@ export function initDashboardGrid() {
         height: initialRect.height
     });
 
-    const LONG_PRESS_MS = 550;
-    const MOVE_TOLERANCE_PX = 12;
-    const SCROLL_INTENT_Y_PX = 6;
+    const LONG_PRESS_MS = 600;      // 롱프레스 시간 살짝 연장 (안정성)
+    const MOVE_TOLERANCE_PX = 20;   // 터치 허용 오차 확대 (12 -> 20)
+    const SCROLL_INTENT_Y_PX = 15;  // 스크롤 판단 임계값 확대 (6 -> 15)
     let longPressTimer = null;
     let touchStartX = 0;
     let touchStartY = 0;
@@ -238,13 +247,17 @@ export function initDashboardGrid() {
         clearLongPressTimer();
     }, { passive: true });
 
-    initMobileScrollController(dashboardContent);
-
     // 테마 초기화
     initTheme();
 
     // 환영 세션 초기화
     initWelcomeSection();
+
+    // 최하단 도달 표시 UI 초기화 (모바일 전용)
+    initScrollEndIndicator(dashboardContent, grid);
+
+    // 최하단 바운스(Bounce) 효과 초기화 (모바일 전용)
+    initScrollBounceEffect(dashboardContent, grid);
 
     // 동적 위젯 로드 (WidgetManager 시스템)
     import('./widget-manager.js').then(m => {
@@ -744,4 +757,142 @@ function setInitialLayout(grid) {
         }
     });
     saveLayout();
+}
+
+/**
+ * 최하단 도달 표시 UI 초기화
+ */
+function initScrollEndIndicator(container, grid) {
+    if (window.innerWidth > 768 || !container || !grid) return;
+
+    const indicator = document.createElement('div');
+    indicator.className = 'dashboard-end-indicator';
+    indicator.innerHTML = `
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 13l5 5 5-5M7 6l5 5 5-5"/>
+        </svg>
+        <span>End of Dashboard</span>
+    `;
+    
+    // 그리드 하단이 아닌 컨텐츠 영역 끝에 추가 (z-index 고려)
+    grid.appendChild(indicator);
+
+    let lastScrollTop = 0;
+    container.addEventListener('scroll', () => {
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        // 최하단 도달 조건 (약간의 오차 허용)
+        const isBottom = scrollHeight - scrollTop <= clientHeight + 10;
+        
+        if (isBottom) {
+            indicator.classList.add('visible');
+        } else {
+            indicator.classList.remove('visible');
+        }
+        lastScrollTop = scrollTop;
+    }, { passive: true });
+}
+
+/**
+ * 최하단 바운스(Bounce) 효과 초기화
+ */
+function initScrollBounceEffect(container, grid) {
+    if (window.innerWidth > 768 || !container || !grid) return;
+
+    // 하단 및 상단 라이팅(Glow) 요소 생성
+    const glowBottom = document.createElement('div');
+    glowBottom.className = 'scroll-bounce-glow';
+    document.body.appendChild(glowBottom);
+
+    const glowTop = document.createElement('div');
+    glowTop.className = 'scroll-bounce-glow-top';
+    document.body.appendChild(glowTop);
+
+    let touchStartY = 0;
+    let isAtTop = false;
+    let isAtBottom = false;
+    let pullDistance = 0;
+
+    const damping = 0.35;
+    const maxBounce = 80;
+
+    container.addEventListener('touchstart', (e) => {
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+
+        isAtTop = (scrollTop <= 2);
+        isAtBottom = (scrollHeight - scrollTop <= clientHeight + 5);
+        touchStartY = e.touches[0].clientY;
+        
+        grid.classList.remove('is-bouncing-back');
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+        if (!isAtTop && !isAtBottom) return;
+
+        const touchY = e.touches[0].clientY;
+        const diff = touchStartY - touchY; // 위로 올리면 diff > 0 (하단 바운스), 아래로 내리면 diff < 0 (상단 바운스)
+
+        // 상단 바운스 처리 (at Top & Pulling Down)
+        if (isAtTop && diff < 0) {
+            if (e.cancelable) e.preventDefault();
+            pullDistance = Math.pow(Math.abs(diff), 0.8) * damping;
+            pullDistance = Math.min(pullDistance, maxBounce);
+            
+            grid.style.transform = `translateY(${pullDistance}px)`;
+            
+            // 상단 네온 효과
+            if (pullDistance > 2) {
+                glowTop.classList.add('visible');
+                const intensity = Math.min(1, pullDistance / (maxBounce * 0.7));
+                glowTop.style.opacity = (0.5 + intensity * 0.5).toString();
+                glowTop.style.transform = `scaleX(${0.4 + intensity * 0.6})`;
+            }
+            return;
+        }
+
+        // 하단 바운스 처리 (at Bottom & Pulling Up)
+        if (isAtBottom && diff > 0) {
+            if (e.cancelable) e.preventDefault();
+            pullDistance = Math.pow(diff, 0.8) * damping;
+            pullDistance = Math.min(pullDistance, maxBounce);
+
+            grid.style.transform = `translateY(${-pullDistance}px)`;
+
+            if (pullDistance > 2) {
+                glowBottom.classList.add('visible');
+                const intensity = Math.min(1, pullDistance / (maxBounce * 0.7));
+                glowBottom.style.opacity = (0.5 + intensity * 0.5).toString();
+                glowBottom.style.transform = `scaleX(${0.4 + intensity * 0.6})`;
+            }
+            return;
+        }
+
+        // 범위 밖이면 초기화
+        pullDistance = 0;
+        grid.style.transform = '';
+        glowTop.classList.remove('visible');
+        glowBottom.classList.remove('visible');
+    }, { passive: false });
+
+    container.addEventListener('touchend', () => {
+        if (pullDistance > 0) {
+            grid.classList.add('is-bouncing-back');
+            grid.style.transform = '';
+            
+            glowTop.classList.remove('visible');
+            glowTop.style.opacity = '0';
+            glowTop.style.transform = 'scaleX(0.4)';
+
+            glowBottom.classList.remove('visible');
+            glowBottom.style.opacity = '0';
+            glowBottom.style.transform = 'scaleX(0.4)';
+
+            pullDistance = 0;
+            if (window.navigator.vibrate) window.navigator.vibrate(10);
+        }
+    }, { passive: true });
 }

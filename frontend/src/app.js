@@ -35,6 +35,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 4. 네이버 콜백 처리 (팝업 등에서 돌아왔을 때)
     const { checkNaverCallback } = await import('./services/social-auth.js');
     checkNaverCallback();
+
+    // 5. 모바일 제스처 이탈 방지 (뒤로 가기 차단)
+    if (window.innerWidth <= 768) {
+        history.pushState(null, null, location.href);
+        window.onpopstate = function() {
+            history.pushState(null, null, location.href);
+            // 필요 시 사용자에게 알림을 줄 수 있음
+            console.log('[App] 제스처에 의한 뒤로 가기가 차단되었습니다.');
+        };
+    }
 });
 
 /**
