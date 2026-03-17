@@ -132,6 +132,7 @@ async function initDatabase() {
       await client.query(`
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT '#8B5CF6';
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS widget_id INTEGER REFERENCES tba_user_widgets(id);
+        ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS alarm_time TIMESTAMPTZ;
       `);
 
       // tba_user_widgets 테이블 생성 (동적 위젯 레이아웃 저장)
@@ -159,6 +160,9 @@ async function initDatabase() {
           updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         );
       `);
+
+      // DB 세션 타임존을 한국 시간으로 고정 (조회 시 시차 혼선 방지)
+      await client.query("SET TIME ZONE 'Asia/Seoul'");
 
       console.log('✅ PostgreSQL 데이터베이스 초기화 완료');
     } finally {

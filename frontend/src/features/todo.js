@@ -52,6 +52,9 @@ export function initTodo(el) {
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
                 localStorage.setItem(`todo_collapsed_${widgetId}`, collapsed);
+                
+                // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
+                import('./dashboard-grid.js').then(m => m.saveLayout());
             }
         };
         document.addEventListener('mousemove', onMove);
@@ -174,27 +177,70 @@ async function loadTodoList(el) {
 
 async function addTodo(el) {
     const input = el.querySelector('.todo-input');
-    const task = input.value.trim();
-    if (!task) return;
+    const taskContent = input.value.trim();
+    if (!taskContent) return;
 
+    // 시간 파싱
+    const { task, alarmTime } = parseTimeFromTask(taskContent);
     const color = localStorage.getItem('todo_checkbox_color') || DEFAULT_CHECKBOX_COLOR;
-    // 위젯 ID 가져오기
     const widgetId = el.closest('.draggable-widget')?.dataset?.id;
     
     try {
         const res = await apiFetch('/api/todos', {
             method: 'POST',
-            body: JSON.stringify({ task, color, widget_id: widgetId })
+            body: JSON.stringify({ 
+                task, 
+                color, 
+                widget_id: widgetId, 
+                alarmTime // parseTimeFromTask에서 생성한 KST ISO (+09:00) 그대로 전송
+            })
         });
         const result = await res.json();
         if (result.success) {
             input.value = '';
-            // 현재 위젯만 즉시 갱신 (진동 방지)
             loadTodoList(el);
         }
     } catch (err) {
         console.error('[Todo] 추가 에러:', err);
     }
+}
+
+function parseTimeFromTask(taskContent) {
+    let task = taskContent;
+    let alarmTime = null;
+
+    const timePattern = /(\d{1,2}):(\d{2})|(\d{1,2})시\s*(\d{1,2})?분?/;
+    let match = taskContent.match(timePattern);
+
+    if (match) {
+        const hours = parseInt(match[1] || match[3]);
+        const minutes = parseInt(match[2] || match[4] || 0);
+
+        if (hours >= 0 && hours < 24 && minutes >= 0 && minutes < 60) {
+            // 현재 한국 시간 기준의 성분 추출 (Intl.DateTimeFormat 사용으로 타임존 독립적 보장)
+            const kstParts = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric', month: '2-digit', day: '2-digit',
+                hour: '2-digit', minute: '2-digit', second: '2-digit',
+                hour12: false
+            }).formatToParts(new Date());
+            
+            const getV = (t) => kstParts.find(p => p.type === t).value;
+            const year = getV('year');
+            const month = getV('month');
+            const day = getV('day');
+            
+            // 오늘 날짜로 일단 타겟 생성
+            const hh = String(hours).padStart(2, '0');
+            const mm = String(minutes).padStart(2, '0');
+            
+            // 명시적인 KST 성분으로 ISO 문자열 재구성 (+09:00 오프셋 강제)
+            const kstIso = `${year}-${month}-${day}T${hh}:${mm}:00+09:00`;
+            alarmTime = kstIso; // .toISOString()을 쓰지 않고 KST 오프셋을 그대로 유지하여 전송
+        }
+    }
+
+    return { task, alarmTime };
 }
 
 function renderTodos(el, todos) {
@@ -205,12 +251,50 @@ function renderTodos(el, todos) {
     const html = sortedTodos.map(todo => {
         const color = todo.color || DEFAULT_CHECKBOX_COLOR;
         const checked = todo.is_completed;
+        
+        // 알람 표시 생성
+        let alarmHtml = '';
+        if (todo.alarm_time) {
+            let alarmStr = todo.alarm_time;
+            
+            // Date 객체거나 유효한 문자열인지 확인 후 파싱
+            if (typeof alarmStr === 'string') {
+                alarmStr = alarmStr.replace(' ', 'T');
+                // 타임존 정보가 없을 경우에만 Z(UTC) 추가
+                if (!alarmStr.includes('Z') && !alarmStr.includes('+')) {
+                    alarmStr += 'Z';
+                }
+            }
+            const time = new Date(alarmStr);
+            
+            // 시각적 확인을 위한 보정 (항상 KST Asia/Seoul 강제)
+            const timeStr = new Intl.DateTimeFormat('ko-KR', { 
+                timeZone: 'Asia/Seoul', 
+                hour12: false, 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }).format(time);
+
+            const isPast = time < new Date() && !checked;
+            alarmHtml = `
+                <div class="todo-alarm-badge ${isPast ? 'past' : ''}" title="알람 설정됨 (KST): ${timeStr}">
+                    <span class="alarm-icon">⏰</span>
+                    <span class="alarm-time-text">${timeStr}</span>
+                </div>
+            `;
+        }
+
         return `
         <div class="todo-item ${checked ? 'completed' : ''}">
-            <input type="checkbox" ${checked ? 'checked' : ''} 
-                   style="background:${checked ? color : 'transparent'}; border-color:${color};"
-                   data-id="${todo.id}" data-color="${color}" class="todo-check">
-            <span class="todo-text">${todo.task}</span>
+            <div class="todo-item-main">
+                <input type="checkbox" ${checked ? 'checked' : ''} 
+                       style="background:${checked ? color : 'transparent'}; border-color:${color};"
+                       data-id="${todo.id}" data-color="${color}" class="todo-check">
+                <div class="todo-content-wrap">
+                    <span class="todo-text">${todo.task}</span>
+                    ${alarmHtml}
+                </div>
+            </div>
             <button class="todo-del-btn" data-id="${todo.id}" title="삭제">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="3 6 5 6 21 6"></polyline>
@@ -223,6 +307,11 @@ function renderTodos(el, todos) {
     }).join('');
 
     container.innerHTML = html || '<div class="no-data-mini">할 일이 없습니다.</div>';
+    
+    // 알람 권한 요청 (최초 렌더링 시 1회 시도)
+    if (Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
 
     // 리스너 재할당
     container.querySelectorAll('.todo-check').forEach(chk => {
@@ -235,12 +324,12 @@ function renderTodos(el, todos) {
                     method: 'PATCH',
                     body: JSON.stringify({ isCompleted })
                 });
-                // 모든 위젯 동기화 (최소한의 DOM 조작)
+                // 모든 위젯 동기화
                 document.querySelectorAll('.widget-todo').forEach(w => {
                     const target = w.querySelector(`.todo-check[data-id="${id}"]`);
                     if (target) {
                         target.checked = isCompleted;
-                        target.parentElement.classList.toggle('completed', isCompleted);
+                        target.parentElement.closest('.todo-item').classList.toggle('completed', isCompleted);
                         target.style.backgroundColor = isCompleted ? color : 'transparent';
                     }
                 });
@@ -250,7 +339,7 @@ function renderTodos(el, todos) {
 
     container.querySelectorAll('.todo-del-btn').forEach(btn => {
         btn.onclick = async (e) => {
-            const id = e.target.dataset.id;
+            const id = e.currentTarget.dataset.id;
             try {
                 await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
                 document.querySelectorAll('.widget-todo').forEach(w => loadTodoList(w));

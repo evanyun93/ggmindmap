@@ -106,9 +106,21 @@ export class WidgetManager {
           y: Math.round(Number(y)),
           width: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
           height: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
-          settings: type === 'milestone'
-            ? { syncWithMemo: false, summaryData: [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }] }
-            : (type === 'recipe' ? { recipes: [] } : {})
+          settings: {
+            ...(type === 'milestone' 
+                ? { syncWithMemo: false, summaryData: [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }] }
+                : (type === 'recipe' ? { recipes: [] } : {})
+            ),
+            layouts: {
+                [`${window.innerWidth <= 768 ? 'mobile' : 'pc'}_expanded`]: {
+                    x: Math.round(Number(x)),
+                    y: Math.round(Number(y)),
+                    w: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
+                    h: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
+                    z: 100
+                }
+            }
+          }
         })
       });
       const data = await res.json();
@@ -130,14 +142,43 @@ export class WidgetManager {
     const grid = this.getGrid();
     if (!grid) return;
 
+    const isMobile = window.innerWidth <= 768;
+    const widgetId = widgetData.id;
+    const isCollapsed = localStorage.getItem(`${widgetData.widget_type}_collapsed_${widgetId}`) === 'true';
+
     const widget = document.createElement('div');
     widget.className = `draggable-widget dashboard-card premium-glass-card widget-${widgetData.widget_type}`;
     widget.dataset.id = widgetData.id;
-    widget.style.left = `${widgetData.x}px`;
-    widget.style.top = `${widgetData.y}px`;
-    widget.style.width = `${widgetData.width}px`;
-    widget.style.height = `${widgetData.height}px`;
-    widget.style.zIndex = widgetData.z_index;
+    if (isCollapsed) widget.classList.add('collapsed');
+
+    // 기기 및 상태별 레이아웃 키 결정
+    const platform = isMobile ? 'mobile' : 'pc';
+    const state = isCollapsed ? 'collapsed' : 'expanded';
+    const layoutKey = `${platform}_${state}`;
+    
+    // 기본값 설정
+    let x = widgetData.x;
+    let y = widgetData.y;
+    let w = widgetData.width;
+    let h = widgetData.height;
+    let z = widgetData.z_index;
+
+    // settings.layouts에 저장된 값이 있으면 우선 적용
+    const layouts = widgetData.settings?.layouts;
+    if (layouts && layouts[layoutKey]) {
+        const l = layouts[layoutKey];
+        if (l.x !== undefined) x = l.x;
+        if (l.y !== undefined) y = l.y;
+        if (l.w !== undefined) w = l.w;
+        if (l.h !== undefined) h = l.h;
+        if (l.z !== undefined) z = l.z;
+    }
+
+    widget.style.left = `${x}px`;
+    widget.style.top = `${y}px`;
+    widget.style.width = `${w}px`;
+    widget.style.height = `${h}px`;
+    widget.style.zIndex = z;
     widget.style.position = 'absolute';
 
     // 위젯 내용 생성
@@ -369,6 +410,11 @@ export class WidgetManager {
     if (data.widget_type === 'recipe') {
       import('./recipe.js').then(m => {
         if (m.initRecipe) m.initRecipe(el, data);
+      });
+    }
+    if (data.widget_type === 'mindmap') {
+      import('./mindmap-cta.js').then(m => {
+        if (m.initMindmapCTA) m.initMindmapCTA(el);
       });
     }
   }

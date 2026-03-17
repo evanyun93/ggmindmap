@@ -58,6 +58,56 @@
   transition: max-height 0.4s, opacity 0.3s;
 }
 
+/* ─── To-Do 알람 배지 스타일 ────────────────────────────── */
+.todo-content-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.todo-alarm-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: #a78bfa;
+    width: fit-content;
+    margin-top: 2px;
+    transition: all 0.3s ease;
+}
+
+.todo-alarm-badge.past {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: #f87171;
+    animation: alarm-pulse 2s infinite;
+}
+
+@keyframes alarm-pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.6; }
+    100% { opacity: 1; }
+}
+
+.todo-item-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+}
+
+.todo-item.completed .todo-alarm-badge {
+    opacity: 0.5;
+    filter: grayscale(1);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: transparent;
+}
+
 
 /* ─── 마인드맵 노드 상태 스타일 ────────────────────────────── */
 

@@ -46,6 +46,9 @@ export function initMilestone(el, widgetData) {
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
                 localStorage.setItem(`milestone_collapsed_${widgetId}`, collapsed);
+                
+                // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
+                import('./dashboard-grid.js').then(m => m.saveLayout());
             }
         };
         document.addEventListener('mousemove', onMove);

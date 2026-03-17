@@ -562,3 +562,101 @@
     border-color: rgba(139, 92, 246, 0.6);
     transform: translateY(-2px);
 }
+
+/* Structured Ingredients */
+.ingredients-edit-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.ingredient-row {
+    display: grid;
+    grid-template-columns: 1fr 80px 80px 40px;
+    gap: 8px;
+    align-items: center;
+}
+
+.ingredient-input {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: white;
+    font-size: 0.9rem;
+    width: 100%;
+    transition: all 0.2s;
+}
+
+.ingredient-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(139, 92, 246, 0.5);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
+}
+
+.btn-remove-ingredient {
+    background: transparent;
+    border: none;
+    color: rgba(239, 68, 68, 0.6);
+    cursor: pointer;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    transition: all 0.2s;
+}
+
+.btn-remove-ingredient:hover {
+    color: #ef4444;
+    transform: scale(1.1);
+}
+
+.btn-add-ingredient {
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px dashed rgba(139, 92, 246, 0.3);
+    color: #C4B5FD;
+    padding: 8px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-top: 4px;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.btn-add-ingredient:hover {
+    background: rgba(139, 92, 246, 0.2);
+    border-color: rgba(139, 92, 246, 0.5);
+}
+
+/* 상세 보기의 구조화된 재료 리스트 */
+.recipe-ingredients-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 4px;
+}
+
+.ingredient-item-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ingredient-item-row:last-child {
+    border-bottom: none;
+}
+
+.ing-name {
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.ing-amount {
+    color: #C4B5FD;
+    font-size: 0.9rem;
+}

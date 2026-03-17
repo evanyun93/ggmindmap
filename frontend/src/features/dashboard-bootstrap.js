@@ -29,6 +29,9 @@ export function initDashboardFeatures(user) {
     initUtilities(user);
     initCollapseAll();
 
+    // 4. 할 일 알람 시스템 시작
+    import('./todo-alarm.js').then(m => m.todoAlarmSystem.start());
+
     console.log('[Init] 모든 피처 초기화 완료.');
 }
 
@@ -209,25 +212,32 @@ function initUtilities() {
         };
     }
 
-    // 모달 닫기 버튼
+    // 모달 닫기 버튼들 (기존 하단 버튼 + 신규 상단 X 버튼)
     const closeSetupWarningBtn = document.getElementById('closeSetupWarningBtn');
+    const closeSetupWarningHeaderBtn = document.getElementById('closeSetupWarningHeaderBtn');
+    
+    const closeSettingsModal = () => {
+        const modal = document.getElementById('setupWarningModal');
+        if (modal) {
+            modal.style.display = 'none';
+            
+            // 모달 닫힐 때 메인 뷰로 초기화 (다시 열 때를 대비)
+            const mainView = document.getElementById('mainSettingsView');
+            const pResetView = document.getElementById('passwordResetSubView');
+            const nChangeView = document.getElementById('nicknameChangeSubView');
+            const tChangeView = document.getElementById('themeChangeSubView');
+            if (mainView) mainView.style.display = 'block';
+            if (pResetView) pResetView.style.display = 'none';
+            if (nChangeView) nChangeView.style.display = 'none';
+            if (tChangeView) tChangeView.style.display = 'none';
+        }
+    };
+
     if (closeSetupWarningBtn) {
-        closeSetupWarningBtn.addEventListener('click', () => {
-            const modal = document.getElementById('setupWarningModal');
-            if (modal) {
-                modal.style.display = 'none';
-                
-                // 모달 닫힐 때 메인 뷰로 초기화 (다시 열 때를 대비)
-                const mainView = document.getElementById('mainSettingsView');
-                const pResetView = document.getElementById('passwordResetSubView');
-                const nChangeView = document.getElementById('nicknameChangeSubView');
-                const tChangeView = document.getElementById('themeChangeSubView');
-                if (mainView) mainView.style.display = 'block';
-                if (pResetView) pResetView.style.display = 'none';
-                if (nChangeView) nChangeView.style.display = 'none';
-                if (tChangeView) tChangeView.style.display = 'none';
-            }
-        });
+        closeSetupWarningBtn.addEventListener('click', closeSettingsModal);
+    }
+    if (closeSetupWarningHeaderBtn) {
+        closeSetupWarningHeaderBtn.addEventListener('click', closeSettingsModal);
     }
 
     // --- 설정 서브 뷰 관련 로직 ---
@@ -614,6 +624,7 @@ function initCollapseAll() {
                 if (widgetId) {
                     localStorage.setItem(`todo_collapsed_${widgetId}`, 'true');
                     localStorage.setItem(`milestone_collapsed_${widgetId}`, 'true');
+                    localStorage.setItem(`recipe_collapsed_${widgetId}`, 'true');
                 }
             } else {
                 // 모두 펴기
@@ -621,6 +632,7 @@ function initCollapseAll() {
                 if (widgetId) {
                     localStorage.setItem(`todo_collapsed_${widgetId}`, 'false');
                     localStorage.setItem(`milestone_collapsed_${widgetId}`, 'false');
+                    localStorage.setItem(`recipe_collapsed_${widgetId}`, 'false');
                 }
             }
         });

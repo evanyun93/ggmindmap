@@ -182,18 +182,20 @@ export function getDashboardHTML(user) {
 
   const setupModalOverlay = `
     <div id="setupWarningModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9000; justify-content: center; align-items: center;">
-      <div style="background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto;">
+      <div style="background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; position: relative;">
+        <!-- 상단 우측 닫기 버튼 -->
+        <button id="closeSetupWarningHeaderBtn" style="position: absolute; top: 12px; right: 12px; background: none; border: none; font-size: 24px; color: #adb5bd; cursor: pointer; padding: 4px 8px; line-height: 1; transition: color 0.2s, transform 0.2s; z-index: 10;" title="닫기">&times;</button>
         
         <div id="mainSettingsView">
-            <h3 style="margin-top: 0; color: #333; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 12px;">내 정보 / 설정</h3>
+            <h3 style="margin-top: 0; color: #333; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 12px; padding-right: 30px;">내 정보 / 설정</h3>
             ${warningsCards}
             ${socialIntegrationSection}
             ${securitySection}
             ${displaySection}
-            <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: none; align-items: center; gap: 8px;">
+            <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 16px;">📢</span> 고객의 소리함 (Q&A)
             </button>
-            <button id="modalLogoutBtn" class="btn-logout-modal mobile-only-btn" style="width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; cursor: pointer; margin-top: 12px; font-weight: 600; display: none; align-items: center; justify-content: center; gap: 8px;">
+            <button id="modalLogoutBtn" class="btn-logout-modal mobile-only-btn" style="width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; cursor: pointer; margin-top: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 로그아웃
             </button>
@@ -217,7 +219,15 @@ export function getDashboardHTML(user) {
           <h2>MindMap</h2>
         </div>
         <div class="user-section">
-          <div class="nav-actions">
+          <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="order: 1; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
+            <div class="avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              ${(user.displayName || user.login_id).charAt(0).toUpperCase()}
+            </div>
+            <span class="user-name mobile-hide" data-user-debug="${user.login_id}" style="font-size: 14px; font-weight: 500;"><strong>${user.displayName || user.login_id}</strong>님</span>
+            <span class="badges-wrapper mobile-hide" style="display: flex; gap: 4px;">${connectedBadgesHtml}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-left: 4px;"><path d="M11.4 18.16l-7.2-7.2a2 2 0 0 1 0-2.83l7.2-7.2a2 2 0 0 1 2.83 2.83L8.66 9.4h11.18a2 2 0 0 1 2 2v1.2a2 2 0 0 1-2 2H8.66l5.57 5.57a2 2 0 0 1-2.83 2.83z" display="none"/><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="nav-actions" style="order: 2;">
             <!-- PC 표준 순서 유지 -->
             <button class="btn-manual" id="manualBtn" style="order: 1;">매뉴얼</button>
             <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none; order: 2;" title="모든 위젯 접기/펴기">모두 접기</button>
@@ -228,14 +238,6 @@ export function getDashboardHTML(user) {
             </button>
             ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? `<button class="btn-admin" id="adminBtn" style="order: 5;">관리자</button>` : ''}
             <button class="btn-logout mobile-hide" id="logoutBtn" style="order: 6;">로그아웃</button>
-          </div>
-          <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="order: 7; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
-            <div class="avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-              ${(user.displayName || user.login_id).charAt(0).toUpperCase()}
-            </div>
-            <span class="user-name mobile-hide" data-user-debug="${user.login_id}" style="font-size: 14px; font-weight: 500;"><strong>${user.displayName || user.login_id}</strong>님</span>
-            <span class="badges-wrapper mobile-hide" style="display: flex; gap: 4px;">${connectedBadgesHtml}</span>
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.6; margin-left: 4px;"><path d="M11.4 18.16l-7.2-7.2a2 2 0 0 1 0-2.83l7.2-7.2a2 2 0 0 1 2.83 2.83L8.66 9.4h11.18a2 2 0 0 1 2 2v1.2a2 2 0 0 1-2 2H8.66l5.57 5.57a2 2 0 0 1-2.83 2.83z" display="none"/><polyline points="6 9 12 15 18 9"></polyline></svg>
           </div>
         </div>
       </header>

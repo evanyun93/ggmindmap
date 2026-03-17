@@ -32,11 +32,24 @@
     touch-action: pan-y; /* 수평 스와이프 제스처(뒤로가기 등) 차단 */
   }
 
-  /* 헤더 슬림화 */
+  /* 헤더 슬림화 및 2단 레이아웃 */
   .dashboard-header {
-    height: var(--header-height);
-    padding: 0 16px !important;
-    gap: 12px !important;
+    height: auto !important; /* 고정 높이 해제 */
+    min-height: var(--header-height);
+    padding: 8px 16px !important;
+    display: grid !important;
+    grid-template-columns: 1fr auto;
+    grid-template-areas: 
+      "logo profile"
+      "nav nav";
+    gap: 8px 0 !important;
+    align-items: center;
+  }
+
+  .logo-section {
+    grid-area: logo;
+    display: flex;
+    align-items: center;
   }
 
   .dashboard-header .logo-section h2 {
@@ -44,55 +57,36 @@
     letter-spacing: -0.02em;
   }
 
-  .btn-collapse-all {
-    background: rgba(139, 92, 246, 0.1);
-    border: 1px solid rgba(139, 92, 246, 0.3);
-    color: var(--accent-purple);
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 700;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-  }
-
-  .btn-collapse-all:active {
-    background: rgba(139, 92, 246, 0.2);
-    transform: scale(0.95);
+  .user-section {
+    display: contents !important; /* 자식 요소들을 그리드 아이템으로 승격 */
   }
 
   .dashboard-header .user-profile-btn {
+    grid-area: profile;
     padding: 4px 10px 4px 6px !important;
     gap: 6px !important;
-    order: 1 !important; /* 모바일에서 프로필을 왼쪽으로 스왑 */
-    margin-right: 8px !important;
-    margin-left: 0 !important;
-  }
-
-  .user-section {
-    display: flex !important;
-    justify-content: flex-end !important;
-    flex: 1 !important;
-    gap: 6px !important;
+    margin: 0 !important;
+    justify-self: end;
   }
 
   .nav-actions {
+    grid-area: nav;
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
-    order: 10 !important; /* 버튼 그룹을 오른쪽으로 스왑 */
+    justify-content: center !important; /* 버튼들 중앙 정렬 */
+    gap: 8px !important;
+    width: 100%;
+    padding-top: 4px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05); /* 상단과 시각적 분리 */
   }
 
   /* 각 버튼별 세부 순서 조정 (사용 빈도 기반) */
-  .btn-manual { order: 1 !important; }
-  .btn-collapse-all { order: 2 !important; }
-  .btn-reorder { order: 3 !important; }
-
   .btn-manual, .btn-collapse-all, .btn-reorder {
-    padding: 6px 10px !important;
+    padding: 6px 12px !important;
     height: 34px !important;
     font-size: 11px !important;
+    flex: 1; /* 너비 균등 배분 */
+    max-width: 120px;
     display: flex;
     align-items: center;
     justify-content: center;

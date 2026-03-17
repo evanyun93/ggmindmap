@@ -20,6 +20,63 @@ export function initRecipe(el, data) {
     let customIcon = settings.icon || '🍳';
     const widgetId = data.id;
 
+    // 단위 자동 인식 맵 (100선 대폭 확장)
+    const UNIT_MAP = {
+        // --- 액체 및 유지류 ---
+        '물': 'ml', '생수': 'ml', '육수': 'ml', '멸치육수': 'ml', '다시마물': 'ml', '사골육수': 'ml', '채수': 'ml',
+        '우유': 'ml', '두유': 'ml', '생크림': 'ml', '코코넛밀크': 'ml', '요거트': 'g',
+        '식용유': 'ml', '올리브유': 'ml', '포도씨유': 'ml', '카놀라유': 'ml', '참기름': '스푼', '들기름': '스푼', '고추기름': '스푼',
+        '간장': '스푼', '국간장': '스푼', '진간장': '스푼', '양조간장': '스푼', '액젓': '스푼', '멸치액젓': '스푼', '까나리액젓': '스푼', '참치액': '스푼',
+        '식초': '스푼', '맛술': '스푼', '미림': '스푼', '청주': '스푼', '소주': '스푼', '와인': 'ml', '발사믹식초': '스푼',
+        '꿀': '스푼', '올리고당': '스푼', '요리당': '스푼', '물엿': '스푼', '메이플시럽': '스푼',
+
+        // --- 채소류 ---
+        '양파': '개', '작은양파': '개', '당근': '개', '감자': '개', '고구마': '개', '오이': '개', '무': '토막', '단호박': '개', '애호박': '개', '쥬키니': '개',
+        '가지': '개', '토마토': '개', '방울토마토': '알', '완두콩': '줌', '옥수수': '개', '연근': '토막', '우엉': '대', '마': '토막',
+        '대파': '대', '쪽파': '대', '실파': '줌', '부추': '줌', '마늘': '쪽', '생강': '톨', '청양고추': '개', '홍고추': '개', '풋고추': '개', '꽈리고추': '줌',
+        '파프리카': '개', '피망': '개', '브로콜리': '송이', '콜리플라워': '송이', '아스파라거스': '대', '셀러리': '대',
+        '양배추': '잎', '배추': '잎', '알배기배추': '통', '깻잎': '장', '상추': '장', '쑥갓': '줌', '미나리': '줌', '시금치': '단', '청경채': '포기',
+        '콩나물': '봉지', '숙주': '봉지', '고사리': '줌', '취나물': '줌', '도라지': '줌', '더덕': '개',
+        '표고버섯': '개', '팽이버섯': '봉지', '느타리버섯': '팩', '양송이버섯': '개', '새송이버섯': '개', '목이버섯': '줌',
+
+        // --- 육류 및 가공육 ---
+        '소고기': 'g', '쇠고기': 'g', '등심': 'g', '안심': 'g', '차돌박이': 'g', '불고기용소고기': 'g', '다짐육': 'g', '국거리': 'g',
+        '돼지고기': 'g', '삼겹살': 'g', '목살': 'g', '앞다리살': 'g', '뒷다리살': 'g', '항정살': 'g', '갈비': 'g',
+        '닭고기': 'g', '닭다슴살': 'g', '닭다리': '개', '닭봉': '개', '닭날개': '개', '생닭': '마리',
+        '오리고기': 'g', '훈제오리': 'g', '양고기': 'g',
+        '베이컨': '줄', '햄': '개', '스팸': '캔', '소시지': '개', '비엔나소시지': '개', '어묵': '장', '맛살': '개', '크래미': '개',
+
+        // --- 해산물류 ---
+        '멸치': '줌', '디포리': '개', '다시마': '장', '김': '장', '미역': '줌', '파래': '줌', '톳': '줌',
+        '고등어': '마리', '갈치': '토막', '조기': '마리', '꽁치': '마리', '연어': 'g', '명태': '마리', '대구': '마리',
+        '오징어': '마리', '문어': 'g', '낙지': '마리', '주꾸미': '마리', '새우': '마리', '칵테일새우': '알', '꽃게': '마리',
+        '전복': '개', '굴': 'g', '홍합': '개', '바지락': '줌', '모시조개': '줌', '백합': '개', '가리비': '개', '소라': '개', '꼬막': '줌',
+
+        // --- 유제품 및 알류 ---
+        '달걀': '개', '계란': '개', '메추리알': '개', '두부': '모', '연두부': '팩', '순두부': '봉지',
+        '치즈': '장', '체다치즈': '장', '모짜렐라치즈': 'g', '슬라이스치즈': '장', '파마산치즈': '스푼', '크림치즈': '스푼',
+        '버터': 'g', '마가린': 'g',
+
+        // --- 양념 및 조미료/분말 ---
+        '설탕': '스푼', '황설탕': '스푼', '흑설탕': '스푼', '소금': '스푼', '천일염': '스푼', '꽃소금': '스푼', '맛소금': '약간',
+        '고춧가루': '스푼', '고추장': '스푼', '된장': '스푼', '쌈장': '스푼', '춘장': '스푼', '청국장': '개',
+        '다진마늘': '스푼', '다진생강': '작은술', '통깨': '솔솔', '깨소금': '스푼', '검은깨': '솔솔',
+        '후추': '약간', '허브솔트': '약간', '와사비': '약간', '겨자': '작은술', '산초가루': '약간',
+        '굴소스': '스푼', '돈까스소스': '스푼', '케첩': '스푼', '마요네즈': '스푼', '머스타드': '스푼', '스테이크소스': '스푼',
+        '밀가루': 'g', '중력분': 'g', '강력분': 'g', '박력분': 'g', '부침가루': 'g', '튀김가루': 'g', '빵가루': 'g',
+        '전분가루': '스푼', '감자전분': '스푼', '옥수수전분': '스푼', '찹쌀가루': 'g',
+        '카레가루': 'g', '짜장가루': 'g', '베이킹파우더': '작은술', '이스트': 'g',
+
+        // --- 곡류 및 면/기타 ---
+        '쌀': '컵', '백미': '컵', '현미': '컵', '찹쌀': '컵', '흑미': '줌', '보리': '줌', '팥': '줌', '콩': '줌',
+        '소면': '인분', '중면': '인분', '칼국수면': '인분', '당면': '줌', '라면': '봉지', '우동사리': '봉지', '우동면': '봉지',
+        '스파게티면': '인분', '파스타면': '인분', '펜네': '줌', '수제비반죽': '줌',
+        '떡볶이떡': '줌', '떡국떡': '줌', '조랭이떡': '줌',
+        '만두': '개', '물만두': '개', '군만두': '개',
+        '호두': '알', '아몬드': '알', '땅콩': '알', '잣': '작은술', '해바라기씨': '줌',
+        '식빵': '장', '바게트': '조각', '모닝빵': '개'
+    };
+
     // 1. 초기 접기 상태 복원
     const isCollapsed = localStorage.getItem(`recipe_collapsed_${widgetId}`) === 'true';
     if (isCollapsed) el.classList.add('collapsed');
@@ -43,6 +100,9 @@ export function initRecipe(el, data) {
             if (!isDragging && upEvent.target.closest('.recipe-header')) {
                 const collapsed = el.classList.toggle('collapsed');
                 localStorage.setItem(`recipe_collapsed_${widgetId}`, collapsed);
+                
+                // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
+                import('./dashboard-grid.js').then(m => m.saveLayout());
             }
         };
         document.addEventListener('mousemove', onMove);
@@ -98,7 +158,6 @@ export function initRecipe(el, data) {
     if (editTitleBtn && headerTitle) {
         editTitleBtn.onclick = (e) => {
             if (currentView !== 'list') return; // 리스트 뷰에서만 수정 허용
-            // 이벤트 타겟이 아이콘이나 아이콘 래퍼인 경우 (CSS 겹침 등의 문제로) 무시.
             if (e.target.closest('.recipe-icon-wrapper')) return;
             e.stopPropagation();
             
@@ -276,7 +335,18 @@ export function initRecipe(el, data) {
     const renderDetailView = (recipe) => {
         if (!recipe) return renderView('list');
 
-        const ingsHTML = (recipe.ingredients || []).map(i => `<li>${i}</li>`).join('');
+        const ingsHTML = (recipe.ingredients || []).map(i => {
+            if (typeof i === 'object') {
+                return `
+                    <div class="ingredient-item-row">
+                        <span class="ing-name">${i.name}</span>
+                        <span class="ing-amount">${i.quantity}${i.unit || ''}</span>
+                    </div>
+                `;
+            }
+            return `<li>${i}</li>`;
+        }).join('');
+
         const stepsHTML = (recipe.steps || []).map((s, idx) => `
             <div class="recipe-step-item">
                 <div class="step-num">${idx + 1}</div>
@@ -287,10 +357,10 @@ export function initRecipe(el, data) {
         container.innerHTML = `
             <div class="recipe-detail-pane fade-in">
                 <div class="recipe-detail-top-nav" style="display:flex; justify-content:space-between; align-items:center;">
-                    <button class="btn-recipe-back" style="margin-bottom:0; background:transparent; border:1px solid var(--border-color, #e5e7eb); padding:8px 16px; border-radius:8px; cursor:pointer; display:flex; align-items:center; gap:6px; color:var(--text-primary, #374151);">
+                    <button class="btn-recipe-back">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg> 목록
                     </button>
-                    <button class="btn-recipe-edit-action" title="레시피 수정" style="background:linear-gradient(135deg, #667eea 0%, #764ba2 100%); border:none; padding:10px 20px; border-radius:10px; cursor:pointer; color:white; font-weight:600; display:flex; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(102, 126, 234, 0.4); transition:transform 0.2s, box-shadow 0.2s;">
+                    <button class="btn-recipe-edit-action" title="레시피 수정">
                         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> 수정하기
                     </button>
                 </div>
@@ -301,9 +371,9 @@ export function initRecipe(el, data) {
                 
                 <div class="recipe-detail-section">
                     <h4 class="section-title">주요 재료</h4>
-                    <ul class="recipe-ingredients-list">
-                        ${ingsHTML || '<li class="text-muted">재료가 등록되지 않았습니다.</li>'}
-                    </ul>
+                    <div class="recipe-ingredients-table">
+                        ${ingsHTML || '<div class="text-muted">재료가 등록되지 않았습니다.</div>'}
+                    </div>
                 </div>
 
                 <div class="recipe-detail-section">
@@ -314,7 +384,7 @@ export function initRecipe(el, data) {
                 </div>
                 
                 <div class="recipe-detail-footer">
-                     <button class="btn-recipe-danger delete-current-recipe" style="background:transparent; border:1px solid #fee2e2; color:#dc2626; padding:10px 20px; border-radius:8px; cursor:pointer; font-weight:500; transition:all 0.2s;">이 레시피 삭제</button>
+                     <button class="btn-recipe-danger delete-current-recipe">이 레시피 삭제</button>
                 </div>
             </div>
         `;
@@ -323,9 +393,9 @@ export function initRecipe(el, data) {
         container.querySelector('.btn-recipe-edit-action').onclick = () => renderView('edit', currentRecipeId);
         container.querySelector('.delete-current-recipe').onclick = () => {
              if (confirm('이 레시피를 정말 삭제하시겠습니까?')) {
-                 recipes = recipes.filter(x => x.id !== recipe.id);
-                 saveSettings();
-                 renderView('list');
+                  recipes = recipes.filter(x => x.id !== recipe.id);
+                  saveSettings();
+                  renderView('list');
              }
         };
     };
@@ -337,13 +407,16 @@ export function initRecipe(el, data) {
         const title = recipe ? recipe.title : '';
         const emoji = recipe ? recipe.emoji : '🍳';
         const ings = recipe ? (recipe.ingredients || []).join('\n') : '';
-        const steps = recipe ? (recipe.steps || []).join('\n') : '';
+        // 데이터가 없으면 '1. '로 강제 시작
+        const steps = (recipe && recipe.steps && recipe.steps.length > 0) 
+            ? recipe.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') 
+            : '1. ';
 
         container.innerHTML = `
             <div class="recipe-edit-pane fade-in">
                 <div class="recipe-edit-header">
                      <div class="recipe-item-icon-wrapper" style="position: relative;">
-                         <div id="recipeEmojiInput" class="recipe-emoji-input clickable-emoji" style="cursor: pointer; display: flex; align-items: center; justify-content: center;" title="아이콘 변경">${emoji}</div>
+                         <div id="recipeEmojiInput" class="recipe-emoji-input clickable-emoji">${emoji}</div>
                          <div class="recipe-icon-palette item-icon-palette hidden" style="width: 200px; flex-wrap: wrap;">
                              <button class="icon-chip" type="button">🍳</button>
                              <button class="icon-chip" type="button">🍚</button>
@@ -362,13 +435,16 @@ export function initRecipe(el, data) {
                 </div>
                 
                 <div class="recipe-edit-section">
-                     <label>✨ 필요한 재료 (줄바꿈으로 구분)</label>
-                     <textarea id="recipeIngInput" class="recipe-textarea short" placeholder="예: 양파 1개\n간장 2스푼\n다진마늘 1스푼">${ings}</textarea>
+                     <label>✨ 필요한 재료 (재료명 입력 시 단위 자동 인식)</label>
+                     <div id="ingredientsEditContainer" class="ingredients-edit-container">
+                         <!-- 재료 행이 여기에 추가됨 -->
+                     </div>
+                     <button type="button" class="btn-add-ingredient">+ 재료 추가</button>
                 </div>
 
                 <div class="recipe-edit-section">
-                     <label>🔥 조리 순서 (줄바꿈으로 구분)</label>
-                     <textarea id="recipeStepInput" class="recipe-textarea tall" placeholder="예: 1. 양파를 채썬다.\n2. 팬에 기름을 두르고 볶는다.">${steps}</textarea>
+                     <label id="stepInputLabel">🔥 조리 순서 (자동 번호 생성)</label>
+                     <textarea id="recipeStepInput" class="recipe-textarea tall" placeholder="1. 내용을 입력하세요" style="white-space: pre-wrap !important;">${steps}</textarea>
                 </div>
 
                 <div class="recipe-edit-actions">
@@ -378,8 +454,131 @@ export function initRecipe(el, data) {
             </div>
         `;
 
+        const ingsContainer = container.querySelector('#ingredientsEditContainer');
+        const addIngBtn = container.querySelector('.btn-add-ingredient');
+
+        const createIngRow = (name = '', qty = '', unit = '') => {
+            const row = document.createElement('div');
+            row.className = 'ingredient-row';
+            row.innerHTML = `
+                <input type="text" class="ingredient-input ing-name-input" placeholder="재료명" value="${name}">
+                <input type="text" class="ingredient-input ing-qty-input" placeholder="수량" value="${qty}">
+                <input type="text" class="ingredient-input ing-unit-input" placeholder="단위" value="${unit}">
+                <button type="button" class="btn-remove-ingredient" title="삭제">×</button>
+            `;
+
+            const nameInput = row.querySelector('.ing-name-input');
+            const qtyInput = row.querySelector('.ing-qty-input');
+            const unitInput = row.querySelector('.ing-unit-input');
+            const removeBtn = row.querySelector('.btn-remove-ingredient');
+
+            // 사용자가 단위를 직접 수정했는지 여부를 추적
+            let isUnitManuallyEdited = unit !== '';
+
+            nameInput.addEventListener('input', () => {
+                const val = nameInput.value.trim();
+                // 사용자가 직접 수정하지 않은 경우에만 자동 인식 작동
+                if (!isUnitManuallyEdited && UNIT_MAP[val]) {
+                    unitInput.value = UNIT_MAP[val];
+                }
+            });
+
+            // 사용자가 단위 칸에 직접 입력하면 자동 인식 중단
+            unitInput.addEventListener('input', () => {
+                isUnitManuallyEdited = unitInput.value.trim() !== '';
+            });
+
+            removeBtn.onclick = () => row.remove();
+            return row;
+        };
+
+        // 기존 재료 로드
+        if (recipe && recipe.ingredients && recipe.ingredients.length > 0) {
+            recipe.ingredients.forEach(i => {
+                if (typeof i === 'object') {
+                    ingsContainer.appendChild(createIngRow(i.name, i.quantity, i.unit));
+                } else {
+                    // 구형 데이터 호환: "재료명 수량" 형태 파싱 시도
+                    const match = i.match(/^(.+?)\s*(\d+.*)$/);
+                    if (match) {
+                        ingsContainer.appendChild(createIngRow(match[1].trim(), match[2].trim(), ''));
+                    } else {
+                        ingsContainer.appendChild(createIngRow(i, '', ''));
+                    }
+                }
+            });
+        } else {
+            ingsContainer.appendChild(createIngRow());
+        }
+
+        addIngBtn.onclick = () => {
+            ingsContainer.appendChild(createIngRow());
+            const lastRow = ingsContainer.lastElementChild;
+            if (lastRow) lastRow.querySelector('.ing-name-input').focus();
+        };
+
+        const stepInput = container.querySelector('#recipeStepInput');
+        const stepLabel = container.querySelector('#stepInputLabel');
+        
+        if (stepLabel) stepLabel.innerHTML += '';
+
+        // 즉시 포커스 및 커서 조정
+        setTimeout(() => {
+            if (stepInput) {
+                stepInput.focus();
+                stepInput.selectionStart = stepInput.selectionEnd = stepInput.value.length;
+            }
+        }, 100);
+
+        let isAdjusting = false;
+
+        const syncNumbers = (e) => {
+            if (isAdjusting) return;
+            isAdjusting = true;
+
+            const val = stepInput.value;
+            const cursorPos = stepInput.selectionStart;
+
+            // 1. 첫 줄 번호 강제 (지워졌을 경우)
+            if (val.length > 0 && !/^\d+\.\s*/.test(val)) {
+                stepInput.value = '1. ' + val.replace(/^\d+\.\s*/, '');
+                stepInput.selectionStart = stepInput.selectionEnd = cursorPos + 3;
+            }
+
+            // 2. 엔터 키 특수 처리
+            if (e && e.key === 'Enter') {
+                const textBefore = val.substring(0, cursorPos);
+                const textAfter = val.substring(cursorPos);
+                const lines = textBefore.split('\n');
+                const lastLine = lines[lines.length - 1];
+                const match = lastLine.match(/^(\d+)\.\s*(.*)/);
+
+                if (match) {
+                    const num = parseInt(match[1]);
+                    const content = match[2].trim();
+                    if (content === '') {
+                        // 빈 번호에서 엔터 -> 리스트 종료
+                        e.preventDefault();
+                        const cleaned = textBefore.substring(0, textBefore.length - lastLine.length) + '\n' + textAfter;
+                        stepInput.value = cleaned;
+                        stepInput.selectionStart = stepInput.selectionEnd = cursorPos - lastLine.length + 1;
+                    } else {
+                        // 내용 있으면 다음 번호
+                        e.preventDefault();
+                        const nextPrefix = `\n${num + 1}. `;
+                        stepInput.value = textBefore + nextPrefix + textAfter;
+                        stepInput.selectionStart = stepInput.selectionEnd = cursorPos + nextPrefix.length;
+                    }
+                }
+            }
+            isAdjusting = false;
+        };
+
+        stepInput.addEventListener('keydown', syncNumbers);
+        stepInput.addEventListener('input', () => syncNumbers());
+        stepInput.addEventListener('click', () => syncNumbers());
+
         container.querySelector('.btn-recipe-cancel').onclick = () => {
-            // 취소 시, 기존 레시피가 있었으면 상세 뷰로, 새 레시피면 목록으로 이동
             renderView(recipe ? 'detail' : 'list', recipe ? recipe.id : null);
         };
 
@@ -399,32 +598,29 @@ export function initRecipe(el, data) {
                     emojiPalette.classList.add('hidden');
                 }
             };
-            const closeEditPalette = (e) => {
-                if (!emojiPalette.classList.contains('hidden') && !emojiPalette.contains(e.target) && e.target !== emojiBtn) {
-                    emojiPalette.classList.add('hidden');
-                }
-            };
-            document.addEventListener('click', closeEditPalette);
-            // 뷰 변경 시 리스너 정리를 위해 나중에 이벤트 리스너를 제거하는 로직이 필요할 수 있으나, 위젯 SPA 상 생략
         }
 
         container.querySelector('.btn-recipe-save').onclick = () => {
-            const newTitle = container.querySelector('#recipeTitleInput').value.trim() || '이름 없음 레시피';
+            const newTitle = container.querySelector('#recipeTitleInput').value.trim() || '새 레시피';
             const newEmoji = container.querySelector('#recipeEmojiInput').textContent.trim() || '🍳';
-            const rawIngs = container.querySelector('#recipeIngInput').value;
             const rawSteps = container.querySelector('#recipeStepInput').value;
 
-            const newIngs = rawIngs.split('\n').map(s => s.trim()).filter(s => s);
-            const newSteps = rawSteps.split('\n').map(s => s.trim()).filter(s => s);
+            const newIngs = Array.from(ingsContainer.querySelectorAll('.ingredient-row')).map(row => ({
+                name: row.querySelector('.ing-name-input').value.trim(),
+                quantity: row.querySelector('.ing-qty-input').value.trim(),
+                unit: row.querySelector('.ing-unit-input').value.trim()
+            })).filter(i => i.name);
+
+            const newSteps = rawSteps.split('\n')
+                .map(s => s.replace(/^\d+\.\s*/, '').trim())
+                .filter(s => s);
 
             if (recipe) {
-                // 수정
                 recipe.title = newTitle;
                 recipe.emoji = newEmoji;
                 recipe.ingredients = newIngs;
                 recipe.steps = newSteps;
             } else {
-                // 추가
                 const newRecipe = {
                     id: 'rcp_' + Date.now(),
                     title: newTitle,
@@ -441,6 +637,6 @@ export function initRecipe(el, data) {
         };
     };
 
-    // 초기 뷰 렌더링
+    // 초기 실행
     renderView('list');
 }

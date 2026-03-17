@@ -45,10 +45,10 @@ router.get('/', authenticateToken, async (req, res) => {
  */
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { task, color, widget_id } = req.body;
+        const { task, color, widget_id, alarmTime } = req.body;
         const result = await pool.query(
-            'INSERT INTO tba_todos (user_id, widget_id, task, color) VALUES ($1, $2, $3, $4) RETURNING id',
-            [req.user.id, widget_id || null, task, color || '#8B5CF6']
+            'INSERT INTO tba_todos (user_id, widget_id, task, color, alarm_time) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+            [req.user.id, widget_id || null, task, color || '#8B5CF6', alarmTime || null]
         );
         res.status(201).json({ success: true, id: result.rows[0].id });
     } catch (error) {

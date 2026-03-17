@@ -120,6 +120,13 @@ export function initDashboardGrid() {
             },
             { type: 'separator' },
             {
+                label: '가지런히 정리',
+                icon: '🧹',
+                action: () => {
+                    autoArrangeWidgets();
+                }
+            },
+            {
                 label: '전체 위젯 초기화 (기본 배치)',
                 icon: '🔄',
                 action: async () => {
@@ -138,6 +145,53 @@ export function initDashboardGrid() {
                 }
             }
         ]);
+    };
+
+    /**
+     * 모든 위젯을 좌상단부터 겹치지 않게 순서대로 자동 정렬
+     */
+    const autoArrangeWidgets = () => {
+        const gridRect = grid.getBoundingClientRect();
+        const gridWidth = gridRect.width;
+        const widgets = Array.from(grid.querySelectorAll('.draggable-widget:not(.widget-ghost)'));
+        
+        if (widgets.length === 0) return;
+
+        console.log('[DashboardGrid] 위젯 자동 정렬 시작');
+
+        const GAP = 20;
+        let currentX = 20;
+        let currentY = 20;
+        let rowMaxHeight = 0;
+
+        widgets.forEach((widget) => {
+            const w = widget.offsetWidth;
+            const h = widget.offsetHeight;
+
+            // 너비를 초과하면 다음 줄로
+            if (currentX + w > gridWidth - GAP && currentX > GAP) {
+                currentX = 20;
+                currentY += rowMaxHeight + GAP;
+                rowMaxHeight = 0;
+            }
+
+            widget.style.transition = 'all 0.5s cubic-bezier(0.2, 0, 0, 1)';
+            widget.style.left = `${currentX}px`;
+            widget.style.top = `${currentY}px`;
+
+            currentX += w + GAP;
+            rowMaxHeight = Math.max(rowMaxHeight, h);
+
+            // 애니메이션 종료 후 트랜지션 제거
+            setTimeout(() => {
+                widget.style.transition = '';
+            }, 500);
+        });
+
+        // 변경된 레이아웃 서버 저장
+        saveLayout();
+        
+        if (window.navigator.vibrate) window.navigator.vibrate(20);
     };
 
     const clearLongPressTimer = () => {
@@ -580,18 +634,37 @@ function reassignMobileZIndices() {
     const widgets = Array.from(grid.querySelectorAll('.draggable-widget'));
     console.log('[DashboardGrid] 모바일 순서 기반 zIndex 재할당 시작');
 
-    widgets.forEach((w, index) => {
-        const newZ = 100 + (index * 10);
-        w.style.zIndex = newZ;
-
+    widgets.forEach(async (w, index) => {
         const id = w.dataset.id;
         if (!id) return;
 
-        // 서버에 변경된 zIndex만 업데이트 (좌표는 건드리지 않음)
-        apiFetch(`/api/widgets/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ zIndex: newZ })
-        }).catch(err => console.error(`[MobileReorder] 저장 실패 (ID: ${id}):`, err));
+        const isCollapsed = w.classList.contains('collapsed');
+        const state = isCollapsed ? 'collapsed' : 'expanded';
+        const layoutKey = `mobile_${state}`;
+        const newZ = 100 + (index * 10);
+        
+        w.style.zIndex = newZ;
+
+        try {
+            const res = await apiFetch(`/api/widgets`); 
+            const data = await res.json();
+            const widgetData = data.widgets.find(item => item.id == id);
+            
+            if (widgetData) {
+                const settings = widgetData.settings || {};
+                if (!settings.layouts) settings.layouts = {};
+                if (!settings.layouts[layoutKey]) settings.layouts[layoutKey] = {};
+                
+                settings.layouts[layoutKey].z = newZ;
+                
+                await apiFetch(`/api/widgets/${id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ settings, zIndex: newZ })
+                });
+            }
+        } catch (err) {
+            console.error(`[MobileReorder] 저장 실패 (ID: ${id}):`, err);
+        }
     });
 }
 
@@ -653,36 +726,58 @@ export function setupResizable(widget, grid) {
 }
 
 /**
- * 레이아웃 상태 저장 (Z-Index 포함)
+ * 레이아웃 상태 저장 (기기/상태별 독립 저장)
  */
-function saveLayout() {
-    // [보안 가드] 모바일 모드에서는 PC 좌표를 덮어쓰지 않도록 즉시 종료
-    if (window.innerWidth <= 768) {
-        console.warn('[DashboardGrid] 모바일 뷰에서는 PC 레이아웃 저장을 방지합니다.');
-        return;
-    }
-
+export function saveLayout() {
+    const isMobile = window.innerWidth <= 768;
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
 
+    const platform = isMobile ? 'mobile' : 'pc';
     const widgets = grid.querySelectorAll('.draggable-widget');
-    widgets.forEach(w => {
+    
+    widgets.forEach(async (w) => {
         const id = w.dataset.id;
-        if (!id) return; // DB 기반이 아닌 정적 위젯은 무시
+        if (!id) return;
 
-        const layout = {
+        const isCollapsed = w.classList.contains('collapsed');
+        const state = isCollapsed ? 'collapsed' : 'expanded';
+        const layoutKey = `${platform}_${state}`;
+
+        const currentLayout = {
             x: Math.round(parseFloat(w.style.left) || 0),
             y: Math.round(parseFloat(w.style.top) || 0),
-            width: Math.round(parseFloat(w.style.width) || 0),
-            height: Math.round(parseFloat(w.style.height) || 0),
-            zIndex: parseInt(w.style.zIndex) || 100
+            w: Math.round(parseFloat(w.style.width) || 0),
+            h: Math.round(parseFloat(w.style.height) || 0),
+            z: parseInt(w.style.zIndex) || 100
         };
 
-        // 서버에 저장 (비동기로 실행되나 await 하지 않음 - 성능 위함)
-        apiFetch(`/api/widgets/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify(layout)
-        }).catch(err => console.error('레이아웃 저장 실패:', err));
+        try {
+            const res = await apiFetch(`/api/widgets`);
+            const data = await res.json();
+            const widgetData = data.widgets.find(item => item.id == id);
+            
+            if (widgetData) {
+                const settings = widgetData.settings || {};
+                if (!settings.layouts) settings.layouts = {};
+                settings.layouts[layoutKey] = currentLayout;
+
+                await apiFetch(`/api/widgets/${id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ 
+                        settings,
+                        // 하위 호환성을 위해 기존 컬럼도 순수 PC/기본값으로 업데이트
+                        x: currentLayout.x,
+                        y: currentLayout.y,
+                        width: currentLayout.w,
+                        height: currentLayout.h,
+                        zIndex: currentLayout.z
+                    })
+                });
+            }
+        } catch (err) {
+            console.error(`[LayoutSave] 저장 실패 (ID: ${id}):`, err);
+        }
     });
 }
 
