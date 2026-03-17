@@ -59,6 +59,10 @@ app.use('/api/config', setupApi);
 const widgetApi = require('./routes/widgetApi');
 app.use('/api/widgets', widgetApi);
 
+// 7. 레시피 AI 관련
+const recipeApi = require('./routes/recipeApi');
+app.use('/api/recipe', recipeApi);
+
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 
 app.get('*', (req, res) => {

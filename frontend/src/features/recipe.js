@@ -369,6 +369,8 @@ export function initRecipe(el, data) {
                     <h3 class="recipe-detail-title">${recipe.title || '제목 없음'}</h3>
                 </div>
                 
+                ${recipe.thumbnail ? `<img src="${recipe.thumbnail}" class="recipe-detail-thumbnail" alt="레시피 썸네일">` : ''}
+                
                 <div class="recipe-detail-section">
                     <h4 class="section-title">주요 재료</h4>
                     <div class="recipe-ingredients-table">
@@ -433,9 +435,32 @@ export function initRecipe(el, data) {
                      </div>
                      <input type="text" id="recipeTitleInput" class="recipe-title-input" placeholder="레시피 제목" value="${title}">
                 </div>
+
+                <!-- AI 자동 생성 버튼 -->
+                <div class="recipe-ai-banner" id="recipeAiBanner">
+                    <div class="ai-banner-content">
+                        <span class="ai-banner-icon">✨</span>
+                        <span class="ai-banner-text">YouTube 영상에서 AI가 자동으로 레시피를 채워드립니다</span>
+                        <button type="button" class="btn-ai-generate" id="btnAiGenerate">🤖 AI 자동 생성</button>
+                    </div>
+                </div>
+
+                <!-- AI 로딩 오버레이 -->
+                <div class="recipe-ai-loading hidden" id="recipeAiLoading">
+                    <div class="ai-loading-spinner"></div>
+                    <div class="ai-loading-text" id="aiLoadingText">YouTube 영상 분석 중...</div>
+                </div>
                 
                 <div class="recipe-edit-section">
                      <label>✨ 필요한 재료 (재료명 입력 시 단위 자동 인식)</label>
+                     <div style="display: flex; gap: 8px; align-items: flex-end; margin-bottom: 12px;">
+                         <div class="recipe-thumbnail-container" id="recipeThumbnailContainer" ${recipe && recipe.thumbnail ? '' : 'style="display:none; margin-bottom: 0;"'}>
+                             <img src="${recipe?.thumbnail || ''}" id="recipeThumbnailPreview" class="recipe-thumbnail-preview" alt="썸네일 미리보기">
+                             <button type="button" class="btn-remove-thumbnail" id="btnRemoveThumbnail" title="썸네일 삭제">×</button>
+                         </div>
+                         <button type="button" class="btn-upload-thumbnail" id="btnCustomThumbnail">📷 사진 얹기</button>
+                         <input type="file" id="recipeThumbnailInput" accept="image/*" style="display: none;">
+                     </div>
                      <div id="ingredientsEditContainer" class="ingredients-edit-container">
                          <!-- 재료 행이 여기에 추가됨 -->
                      </div>
@@ -456,6 +481,176 @@ export function initRecipe(el, data) {
 
         const ingsContainer = container.querySelector('#ingredientsEditContainer');
         const addIngBtn = container.querySelector('.btn-add-ingredient');
+
+        // ─── AI 자동 생성 로직 ─────────────────────────────────────
+        const thumbnailContainer = container.querySelector('#recipeThumbnailContainer');
+        const thumbnailPreview = container.querySelector('#recipeThumbnailPreview');
+        const btnRemoveThumbnail = container.querySelector('#btnRemoveThumbnail');
+        const btnCustomThumbnail = container.querySelector('#btnCustomThumbnail');
+        const thumbnailInput = container.querySelector('#recipeThumbnailInput');
+
+        if (btnCustomThumbnail && thumbnailInput) {
+            btnCustomThumbnail.onclick = () => thumbnailInput.click();
+            
+            thumbnailInput.onchange = (e) => {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const MAX_WIDTH = 300;
+                        let width = img.width;
+                        let height = img.height;
+
+                        if (width > MAX_WIDTH) {
+                            height = Math.round((height * MAX_WIDTH) / width);
+                            width = MAX_WIDTH;
+                        }
+
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+
+                        // 압축된 Base64 (품질 0.7)
+                        const resizedBase64 = canvas.toDataURL('image/jpeg', 0.7);
+                        if (thumbnailPreview) thumbnailPreview.src = resizedBase64;
+                        if (thumbnailContainer) {
+                            thumbnailContainer.style.display = 'flex';
+                            thumbnailContainer.style.marginBottom = '0';
+                        }
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            };
+        }
+
+        if (btnRemoveThumbnail) {
+            btnRemoveThumbnail.onclick = () => {
+                if (thumbnailPreview) thumbnailPreview.src = '';
+                if (thumbnailContainer) thumbnailContainer.style.display = 'none';
+                if (thumbnailInput) thumbnailInput.value = ''; // input 초기화
+            };
+        }
+
+        const btnAiGenerate = container.querySelector('#btnAiGenerate');
+        const aiLoading = container.querySelector('#recipeAiLoading');
+        const aiLoadingText = container.querySelector('#aiLoadingText');
+        const aiBanner = container.querySelector('#recipeAiBanner');
+
+        const setLoading = (loading, text = '') => {
+            aiLoading.classList.toggle('hidden', !loading);
+            aiBanner.classList.toggle('hidden', loading);
+            if (text) aiLoadingText.textContent = text;
+        };
+
+        const fillRecipeFromAI = (recipe, videoId) => {
+            console.log('[RecipeAI] Received recipe data:', recipe, 'videoId:', videoId);
+
+            // 썸네일 노출
+            const thumbnailContainer = container.querySelector('#recipeThumbnailContainer');
+            const thumbnailPreview = container.querySelector('#recipeThumbnailPreview');
+            if (videoId && thumbnailContainer && thumbnailPreview) {
+                thumbnailPreview.src = `https://img.youtube.com/vi/${videoId}/mqdefault.jpg`;
+                thumbnailContainer.style.display = 'flex';
+            }
+
+            // 제목 채우기
+            const titleInput = container.querySelector('#recipeTitleInput');
+            if (recipe.title && titleInput) titleInput.value = recipe.title;
+
+            // 이모지 채우기
+            const emojiBtn = container.querySelector('#recipeEmojiInput');
+            if (recipe.emoji && emojiBtn) emojiBtn.textContent = recipe.emoji;
+
+            // 재료 채우기
+            ingsContainer.innerHTML = '';
+            const ingredients = recipe.ingredients || [];
+            if (Array.isArray(ingredients) && ingredients.length > 0) {
+                ingredients.forEach(i => {
+                    if (typeof i === 'string') {
+                        // 문자열로 들어온 경우 name에 통째로 넣음
+                        ingsContainer.appendChild(createIngRow(i, '', ''));
+                    } else if (typeof i === 'object') {
+                        // 정상적인 객체인 경우
+                        ingsContainer.appendChild(createIngRow(
+                            i.name || '',
+                            i.quantity || '',
+                            i.unit || ''
+                        ));
+                    }
+                });
+            } else {
+                ingsContainer.appendChild(createIngRow());
+            }
+
+            // 조리 순서 채우기 (steps 또는 instructions 키 모두 대응)
+            const stepInput = container.querySelector('#recipeStepInput');
+            const stepsArray = recipe.steps || recipe.instructions || [];
+            
+            if (Array.isArray(stepsArray) && stepsArray.length > 0 && stepInput) {
+                const stepText = stepsArray.map((s, idx) => {
+                    if (typeof s === 'object') {
+                        // 객체로 들어온 경우 첫 번째 value 추출 시도
+                        return `${idx + 1}. ${Object.values(s)[0] || JSON.stringify(s)}`;
+                    } 
+                    // 이미 번호가 붙어있는지 정규식 확인 (1. 1) 등)
+                    const cleanStep = String(s).replace(/^\d+[\.\)]\s*/, '');
+                    return `${idx + 1}. ${cleanStep}`;
+                }).join('\n');
+                
+                stepInput.value = stepText;
+            }
+        };
+
+        if (btnAiGenerate) {
+            btnAiGenerate.onclick = async () => {
+                const youtubeUrl = prompt('🎬 유튜브 URL을 입력하세요:\n(예: https://www.youtube.com/watch?v=xxxx)');
+                if (!youtubeUrl || !youtubeUrl.trim()) return;
+
+                setLoading(true, 'YouTube 영상 정보를 가져오는 중...');
+
+                try {
+                    // 자막 추출 시도 중 메시지
+                    setTimeout(() => setLoading(true, '자막을 분석하는 중...'), 1200);
+                    setTimeout(() => setLoading(true, 'AI가 레시피를 정리하는 중...'), 3000);
+
+                    const response = await fetch('/api/recipe/parse-youtube', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ url: youtubeUrl.trim() })
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                        throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
+                    }
+
+                    setLoading(false);
+                    fillRecipeFromAI(data.recipe, data.videoId);
+
+                    // 성공 피드백
+                    btnAiGenerate.textContent = '✅ 완료! 수정 후 저장해주세요';
+                    btnAiGenerate.style.background = 'rgba(16, 185, 129, 0.2)';
+                    btnAiGenerate.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                    btnAiGenerate.style.color = '#10b981';
+                    setTimeout(() => {
+                        btnAiGenerate.textContent = '🤖 AI 자동 생성 (재시도)';
+                        btnAiGenerate.style = '';
+                    }, 5000);
+
+                } catch (err) {
+                    setLoading(false);
+                    alert('❌ AI 생성 실패: ' + err.message);
+                }
+            };
+        }
+        // ───────────────────────────────────────────────────────────
 
         const createIngRow = (name = '', qty = '', unit = '') => {
             const row = document.createElement('div');
@@ -615,16 +810,25 @@ export function initRecipe(el, data) {
                 .map(s => s.replace(/^\d+\.\s*/, '').trim())
                 .filter(s => s);
 
+            let finalThumbnail = recipe ? (recipe.thumbnail || '') : '';
+            const thumbnailContainer = container.querySelector('#recipeThumbnailContainer');
+            const thumbnailPreview = container.querySelector('#recipeThumbnailPreview');
+            if (thumbnailContainer && thumbnailContainer.style.display !== 'none' && thumbnailPreview) {
+                finalThumbnail = thumbnailPreview.src;
+            }
+
             if (recipe) {
                 recipe.title = newTitle;
                 recipe.emoji = newEmoji;
                 recipe.ingredients = newIngs;
                 recipe.steps = newSteps;
+                recipe.thumbnail = finalThumbnail;
             } else {
                 const newRecipe = {
                     id: 'rcp_' + Date.now(),
                     title: newTitle,
                     emoji: newEmoji,
+                    thumbnail: finalThumbnail,
                     ingredients: newIngs,
                     steps: newSteps
                 };
