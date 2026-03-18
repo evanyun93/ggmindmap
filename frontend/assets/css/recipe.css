@@ -431,17 +431,21 @@
 /* Drag and Drop & Add Card Styles */
 .drag-handle {
     cursor: grab;
-    color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.25);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-right: 6px;
-    margin-left: -6px;
-    transition: color 0.2s;
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    margin-left: -8px;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    touch-action: none; /* 모바일 드래그 시 전체 스크롤 방지 핵심 */
 }
 
 .drag-handle:hover {
-    color: white;
+    color: #A78BFA;
+    background: rgba(139, 92, 246, 0.15);
 }
 
 .drag-handle:active {
@@ -810,4 +814,85 @@
     border: 1px solid rgba(139, 92, 246, 0.4);
     margin-bottom: 16px;
     display: block;
+}
+
+/* --- Rating System --- */
+.recipe-card-stars {
+    margin-bottom: 4px;
+    font-size: 0.85rem;
+}
+
+.recipe-detail-stars {
+    margin-top: 4px;
+    font-size: 1.1rem;
+}
+
+.star-svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-right: 2px;
+    vertical-align: middle;
+    display: inline-block;
+    filter: drop-shadow(0 0 2px rgba(0,0,0,0.2));
+}
+
+.star-svg path {
+    fill: rgba(255, 255, 255, 0.3);
+    transition: fill 0.2s;
+}
+
+.star-svg.active path {
+    fill: #FBBF24;
+    filter: drop-shadow(0 0 5px rgba(251, 191, 36, 0.6));
+}
+
+.star-svg.half path {
+    fill: url(#starHalfGrad);
+}
+
+.recipe-detail-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.recipe-rating-selector {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.star-icon {
+    display: inline-block;
+    cursor: pointer;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    padding: 2px;
+}
+
+.star-icon .star-svg {
+    width: 1.6rem;
+    height: 1.6rem;
+    filter: none;
+}
+
+.star-icon .star-svg path {
+    fill: rgba(255, 255, 255, 0.2);
+}
+
+.star-icon.active .star-svg path {
+    fill: #FBBF24;
+    filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.7));
+}
+
+.star-icon.half-preview .star-svg path {
+    fill: url(#starHalfGrad);
+}
+
+.star-icon:hover {
+    transform: scale(1.2) rotate(5deg);
+}
+
+.rating-value-text {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-left: 8px;
 }

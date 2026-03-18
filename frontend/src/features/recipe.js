@@ -76,6 +76,29 @@ export function initRecipe(el, data) {
         '호두': '알', '아몬드': '알', '땅콩': '알', '잣': '작은술', '해바라기씨': '줌',
         '식빵': '장', '바게트': '조각', '모닝빵': '개'
     };
+    
+    const STAR_SVG_PATH = "M12,17.27L18.18,21l-1.64-7.03L22,9.24l-7.19-0.61L12,2L9.19,8.63L2,9.24l5.46,4.73L5.82,21L12,17.27z";
+
+    /**
+     * 별점 HTML 렌더링 헬퍼
+     */
+    const renderStars = (rating) => {
+        const fullStars = Math.floor(rating);
+        const hasHalf = rating % 1 >= 0.5;
+        let html = '';
+        for (let i = 1; i <= 5; i++) {
+            let cls = 'star-svg';
+            if (i <= fullStars) cls += ' active';
+            else if (i === fullStars + 1 && hasHalf) cls += ' half';
+            
+            html += `
+                <svg class="${cls}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="${STAR_SVG_PATH}"/>
+                </svg>
+            `;
+        }
+        return html;
+    };
 
     // 1. 초기 접기 상태 복원
     const isCollapsed = localStorage.getItem(`recipe_collapsed_${widgetId}`) === 'true';
@@ -133,6 +156,24 @@ export function initRecipe(el, data) {
     const renderView = (view, payload = null) => {
         currentView = view;
         currentRecipeId = payload;
+
+        // 전역 SVG 정의 (그래디언트 등) 추가
+        if (!document.getElementById('recipeGlobalSvgDefs')) {
+            const svgNS = "http://www.w3.org/2000/svg";
+            const svg = document.createElementNS(svgNS, "svg");
+            svg.id = 'recipeGlobalSvgDefs';
+            svg.setAttribute('style', 'width:0; height:0; position:absolute;');
+            svg.setAttribute('aria-hidden', 'true');
+            svg.innerHTML = `
+                <defs>
+                    <linearGradient id="starHalfGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="50%" stop-color="#FBBF24" />
+                        <stop offset="50%" stop-color="rgba(255, 255, 255, 0.3)" />
+                    </linearGradient>
+                </defs>
+            `;
+            document.body.appendChild(svg);
+        }
         
         // 버튼 및 제목 갱신
         if (view === 'list') {
@@ -247,11 +288,16 @@ export function initRecipe(el, data) {
             const listHTML = recipes.map((r, idx) => `
                 <div class="recipe-card fade-in" data-id="${r.id}" draggable="true" data-index="${idx}">
                     <div class="drag-handle" title="순서 변경 이동" draggable="false">
-                        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="9" x2="20" y2="9"></line><line x1="4" y1="15" x2="20" y2="15"></line></svg>
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
+                            <circle cx="9" cy="8" r="1.2"/><circle cx="15" cy="8" r="1.2"/>
+                            <circle cx="9" cy="12" r="1.2"/><circle cx="15" cy="12" r="1.2"/>
+                            <circle cx="9" cy="16" r="1.2"/><circle cx="15" cy="16" r="1.2"/>
+                        </svg>
                     </div>
                     <div class="recipe-card-emoji">${r.emoji || '🍳'}</div>
                     <div class="recipe-card-info">
                         <h4 class="recipe-card-title">${r.title || '이름 없음'}</h4>
+                        <div class="recipe-card-stars">${renderStars(r.rating || 0)}</div>
                         <span class="recipe-card-meta">재료 ${r.ingredients?.length || 0}개 · 순서 ${r.steps?.length || 0}단계</span>
                     </div>
                 </div>
@@ -264,6 +310,25 @@ export function initRecipe(el, data) {
         if (newBtn) newBtn.onclick = () => renderView('edit');
 
         let draggedItem = null;
+        let scrollInterval = null;
+
+        const stopAutoScroll = () => {
+            if (scrollInterval) {
+                cancelAnimationFrame(scrollInterval);
+                scrollInterval = null;
+            }
+        };
+
+        const startAutoScroll = (direction) => {
+            stopAutoScroll();
+            const step = () => {
+                const speed = 5; // 스크롤 속도
+                container.scrollTop += (direction === 'down' ? speed : -speed);
+                scrollInterval = requestAnimationFrame(step);
+            };
+            scrollInterval = requestAnimationFrame(step);
+        };
+
         container.querySelectorAll('.recipe-card[data-id]').forEach(card => {
             card.onclick = (e) => {
                 if (e.target.closest('.drag-handle')) return;
@@ -281,14 +346,31 @@ export function initRecipe(el, data) {
                 card.classList.remove('dragging');
                 draggedItem = null;
                 container.querySelectorAll('.recipe-card').forEach(c => c.classList.remove('drag-over', 'drag-over-after'));
+                stopAutoScroll();
             };
 
             card.ondragover = (e) => {
                 e.preventDefault();
                 container.querySelectorAll('.recipe-card').forEach(c => c.classList.remove('drag-over', 'drag-over-after'));
                 
-                if (card === draggedItem) return;
+                if (card === draggedItem) {
+                    stopAutoScroll();
+                    return;
+                }
                 
+                // 오토 스크롤 감지 (상/하단 15% 영역)
+                const containerRect = container.getBoundingClientRect();
+                const threshold = containerRect.height * 0.15;
+                const mouseY = e.clientY - containerRect.top;
+
+                if (mouseY < threshold) {
+                    startAutoScroll('up');
+                } else if (mouseY > containerRect.height - threshold) {
+                    startAutoScroll('down');
+                } else {
+                    stopAutoScroll();
+                }
+
                 const box = card.getBoundingClientRect();
                 const offset = e.clientX - box.left - (box.width / 2);
                 if (offset > 0) {
@@ -300,10 +382,12 @@ export function initRecipe(el, data) {
 
             card.ondragleave = () => {
                 card.classList.remove('drag-over', 'drag-over-after');
+                // 컨테이너를 벗어날 때 스크롤 중단은 신중해야 함 (다음 카드로 이동 중일 수 있으므로)
             };
 
             card.ondrop = (e) => {
                 e.preventDefault();
+                stopAutoScroll();
                 const isAfter = card.classList.contains('drag-over-after');
                 card.classList.remove('drag-over', 'drag-over-after');
                 if (card === draggedItem) return;
@@ -326,7 +410,23 @@ export function initRecipe(el, data) {
                 saveSettings();
                 renderListView();
             };
+
+            // 모바일 전체 스크롤 방지 (드래그 중)
+            card.addEventListener('touchstart', (e) => {
+                if (e.target.closest('.drag-handle')) {
+                    // 드래그 핸들을 잡았을 때만 전체 스크롤 방지 고려 (필요 시)
+                }
+            }, { passive: true });
         });
+
+        // 드래그 종료 시 무조건 스크롤 중지
+        container.ondragleave = (e) => {
+            // 컨테이너 영역 완전히 벗어났을 때만
+            if (!container.contains(e.relatedTarget)) {
+                stopAutoScroll();
+            }
+        };
+        container.onmouseup = stopAutoScroll;
     };
 
     /**
@@ -366,7 +466,10 @@ export function initRecipe(el, data) {
                 </div>
                 <div class="recipe-detail-header" style="margin-top:16px;">
                     <span class="recipe-detail-emoji">${recipe.emoji || '🍳'}</span>
-                    <h3 class="recipe-detail-title">${recipe.title || '제목 없음'}</h3>
+                    <div class="recipe-detail-title-group">
+                        <h3 class="recipe-detail-title">${recipe.title || '제목 없음'}</h3>
+                        <div class="recipe-detail-stars">${renderStars(recipe.rating || 0)}</div>
+                    </div>
                 </div>
                 
                 ${recipe.thumbnail ? `<img src="${recipe.thumbnail}" class="recipe-detail-thumbnail" alt="레시피 썸네일">` : ''}
@@ -433,7 +536,24 @@ export function initRecipe(el, data) {
                              <button class="icon-chip" type="button" title="저녁">🌙</button>
                          </div>
                      </div>
-                     <input type="text" id="recipeTitleInput" class="recipe-title-input" placeholder="레시피 제목" value="${title}">
+                     <div class="recipe-title-rating-group" style="flex: 1; display: flex; flex-direction: column; gap: 4px;">
+                         <input type="text" id="recipeTitleInput" class="recipe-title-input" placeholder="레시피 제목" value="${title}">
+                         <div class="recipe-rating-selector" id="recipeRatingSelector">
+                             ${[1, 2, 3, 4, 5].map(n => {
+                                 const r = recipe?.rating || 0;
+                                 let cls = '';
+                                 if (n <= Math.floor(r)) cls = 'active';
+                                 else if (n === Math.ceil(r) && r % 1 !== 0) cls = 'half-preview';
+                                 return `
+                                    <span class="star-icon ${cls}" data-value="${n}">
+                                        <svg class="star-svg" viewBox="0 0 24 24">
+                                            <path d="${STAR_SVG_PATH}"/>
+                                        </svg>
+                                    </span>`;
+                             }).join('')}
+                             <span class="rating-value-text">${recipe?.rating ? recipe.rating + '점' : '평가 전'}</span>
+                         </div>
+                     </div>
                 </div>
 
                 <!-- AI 자동 생성 버튼 -->
@@ -478,6 +598,46 @@ export function initRecipe(el, data) {
                 </div>
             </div>
         `;
+        
+        let selectedRating = recipe ? (recipe.rating || 0) : 0;
+        const ratingSelector = container.querySelector('#recipeRatingSelector');
+        if (ratingSelector) {
+            const stars = ratingSelector.querySelectorAll('.star-icon');
+            const valText = ratingSelector.querySelector('.rating-value-text');
+            
+            const updateUI = (val) => {
+                stars.forEach(s => {
+                    const sVal = parseInt(s.dataset.value);
+                    s.classList.remove('active', 'half-preview');
+                    if (sVal <= Math.floor(val)) {
+                        s.classList.add('active');
+                    } else if (sVal === Math.ceil(val) && val % 1 !== 0) {
+                        s.classList.add('half-preview');
+                    }
+                });
+                valText.textContent = val > 0 ? `${val}점` : '평가 전';
+            };
+
+            stars.forEach(star => {
+                star.onmousemove = (e) => {
+                    const rect = star.getBoundingClientRect();
+                    const isHalf = (e.clientX - rect.left) < (rect.width / 2);
+                    const hoverVal = parseInt(star.dataset.value) - (isHalf ? 0.5 : 0);
+                    updateUI(hoverVal);
+                };
+
+                star.onclick = (e) => {
+                    const rect = star.getBoundingClientRect();
+                    const isHalf = (e.clientX - rect.left) < (rect.width / 2);
+                    selectedRating = parseInt(star.dataset.value) - (isHalf ? 0.5 : 0);
+                    updateUI(selectedRating);
+                };
+            });
+
+            ratingSelector.onmouseleave = () => {
+                updateUI(selectedRating);
+            };
+        }
 
         const ingsContainer = container.querySelector('#ingredientsEditContainer');
         const addIngBtn = container.querySelector('.btn-add-ingredient');
@@ -806,6 +966,7 @@ export function initRecipe(el, data) {
         container.querySelector('.btn-recipe-save').onclick = () => {
             const newTitle = container.querySelector('#recipeTitleInput').value.trim() || '새 레시피';
             const newEmoji = container.querySelector('#recipeEmojiInput').textContent.trim() || '🍳';
+            const newRating = selectedRating;
             const rawSteps = container.querySelector('#recipeStepInput').value;
 
             const newIngs = Array.from(ingsContainer.querySelectorAll('.ingredient-row')).map(row => ({
@@ -828,6 +989,7 @@ export function initRecipe(el, data) {
             if (recipe) {
                 recipe.title = newTitle;
                 recipe.emoji = newEmoji;
+                recipe.rating = newRating;
                 recipe.ingredients = newIngs;
                 recipe.steps = newSteps;
                 recipe.thumbnail = finalThumbnail;
@@ -836,6 +998,7 @@ export function initRecipe(el, data) {
                     id: 'rcp_' + Date.now(),
                     title: newTitle,
                     emoji: newEmoji,
+                    rating: newRating,
                     thumbnail: finalThumbnail,
                     ingredients: newIngs,
                     steps: newSteps
