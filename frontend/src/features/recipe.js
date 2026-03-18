@@ -724,11 +724,12 @@ export function initRecipe(el, data) {
         
         if (stepLabel) stepLabel.innerHTML += '';
 
-        // 즉시 포커스 및 커서 조정
+        // 스크롤 상단 이동 (모바일에서 키보드가 즉시 올라와 화면을 가리는 것을 방지)
         setTimeout(() => {
-            if (stepInput) {
-                stepInput.focus();
-                stepInput.selectionStart = stepInput.selectionEnd = stepInput.value.length;
+            if (container) {
+                container.scrollTop = 0;
+                // 부모 요소(위젯 자체)에 스크롤이 있는 경우도 대비
+                if (container.parentElement) container.parentElement.scrollTop = 0;
             }
         }, 100);
 

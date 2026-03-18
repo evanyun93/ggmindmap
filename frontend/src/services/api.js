@@ -27,7 +27,6 @@ export async function apiFetch(endpoint, options = {}) {
     }
 
     const fullUrl = `${API_BASE}${endpoint}`;
-    console.log(`[apiFetch] Requesting: ${fullUrl}`);
 
     const response = await fetch(fullUrl, {
         ...options,
