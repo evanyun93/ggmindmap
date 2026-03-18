@@ -619,9 +619,8 @@ export function initRecipe(el, data) {
                     setTimeout(() => setLoading(true, '자막을 분석하는 중...'), 1200);
                     setTimeout(() => setLoading(true, 'AI가 레시피를 정리하는 중...'), 3000);
 
-                    const response = await fetch('/api/recipe/parse-youtube', {
+                    const response = await apiFetch('/api/recipe/parse-youtube', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ url: youtubeUrl.trim() })
                     });
 
