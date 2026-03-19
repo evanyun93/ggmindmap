@@ -4,6 +4,7 @@
  */
 
 import { Spreadsheet } from '../components/spreadsheet.js';
+import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
 
 let fabDragged = false;
 let isFabDragging = false;
@@ -11,7 +12,7 @@ let isFabDragging = false;
 /**
  * 메모 기능 초기화
  */
-export function initMemo() {
+export async function initMemo() {
     const fab = document.getElementById('memoFab');
     const popup = document.getElementById('memoPopup');
     const closeBtn = document.getElementById('closeMemo');
@@ -23,10 +24,10 @@ export function initMemo() {
     new Spreadsheet('spreadsheet-widget', { rows: 5, cols: 5 });
 
     // D-Day 초기화
-    setupDDay();
+    await setupDDay();
 
     // FAB 드래그 및 클릭 설정
-    setupFabDrag(fab, popup);
+    await setupFabDrag(fab, popup);
 
     // 팝업 드래그 설정
     setupPopupDrag(popup, header, closeBtn);
@@ -37,7 +38,7 @@ export function initMemo() {
 /**
  * D-Day 관련 UI 및 로직 설정
  */
-function setupDDay() {
+async function setupDDay() {
     const todayElem = document.getElementById('todayDate');
     const targetRow = document.getElementById('targetDateRow');
     const targetDisplay = document.getElementById('targetDateDisplay');
@@ -62,15 +63,16 @@ function setupDDay() {
         }
     });
 
-    const savedDate = localStorage.getItem('mindmap_dday_target');
+    // SyncService에서 D-Day 타겟 가져오기
+    const savedDate = await syncService.getData(SYNC_DATA_TYPES.DDAY_TARGET);
     if (savedDate) {
         ddayInput.value = savedDate;
         updateDDayView(savedDate, targetDisplay, ddayCount, saturdayCount, days);
     }
 
-    ddayInput.addEventListener('change', (e) => {
+    ddayInput.addEventListener('change', async (e) => {
         const date = e.target.value;
-        localStorage.setItem('mindmap_dday_target', date);
+        await syncService.setData(SYNC_DATA_TYPES.DDAY_TARGET, null, date);
         updateDDayView(date, targetDisplay, ddayCount, saturdayCount, days);
         ddayInput.style.opacity = '0';
         ddayInput.style.pointerEvents = 'none';
@@ -106,11 +108,12 @@ function updateDDayView(targetDateStr, display, countEl, satEl, dayNames) {
 /**
  * FAB 드래그 및 팝업 토글 설정
  */
-function setupFabDrag(fab, popup) {
+async function setupFabDrag(fab, popup) {
     let initialX, initialY;
     let deltaX = 0, deltaY = 0;
 
-    const savedPos = localStorage.getItem('mindmap_fab_pos');
+    // SyncService에서 FAB 위치 가져오기
+    const savedPos = await syncService.getData(SYNC_DATA_TYPES.FAB_POS);
     if (savedPos) {
         const { left, top } = JSON.parse(savedPos);
         fab.style.left = left;
@@ -152,12 +155,13 @@ function setupFabDrag(fab, popup) {
             popup.style.right = 'auto';
         }
     });
-    document.addEventListener('mouseup', () => {
+    document.addEventListener('mouseup', async () => {
         if (!isFabDragging) return;
         isFabDragging = false;
         fab.style.cursor = 'grab';
         fab.style.transition = '';
-        localStorage.setItem('mindmap_fab_pos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+        // 로컬 + 서버 동기화
+        await syncService.setData(SYNC_DATA_TYPES.FAB_POS, null, JSON.stringify({ left: fab.style.left, top: fab.style.top }));
     });
 
     // 터치 드래그 (모바일)
@@ -193,11 +197,12 @@ function setupFabDrag(fab, popup) {
             popup.style.right = 'auto';
         }
     }, { passive: false });
-    document.addEventListener('touchend', () => {
+    document.addEventListener('touchend', async () => {
         if (!isFabDragging) return;
         isFabDragging = false;
         fab.style.transition = '';
-        localStorage.setItem('mindmap_fab_pos', JSON.stringify({ left: fab.style.left, top: fab.style.top }));
+        // 로컬 + 서버 동기화
+        await syncService.setData(SYNC_DATA_TYPES.FAB_POS, null, JSON.stringify({ left: fab.style.left, top: fab.style.top }));
     });
 
     fab.addEventListener('click', (e) => {

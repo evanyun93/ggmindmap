@@ -2,6 +2,7 @@ import { apiFetch } from '../services/api.js';
 import { getMindmapHTML } from '../components/mindmap.js';
 import { mindmapEngine } from './mindmap-engine.js';
 import { contextMenu } from '../utils/context-menu.js';
+import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
 
 let nodes = [];
 let links = [];
@@ -142,6 +143,16 @@ function resizeCanvas() {
 
 async function loadMindmapData() {
     try {
+        // SyncService에서 마인드맵 데이터 가져오기
+        const savedData = await syncService.getData('mindmap_data');
+        if (savedData) {
+            const data = typeof savedData === 'string' ? JSON.parse(savedData) : savedData;
+            nodes = data.nodes || [];
+            links = data.links || [];
+            return;
+        }
+        
+        // 폴백: 기존 API 사용
         const res  = await apiFetch('/api/mindmap');
         const data = await res.json();
         if (data.success && data.data) {

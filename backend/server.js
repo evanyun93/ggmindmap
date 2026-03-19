@@ -68,6 +68,10 @@ app.use('/api/widgets', widgetApi);
 const recipeApi = require('./routes/recipeApi');
 app.use('/api/recipe', recipeApi);
 
+// 8. 동기화 API 관련
+const syncApi = require('./routes/syncApi');
+app.use('/api/sync', syncApi);
+
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 
 app.get('*', (req, res) => {

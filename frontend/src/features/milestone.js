@@ -4,13 +4,14 @@
  */
 
 import { apiFetch } from '../services/api.js';
+import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
 
 /**
  * 마일스톤 위젯 초기화
  * @param {HTMLElement} el 위젯 루트 엘리먼트
  * @param {Object} widgetData 위젯 데이터 (최신 settings 포함)
  */
-export function initMilestone(el, widgetData) {
+export async function initMilestone(el, widgetData) {
     if (!el) return;
 
     const header = el.querySelector('.milestone-header');
@@ -27,8 +28,9 @@ export function initMilestone(el, widgetData) {
     const widgetId = el.dataset.id;
     let settings = widgetData.settings || {};
 
-    // 1. 초기 UI 상태 설정
-    const isCollapsed = localStorage.getItem(`milestone_collapsed_${widgetId}`) === 'true';
+    // 1. 초기 UI 상태 설정 - SyncService에서 로컬 캐시 먼저 확인
+    const collapsedValue = await syncService.getData(SYNC_DATA_TYPES.MILESTONE_COLLAPSED, widgetId);
+    const isCollapsed = collapsedValue === 'true';
     if (isCollapsed) el.classList.add('collapsed');
 
     // 2. 이벤트 바인딩
@@ -129,14 +131,17 @@ export function initMilestone(el, widgetData) {
 
     // 3. 데이터 로딩 및 주기적 갱신
     renderMilestoneData(el, settings);
-    setInterval(() => renderMilestoneData(el, settings), 5000);
+    setInterval(async () => await renderMilestoneData(el, settings), 5000);
 }
 
 /**
  * 제목 수정 설정
  */
-function setupTitleEdit(el, titleEl, editBtn, settings) {
+async function setupTitleEdit(el, titleEl, editBtn, settings) {
     const widgetId = el.dataset.id;
+    const savedTitle = await syncService.getData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId);
+    if (savedTitle) titleEl.textContent = savedTitle;
+
     editBtn.onclick = (e) => {
         e.stopPropagation();
         const current = titleEl.textContent;
@@ -149,10 +154,10 @@ function setupTitleEdit(el, titleEl, editBtn, settings) {
 
         const finish = async () => {
             const newTitle = input.value.trim() || '나의 마일스톤';
-            settings.title = newTitle;
+            await syncService.setData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId, newTitle);
             titleEl.textContent = newTitle;
             input.replaceWith(titleEl);
-            await saveSettings(widgetId, settings);
+            setupTitleEdit(el, titleEl, editBtn, settings);
         };
 
         input.onblur = finish;
@@ -168,16 +173,16 @@ function setupTitleEdit(el, titleEl, editBtn, settings) {
  */
 async function saveSettings(id, settings) {
     try {
-        await apiFetch(`/api/widgets/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ settings })
-        });
+        // 개별 설정을 SyncService를 통해 저장
+        for (const [key, value] of Object.entries(settings)) {
+            await syncService.setData(key, id, value);
+        }
     } catch (err) {
         console.error('[Milestone] 설정 저장 실패:', err);
     }
 }
 
-function renderMilestoneData(el, settings) {
+async function renderMilestoneData(el, settings) {
     const ddayBadge = el.querySelector('.milestone-dday-badge');
     const targetDateText = el.querySelector('.target-date');
     const subInfoText = el.querySelector('.sub-info');
@@ -249,13 +254,14 @@ function renderMilestoneData(el, settings) {
 
     // B. 스프레드시트 요약 (연동 모드일 때만 갱신)
     if (isSync && summaryContainer) {
-        const sheetDataRaw = localStorage.getItem('mindmap_spreadsheet_data');
-        const headerDataRaw = localStorage.getItem('mindmap_spreadsheet_headers');
+        // SyncService에서 스프레드시트 데이터 가져오기
+        const sheetDataRaw = await syncService.getData(SYNC_DATA_TYPES.SPREADSHEET_DATA, widgetId);
+        const headerDataRaw = await syncService.getData(SYNC_DATA_TYPES.SPREADSHEET_HEADERS, widgetId);
 
         if (sheetDataRaw) {
             try {
-                const data = JSON.parse(sheetDataRaw);
-                const headers = headerDataRaw ? JSON.parse(headerDataRaw) : {};
+                const data = typeof sheetDataRaw === 'string' ? JSON.parse(sheetDataRaw) : sheetDataRaw;
+                const headers = typeof headerDataRaw === 'string' ? JSON.parse(headerDataRaw) : headerDataRaw || {};
 
                 const items = Object.entries(data)
                     .filter(([_, cell]) => cell.value !== '' && cell.value !== undefined)

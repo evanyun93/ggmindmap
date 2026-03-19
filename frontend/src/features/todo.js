@@ -4,6 +4,7 @@
  */
 
 import { apiFetch } from '../services/api.js';
+import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
 
 /** 기본 체크박스 색상 */
 const DEFAULT_CHECKBOX_COLOR = '#8B5CF6';
@@ -12,7 +13,7 @@ const DEFAULT_CHECKBOX_COLOR = '#8B5CF6';
  * To-Do 기능 초기화
  * @param {HTMLElement} el 위젯 루트 엘리먼트
  */
-export function initTodo(el) {
+export async function initTodo(el) {
     if (!el) return;
 
     const listContainer = el.querySelector('.todo-list-container');
@@ -30,11 +31,13 @@ export function initTodo(el) {
 
     const widgetId = el.dataset.id;
 
-    // 1. 초기 UI 상태 설정 (동기)
-    const isCollapsed = localStorage.getItem(`todo_collapsed_${widgetId}`) === 'true';
+    // 1. 초기 UI 상태 설정 (동기) - SyncService에서 로컬 캐시 먼저 확인
+    const collapsedValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLLAPSED, widgetId);
+    const isCollapsed = collapsedValue === 'true';
     if (isCollapsed) el.classList.add('collapsed');
 
-    const savedColor = localStorage.getItem('todo_checkbox_color') || DEFAULT_CHECKBOX_COLOR;
+    const colorValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLOR);
+    const savedColor = colorValue || DEFAULT_CHECKBOX_COLOR;
     applyCheckboxColor(el, savedColor);
 
     // 2. 이벤트 바인딩 (데이터 로딩보다 먼저 수행하여 즉시 인터랙션 대응)
@@ -51,7 +54,8 @@ export function initTodo(el) {
             document.removeEventListener('mouseup', onUp);
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
-                localStorage.setItem(`todo_collapsed_${widgetId}`, collapsed);
+                // 로컬 + 서버 동기화
+                syncService.setData(SYNC_DATA_TYPES.TODO_COLLAPSED, widgetId, collapsed);
                 
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());
@@ -77,6 +81,8 @@ export function initTodo(el) {
             const chip = e.target.closest('.color-chip');
             if (chip) {
                 applyCheckboxColor(el, chip.dataset.color);
+                // 로컬 + 서버 동기화
+                syncService.setData(SYNC_DATA_TYPES.TODO_COLOR, null, chip.dataset.color);
                 palette.classList.add('hidden');
             }
         };
@@ -89,34 +95,41 @@ export function initTodo(el) {
         setupTitleEdit(el, titleEl, editBtn);
     }
 
-    // 자동 삭제
-    const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
-    if (autoDeleteCheck) {
-        const user = window.currentUser;
-        if (user && user.todoAutoDelete) autoDeleteCheck.checked = true;
+     // 자동 삭제
+     const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
+     if (autoDeleteCheck) {
+         // 초기 상태 동기화 서비스에서 로드
+         const savedAutoDelete = await syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId);
+         // 동기화 서비스에 값이 없으면 현재 사용자 설정에서 fallback
+         if (savedAutoDelete !== null) {
+             autoDeleteCheck.checked = savedAutoDelete;
+         } else if (window.currentUser && window.currentUser.todoAutoDelete) {
+             autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
+         }
 
-        autoDeleteCheck.onchange = async () => {
-            const active = autoDeleteCheck.checked;
-            try {
-                await apiFetch('/api/auth/settings', {
-                    method: 'PATCH',
-                    body: JSON.stringify({ todoAutoDelete: active })
-                });
-                if (window.currentUser) window.currentUser.todoAutoDelete = active;
-                loadTodoList(el);
-            } catch (err) {
-                autoDeleteCheck.checked = !active;
-            }
-        };
-    }
+         autoDeleteCheck.onchange = async () => {
+             const active = autoDeleteCheck.checked;
+             try {
+                 // 동기화 서비스에 저장 (사용자 설정)
+                 await syncService.setData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId, active);
+                 // 현재 사용자 객체도 즉시 업데이트
+                 if (window.currentUser) window.currentUser.todoAutoDelete = active;
+                 loadTodoList(el);
+             } catch (err) {
+                 console.error('[Todo] 자동 삭제 설정 저장 실패:', err);
+                 autoDeleteCheck.checked = !active;
+             }
+         };
+     }
 
     // 3. 데이터 로딩 (비동기, 백그라운드)
     loadTodoList(el);
 }
 
-function applyCheckboxColor(el, color) {
+async function applyCheckboxColor(el, color) {
     el.style.setProperty('--todo-checkbox-color', color);
-    localStorage.setItem('todo_checkbox_color', color);
+    // 로컬 + 서버 동기화
+    await syncService.setData(SYNC_DATA_TYPES.TODO_COLOR, null, color);
     el.querySelectorAll('.color-chip').forEach(chip => {
         chip.classList.toggle('active', chip.dataset.color === color);
     });
@@ -124,9 +137,9 @@ function applyCheckboxColor(el, color) {
     if (colorBtn) colorBtn.style.color = color;
 }
 
-function setupTitleEdit(el, titleEl, editBtn) {
+async function setupTitleEdit(el, titleEl, editBtn) {
     const widgetId = el.dataset.id;
-    const savedTitle = localStorage.getItem(`todo_widget_title_${widgetId}`);
+    const savedTitle = await syncService.getData(SYNC_DATA_TYPES.TODO_TITLE, widgetId);
     if (savedTitle) titleEl.textContent = savedTitle;
 
     editBtn.onclick = (e) => {
@@ -145,9 +158,9 @@ function setupTitleEdit(el, titleEl, editBtn) {
         titleEl.replaceWith(input);
         input.focus();
 
-        const finish = () => {
+        const finish = async () => {
             const newTitle = input.value.trim() || '오늘의 할 일';
-            localStorage.setItem(`todo_widget_title_${widgetId}`, newTitle);
+            await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
             titleEl.textContent = newTitle;
             input.replaceWith(titleEl);
             setupTitleEdit(el, titleEl, editBtn);
@@ -156,7 +169,7 @@ function setupTitleEdit(el, titleEl, editBtn) {
         input.onblur = finish;
         input.onkeydown = (e) => {
             if (e.key === 'Enter') finish();
-            if (e.key === 'Escape') { input.value = current; finish(); }
+            if (e.key === 'Escape') { input.value = current; input.replaceWith(titleEl); }
         };
     };
 }
@@ -179,10 +192,11 @@ async function addTodo(el) {
     const input = el.querySelector('.todo-input');
     const taskContent = input.value.trim();
     if (!taskContent) return;
-
+ 
     // 시간 파싱
     const { task, alarmTime } = parseTimeFromTask(taskContent);
-    const color = localStorage.getItem('todo_checkbox_color') || DEFAULT_CHECKBOX_COLOR;
+    const colorValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLOR);
+    const color = colorValue || DEFAULT_CHECKBOX_COLOR;
     const widgetId = el.closest('.draggable-widget')?.dataset?.id;
     
     try {
