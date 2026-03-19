@@ -288,6 +288,58 @@
   box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
 }
 
+/* ─── 대시보드 상단 내비게이션 버튼 (PC 프리미엄 스타일) ────────── */
+.btn-manual {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  padding: 8px 18px !important;
+  height: 40px !important;
+  font-family: inherit;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  cursor: pointer;
+  border-radius: 12px !important;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  
+  /* Glassmorphism 베이스 */
+  background: rgba(99, 102, 241, 0.08) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  
+  /* 포인트 컬러 (Indigo) */
+  border: 1px solid rgba(139, 92, 246, 0.3) !important;
+  border-left: 4px solid #6366f1 !important;
+  color: #a78bfa !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.btn-manual svg {
+  width: 18px;
+  height: 18px;
+  stroke: #818cf8;
+  transition: transform 0.3s ease;
+}
+
+.btn-manual:hover {
+  background: rgba(99, 102, 241, 0.15) !important;
+  color: #c084fc !important;
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 8px 25px rgba(99, 102, 241, 0.3);
+  border-color: rgba(139, 92, 246, 0.5) !important;
+}
+
+.btn-manual:hover svg {
+  transform: rotate(-10deg) scale(1.1);
+  stroke: #a78bfa;
+}
+
+.btn-manual:active {
+  transform: translateY(-1px) scale(0.98);
+  box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
+}
+
 
 /* 게시판 페이지네이션 버튼 */
 .page-btn {
@@ -1891,6 +1943,7 @@ input:checked+.switch-slider:before {
   font-weight: 800 !important;
   background: linear-gradient(135deg, #a78bfa, #22d3ee) !important;
   -webkit-background-clip: text !important;
+  background-clip: text !important;
   -webkit-text-fill-color: transparent !important;
 }
 

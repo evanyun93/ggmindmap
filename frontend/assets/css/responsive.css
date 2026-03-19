@@ -80,17 +80,62 @@
     border-top: 1px solid rgba(255, 255, 255, 0.05); /* 상단과 시각적 분리 */
   }
 
-  /* 각 버튼별 세부 순서 조정 (사용 빈도 기반) */
+  /* 각 버튼별 세부 순서 조정 및 프리미엄 디자인 적용 */
   .btn-manual, .btn-collapse-all, .btn-reorder {
-    padding: 6px 12px !important;
-    height: 34px !important;
-    font-size: 11px !important;
-    flex: 1; /* 너비 균등 배분 */
-    max-width: 120px;
+    padding: 6px 10px !important;
+    height: 38px !important; /* 높이 약간 증가로 터치 영역 확보 */
+    font-size: 11.5px !important;
+    font-weight: 600 !important;
+    flex: 1;
+    max-width: 110px;
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 6px !important;
     white-space: nowrap;
+    border-radius: 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.8) !important;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+
+  .btn-manual svg, .btn-collapse-all svg, .btn-reorder svg {
+    opacity: 0.9;
+    transition: transform 0.2s ease;
+  }
+
+  /* 버튼별 고유 정체성 부여 (포인트 컬러) */
+  .btn-manual {
+    border-left: 3px solid #6366f1 !important; /* Indigo */
+  }
+  .btn-manual:active { background: rgba(99, 102, 241, 0.15) !important; transform: scale(0.95); }
+
+  .btn-collapse-all {
+    border-left: 3px solid #10b981 !important; /* Emerald */
+  }
+  .btn-collapse-all:active { background: rgba(16, 185, 129, 0.15) !important; transform: scale(0.95); }
+
+  .btn-reorder {
+    border-left: 3px solid #f59e0b !important; /* Amber */
+  }
+  .btn-reorder.active {
+    background: rgba(245, 158, 11, 0.15) !important;
+    border-color: #f59e0b !important;
+    color: #f59e0b !important;
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.2);
+  }
+  .btn-reorder:active { transform: scale(0.95); }
+
+  .btn-reorder.active svg {
+    animation: rotate-reorder 1.5s infinite linear;
+  }
+
+  @keyframes rotate-reorder {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(180deg); }
   }
 
   .avatar {

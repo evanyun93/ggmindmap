@@ -229,11 +229,17 @@ export function getDashboardHTML(user) {
           </div>
           <div class="nav-actions" style="order: 2;">
             <!-- PC 표준 순서 유지 -->
-            <button class="btn-manual" id="manualBtn" style="order: 1;">매뉴얼</button>
-            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none; order: 2;" title="모든 위젯 접기/펴기">모두 접기</button>
+            <button class="btn-manual" id="manualBtn" style="order: 1;">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+              <span class="btn-text">매뉴얼</span>
+            </button>
+            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none; order: 2;" title="모든 위젯 접기/펴기">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+              <span class="btn-text">모두 접기</span>
+            </button>
             <button class="btn-feedback mobile-hide" id="feedbackBtn" style="order: 3;">소리함</button>
             <button class="btn-reorder mobile-only-btn" id="mobileReorderBtn" style="order: 4;" title="위젯 이동 모드">
-                <span class="btn-icon">🔄</span>
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="12" r="1.5"></circle><circle cx="9" cy="5" r="1.5"></circle><circle cx="9" cy="19" r="1.5"></circle><circle cx="15" cy="12" r="1.5"></circle><circle cx="15" cy="5" r="1.5"></circle><circle cx="15" cy="19" r="1.5"></circle></svg>
                 <span class="btn-text">이동</span>
             </button>
             ${(user && user.login_id && user.login_id.toLowerCase() === 'admin') ? `<button class="btn-admin" id="adminBtn" style="order: 5;">관리자</button>` : ''}

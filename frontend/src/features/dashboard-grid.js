@@ -12,6 +12,7 @@ import { API_BASE, apiFetch } from '../services/api.js';
 
 // 모바일 이동 모드 상태
 let isMoveModeActive = false;
+let longPressTimer = null; 
 
 export function initDashboardGrid() {
     const grid = document.getElementById('widgetGrid');
@@ -69,7 +70,6 @@ export function initDashboardGrid() {
     const LONG_PRESS_MS = 600;      // 롱프레스 시간 살짝 연장 (안정성)
     const MOVE_TOLERANCE_PX = 20;   // 터치 허용 오차 확대 (12 -> 20)
     const SCROLL_INTENT_Y_PX = 15;  // 스크롤 판단 임계값 확대 (6 -> 15)
-    let longPressTimer = null;
     let touchStartX = 0;
     let touchStartY = 0;
 
@@ -371,21 +371,48 @@ export function setupDraggable(widget, grid) {
         const initialX = touch.clientX;
         const initialY = touch.clientY;
         const startTime = Date.now();
+        let isLongPressTriggered = false;
+
+        const isTouch = e.type === 'touchstart';
+        const isMobileWidth = window.innerWidth <= 768;
+
+        // 모바일(터치)인 경우에만 롱프레스 및 이동 모드 체크 
+        if (isTouch && isMobileWidth) {
+            const isHeader = e.target.closest('.widget-header, .widget-title');
+            if (isHeader) {
+                longPressTimer = setTimeout(() => {
+                    isLongPressTriggered = true;
+                    isMoveModeActive = true; // 임시 이동 모드 활성화
+                    const mobileReorderBtn = document.getElementById('mobileReorderBtn');
+                    if (mobileReorderBtn) {
+                        mobileReorderBtn.classList.add('active');
+                        grid.classList.add('move-mode-active');
+                        const btnText = mobileReorderBtn.querySelector('.btn-text');
+                        if (btnText) btnText.textContent = '완료';
+                    }
+                    if (window.navigator.vibrate) window.navigator.vibrate(60);
+                    bringToFront(widget);
+                    startDrag(e);
+                }, 500); // 0.5초 롱프레스
+            }
+        }
 
         const onMoveAttempt = (moveEvent) => {
+            if (isLongPressTriggered) return;
             const currentTouch = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
             const diffX = Math.abs(currentTouch.clientX - initialX);
             const diffY = Math.abs(currentTouch.clientY - initialY);
             const dist = Math.sqrt(diffX * diffX + diffY * diffY);
-            const duration = Date.now() - startTime;
 
-            // 모바일에서 수직 이동이 크면 스크롤 의도로 간주하여 드래그 무시
-            if (e.type === 'touchstart' && diffY > diffX && diffY > 10) {
+            // 모바일(터치)에서 수직 이동이 크면 스크롤 의도로 간주하여 드래그 무시
+            if (isTouch && diffY > diffX && diffY > 10) {
                 cleanup();
                 return;
             }
 
-            if (dist > 7 || (e.type === 'touchstart' && duration > 200)) {
+            // PC는 7px만 움직여도 즉시 드래그, 모바일은 200ms 이상 유지 시에도 드래그 (단 이동모드 필요)
+            const duration = Date.now() - startTime;
+            if (dist > 7 || (isTouch && duration > 200)) {
                 cleanup();
                 bringToFront(widget);
                 startDrag(e); 
@@ -397,6 +424,10 @@ export function setupDraggable(widget, grid) {
         };
 
         const cleanup = () => {
+            if (longPressTimer) {
+                clearTimeout(longPressTimer);
+                longPressTimer = null;
+            }
             document.removeEventListener('mousemove', onMoveAttempt);
             document.removeEventListener('touchmove', onMoveAttempt);
             document.removeEventListener('mouseup', onEndAttempt);
@@ -410,10 +441,14 @@ export function setupDraggable(widget, grid) {
     }
 
     function startDrag(e) {
+        var isMobile = false;
         if (isDragStarted) return;
         
-        const isMobile = window.innerWidth <= 768;
-        // 모바일인 경우 이동 모드가 활성화되어 있어야만 드래그 시작
+        var isTouch = e && e.type === 'touchstart';
+        isMobile = isTouch && (window.innerWidth <= 768);
+
+        // 터치 기반 모바일인 경우에만 이동 모드가 활성화되어 있어야 드래그 가능
+        // PC(마우스) 환경이거나 모바일이라도 활성화된 상태면 통과
         if (isMobile && !isMoveModeActive) return;
 
         isDragStarted = true;
@@ -453,6 +488,25 @@ export function setupDraggable(widget, grid) {
         let currentX = initialTouchX;
         let currentY = initialTouchY;
         let rafId = null;
+        let scrollRafId = null;
+        const dashContent = document.getElementById('dashboardContent') || document.body;
+
+        const stopAutoScroll = () => {
+            if (scrollRafId) {
+                cancelAnimationFrame(scrollRafId);
+                scrollRafId = null;
+            }
+        };
+
+        const startAutoScroll = (direction) => {
+            stopAutoScroll();
+            const step = () => {
+                const speed = 8;
+                dashContent.scrollTop += (direction === 'down' ? speed : -speed);
+                scrollRafId = requestAnimationFrame(step);
+            };
+            scrollRafId = requestAnimationFrame(step);
+        };
 
         const updateGhost = () => {
             if (!isDragStarted || !ghost) return;
@@ -488,6 +542,17 @@ export function setupDraggable(widget, grid) {
             const currentTouch = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
             lastTouchX = currentTouch.clientX;
             lastTouchY = currentTouch.clientY;
+
+            // 대시보드 오토 스크롤 감지 (상/하단 12% 영역)
+            const viewH = window.innerHeight;
+            const threshold = viewH * 0.12;
+            if (lastTouchY < threshold) {
+                startAutoScroll('up');
+            } else if (lastTouchY > viewH - threshold) {
+                startAutoScroll('down');
+            } else {
+                stopAutoScroll();
+            }
 
             // 모바일 수직 스택 모드 체크 (768px 이하)
             if (isMobile && ghost) {
@@ -527,6 +592,7 @@ export function setupDraggable(widget, grid) {
 
         const onEnd = () => {
             if (rafId) cancelAnimationFrame(rafId);
+            stopAutoScroll();
             
             if (isMobile && ghost) {
                 // 고스트가 플레이스홀더 위치로 스냅되는 효과
@@ -556,6 +622,17 @@ export function setupDraggable(widget, grid) {
 
             // 모바일인 경우 현재 DOM 순서에 따라 zIndex 재할당하여 순서 저장
             if (isMobile) {
+                // 드래그 종료 시 이동 모드 자동 해제
+                if (isMoveModeActive) {
+                    isMoveModeActive = false;
+                    const mobileReorderBtn = document.getElementById('mobileReorderBtn');
+                    if (mobileReorderBtn) {
+                        mobileReorderBtn.classList.remove('active');
+                        const btnText = mobileReorderBtn.querySelector('.btn-text');
+                        if (btnText) btnText.textContent = '이동';
+                    }
+                    grid.classList.remove('move-mode-active');
+                }
                 reassignMobileZIndices();
             } else {
                 saveLayout();

@@ -94,6 +94,13 @@
   gap: 16px;
 }
 
+.nav-actions {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+
 .user-name {
   font-size: 14px;
   color: var(--text-secondary);
@@ -150,13 +157,13 @@
 @media (min-width: 769px) {
 
 
-/* 대시보드 그리드 컨테이너 (그리드 도트 및 오로라 배경) */
+  /* 대시보드 그리드 컨테이너 (그리드 도트 및 오로라 배경) */
   .dashboard-grid-v2 {
     position: relative;
     min-height: 1000px;
     width: 100%;
     background-color: var(--dashboard-bg) !important;
-    
+
     background-image:
       radial-gradient(var(--dashboard-dot) 2px, transparent 2px),
       linear-gradient(var(--dashboard-bg), var(--dashboard-bg)) !important;
@@ -181,13 +188,13 @@
     height: 200%;
     background: radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.12) 0%, transparent 45%),
       radial-gradient(circle at 70% 70%, rgba(6, 182, 212, 0.1) 0%, transparent 45%);
-    
+
     z-index: 0;
     pointer-events: none;
     animation: floatingAurora 40s infinite linear;
     filter: blur(50px);
     mix-blend-mode: screen;
-    
+
     opacity: 0.6;
   }
 
@@ -215,6 +222,3 @@
     }
   }
 }
-
-
-
