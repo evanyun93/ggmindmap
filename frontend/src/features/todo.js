@@ -44,6 +44,8 @@ export async function initTodo(el) {
 
     // 접기/펼치기
     header.addEventListener('mousedown', (e) => {
+        // 타이틀 수정 모드 중에는 모든 카드 상호작용(접기, 드래그 등)을 차단
+        if (el.classList.contains('is-editing')) return;
         if (e.target.closest('button, input, .todo-widget-title')) return;
 
         let isDragging = false;
@@ -56,7 +58,7 @@ export async function initTodo(el) {
                 const collapsed = el.classList.toggle('collapsed');
                 // 로컬 + 서버 동기화
                 syncService.setData(SYNC_DATA_TYPES.TODO_COLLAPSED, widgetId, collapsed);
-                
+
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());
             }
@@ -95,32 +97,32 @@ export async function initTodo(el) {
         setupTitleEdit(el, titleEl, editBtn);
     }
 
-     // 자동 삭제
-     const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
-     if (autoDeleteCheck) {
-         // 초기 상태 동기화 서비스에서 로드
-         const savedAutoDelete = await syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId);
-         // 동기화 서비스에 값이 없으면 현재 사용자 설정에서 fallback
-         if (savedAutoDelete !== null) {
-             autoDeleteCheck.checked = savedAutoDelete;
-         } else if (window.currentUser && window.currentUser.todoAutoDelete) {
-             autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
-         }
+    // 자동 삭제
+    const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
+    if (autoDeleteCheck) {
+        // 초기 상태 동기화 서비스에서 로드
+        const savedAutoDelete = await syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId);
+        // 동기화 서비스에 값이 없으면 현재 사용자 설정에서 fallback
+        if (savedAutoDelete !== null) {
+            autoDeleteCheck.checked = savedAutoDelete;
+        } else if (window.currentUser && window.currentUser.todoAutoDelete) {
+            autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
+        }
 
-         autoDeleteCheck.onchange = async () => {
-             const active = autoDeleteCheck.checked;
-             try {
-                 // 동기화 서비스에 저장 (사용자 설정)
-                 await syncService.setData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId, active);
-                 // 현재 사용자 객체도 즉시 업데이트
-                 if (window.currentUser) window.currentUser.todoAutoDelete = active;
-                 loadTodoList(el);
-             } catch (err) {
-                 console.error('[Todo] 자동 삭제 설정 저장 실패:', err);
-                 autoDeleteCheck.checked = !active;
-             }
-         };
-     }
+        autoDeleteCheck.onchange = async () => {
+            const active = autoDeleteCheck.checked;
+            try {
+                // 동기화 서비스에 저장 (사용자 설정)
+                await syncService.setData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId, active);
+                // 현재 사용자 객체도 즉시 업데이트
+                if (window.currentUser) window.currentUser.todoAutoDelete = active;
+                loadTodoList(el);
+            } catch (err) {
+                console.error('[Todo] 자동 삭제 설정 저장 실패:', err);
+                autoDeleteCheck.checked = !active;
+            }
+        };
+    }
 
     // 3. 데이터 로딩 (비동기, 백그라운드)
     loadTodoList(el);
@@ -142,35 +144,63 @@ async function setupTitleEdit(el, titleEl, editBtn) {
     const savedTitle = await syncService.getData(SYNC_DATA_TYPES.TODO_TITLE, widgetId);
     if (savedTitle) titleEl.textContent = savedTitle;
 
-    editBtn.onclick = (e) => {
+    const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+    const checkIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events: none;"><path d="M20 6L9 17L4 12"/></svg>`;
+
+    editBtn.innerHTML = pencilIcon;
+    editBtn.title = "제목 수정";
+
+    editBtn.onclick = async (e) => {
         e.stopPropagation();
-        const current = titleEl.textContent;
-        const input = document.createElement('input');
-        input.value = current;
-        input.className = 'todo-title-edit-input';
+        const isEditing = el.classList.contains('is-editing');
 
-        // 스타일 직접 주입 (외부 CSS 간섭 방지)
-        Object.assign(input.style, {
-            background: '#1e293b', border: '1px solid #8B5CF6', color: 'white',
-            borderRadius: '4px', padding: '2px 8px', width: '150px'
-        });
+        if (!isEditing) {
+            // 편집 모드 진입
+            el.classList.add('is-editing');
+            editBtn.innerHTML = checkIcon;
+            editBtn.title = "저장";
 
-        titleEl.replaceWith(input);
-        input.focus();
+            const current = titleEl.textContent;
+            const input = document.createElement('input');
+            input.value = current;
+            input.className = 'todo-title-edit-input';
 
-        const finish = async () => {
-            const newTitle = input.value.trim() || '오늘의 할 일';
-            await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
-            titleEl.textContent = newTitle;
+            Object.assign(input.style, {
+                background: '#1e293b', border: '1px solid #8B5CF6', color: 'white',
+                borderRadius: '4px', padding: '2px 8px', width: '150px'
+            });
+
+            titleEl.replaceWith(input);
+            input.focus();
+            input.select();
+
+            input.onmousedown = (e) => e.stopPropagation();
+
+            input.onkeydown = (e) => {
+                e.stopPropagation(); // 브라우저 뒤로가기 방지용 전파 차단은 유지
+                if (e.key === 'Enter') editBtn.click();
+                if (e.key === 'Escape') { input.value = current; exitEditMode(current); }
+            };
+        } else {
+            // 저장 실행
+            const input = el.querySelector('.todo-title-edit-input');
+            if (input) {
+                const newTitle = input.value.trim() || '나의 To-Do';
+                await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
+                exitEditMode(newTitle);
+            }
+        }
+    };
+
+    const exitEditMode = (title) => {
+        const input = el.querySelector('.todo-title-edit-input');
+        if (input) {
+            titleEl.textContent = title;
             input.replaceWith(titleEl);
-            setupTitleEdit(el, titleEl, editBtn);
-        };
-
-        input.onblur = finish;
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') finish();
-            if (e.key === 'Escape') { input.value = current; input.replaceWith(titleEl); }
-        };
+        }
+        el.classList.remove('is-editing');
+        editBtn.innerHTML = pencilIcon;
+        editBtn.title = "제목 수정";
     };
 }
 
@@ -179,7 +209,7 @@ async function loadTodoList(el) {
         // 위젯 ID 가져오기
         const widgetId = el.closest('.draggable-widget')?.dataset?.id;
         const query = widgetId ? `?widget_id=${widgetId}` : '';
-        
+
         const res = await apiFetch(`/api/todos${query}`);
         const result = await res.json();
         if (result.success) renderTodos(el, result.todos);
@@ -192,20 +222,20 @@ async function addTodo(el) {
     const input = el.querySelector('.todo-input');
     const taskContent = input.value.trim();
     if (!taskContent) return;
- 
+
     // 시간 파싱
     const { task, alarmTime } = parseTimeFromTask(taskContent);
     const colorValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLOR);
     const color = colorValue || DEFAULT_CHECKBOX_COLOR;
     const widgetId = el.closest('.draggable-widget')?.dataset?.id;
-    
+
     try {
         const res = await apiFetch('/api/todos', {
             method: 'POST',
-            body: JSON.stringify({ 
-                task, 
-                color, 
-                widget_id: widgetId, 
+            body: JSON.stringify({
+                task,
+                color,
+                widget_id: widgetId,
                 alarmTime // parseTimeFromTask에서 생성한 KST ISO (+09:00) 그대로 전송
             })
         });
@@ -238,16 +268,16 @@ function parseTimeFromTask(taskContent) {
                 hour: '2-digit', minute: '2-digit', second: '2-digit',
                 hour12: false
             }).formatToParts(new Date());
-            
+
             const getV = (t) => kstParts.find(p => p.type === t).value;
             const year = getV('year');
             const month = getV('month');
             const day = getV('day');
-            
+
             // 오늘 날짜로 일단 타겟 생성
             const hh = String(hours).padStart(2, '0');
             const mm = String(minutes).padStart(2, '0');
-            
+
             // 명시적인 KST 성분으로 ISO 문자열 재구성 (+09:00 오프셋 강제)
             const kstIso = `${year}-${month}-${day}T${hh}:${mm}:00+09:00`;
             alarmTime = kstIso; // .toISOString()을 쓰지 않고 KST 오프셋을 그대로 유지하여 전송
@@ -265,12 +295,12 @@ function renderTodos(el, todos) {
     const html = sortedTodos.map(todo => {
         const color = todo.color || DEFAULT_CHECKBOX_COLOR;
         const checked = todo.is_completed;
-        
+
         // 알람 표시 생성
         let alarmHtml = '';
         if (todo.alarm_time) {
             let alarmStr = todo.alarm_time;
-            
+
             // Date 객체거나 유효한 문자열인지 확인 후 파싱
             if (typeof alarmStr === 'string') {
                 alarmStr = alarmStr.replace(' ', 'T');
@@ -280,13 +310,13 @@ function renderTodos(el, todos) {
                 }
             }
             const time = new Date(alarmStr);
-            
+
             // 시각적 확인을 위한 보정 (항상 KST Asia/Seoul 강제)
-            const timeStr = new Intl.DateTimeFormat('ko-KR', { 
-                timeZone: 'Asia/Seoul', 
-                hour12: false, 
-                hour: '2-digit', 
-                minute: '2-digit' 
+            const timeStr = new Intl.DateTimeFormat('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                hour12: false,
+                hour: '2-digit',
+                minute: '2-digit'
             }).format(time);
 
             const isPast = time < new Date() && !checked;
@@ -321,7 +351,7 @@ function renderTodos(el, todos) {
     }).join('');
 
     container.innerHTML = html || '<div class="no-data-mini">할 일이 없습니다.</div>';
-    
+
     // 알람 권한 요청 (최초 렌더링 시 1회 시도)
     if (Notification.permission === 'default') {
         Notification.requestPermission();

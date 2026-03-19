@@ -37,6 +37,8 @@ export async function initMilestone(el, widgetData) {
 
     // 접기/펼치기
     header.addEventListener('mousedown', (e) => {
+        // 타이틀 수정 모드 중에는 모든 카드 상호작용(접기, 접기 등)을 차단
+        if (el.classList.contains('is-editing')) return;
         if (e.target.closest('button, input, textarea, .milestone-widget-title')) return;
 
         let isDragging = false;
@@ -48,7 +50,7 @@ export async function initMilestone(el, widgetData) {
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
                 localStorage.setItem(`milestone_collapsed_${widgetId}`, collapsed);
-                
+
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());
             }
@@ -142,29 +144,63 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
     const savedTitle = await syncService.getData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId);
     if (savedTitle) titleEl.textContent = savedTitle;
 
-    editBtn.onclick = (e) => {
+    const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+    const checkIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events: none;"><path d="M20 6L9 17L4 12"/></svg>`;
+
+    editBtn.innerHTML = pencilIcon;
+    editBtn.title = "제목 수정";
+
+    editBtn.onclick = async (e) => {
         e.stopPropagation();
-        const current = titleEl.textContent;
-        const input = document.createElement('input');
-        input.value = current;
-        input.className = 'milestone-title-edit-input';
+        const isEditing = el.classList.contains('is-editing');
 
-        titleEl.replaceWith(input);
-        input.focus();
+        if (!isEditing) {
+            // 편집 모드 진입
+            el.classList.add('is-editing');
+            editBtn.innerHTML = checkIcon;
+            editBtn.title = "저장";
 
-        const finish = async () => {
-            const newTitle = input.value.trim() || '나의 마일스톤';
-            await syncService.setData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId, newTitle);
-            titleEl.textContent = newTitle;
+            const current = titleEl.textContent;
+            const input = document.createElement('input');
+            input.value = current;
+            input.className = 'milestone-title-edit-input';
+
+            Object.assign(input.style, {
+                background: '#1e293b', border: '1px solid #8B5CF6', color: 'white',
+                borderRadius: '4px', padding: '2px 8px', width: '150px'
+            });
+
+            titleEl.replaceWith(input);
+            input.focus();
+            input.select();
+
+            input.onmousedown = (e) => e.stopPropagation();
+
+            input.onkeydown = (e) => {
+                e.stopPropagation(); // 브라우저 뒤로가기 방지용 전파 차단은 유지
+                if (e.key === 'Enter') editBtn.click();
+                if (e.key === 'Escape') { input.value = current; exitEditMode(current); }
+            };
+        } else {
+            // 저장 실행
+            const input = el.querySelector('.milestone-title-edit-input');
+            if (input) {
+                const newTitle = input.value.trim() || '나의 마일스톤';
+                await syncService.setData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId, newTitle);
+                exitEditMode(newTitle);
+            }
+        }
+    };
+
+    const exitEditMode = (title) => {
+        const input = el.querySelector('.milestone-title-edit-input');
+        if (input) {
+            titleEl.textContent = title;
             input.replaceWith(titleEl);
-            setupTitleEdit(el, titleEl, editBtn, settings);
-        };
-
-        input.onblur = finish;
-        input.onkeydown = (e) => {
-            if (e.key === 'Enter') finish();
-            if (e.key === 'Escape') { input.value = current; input.replaceWith(titleEl); }
-        };
+        }
+        el.classList.remove('is-editing');
+        editBtn.innerHTML = pencilIcon;
+        editBtn.title = "제목 수정";
     };
 }
 

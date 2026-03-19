@@ -12,7 +12,7 @@ import { API_BASE, apiFetch } from '../services/api.js';
 
 // 모바일 이동 모드 상태
 let isMoveModeActive = false;
-let longPressTimer = null; 
+let longPressTimer = null;
 
 export function initDashboardGrid() {
     const grid = document.getElementById('widgetGrid');
@@ -39,10 +39,10 @@ export function initDashboardGrid() {
             isMoveModeActive = !isMoveModeActive;
             mobileReorderBtn.classList.toggle('active', isMoveModeActive);
             grid.classList.toggle('move-mode-active', isMoveModeActive);
-            
+
             // 모드 변경 시 간단한 햅틱 피드백
             if (window.navigator.vibrate) window.navigator.vibrate(50);
-            
+
             // 버튼 텍스트 변경
             const btnText = mobileReorderBtn.querySelector('.btn-text');
             if (btnText) btnText.textContent = isMoveModeActive ? '완료' : '이동';
@@ -154,7 +154,7 @@ export function initDashboardGrid() {
         const gridRect = grid.getBoundingClientRect();
         const gridWidth = gridRect.width;
         const widgets = Array.from(grid.querySelectorAll('.draggable-widget:not(.widget-ghost)'));
-        
+
         if (widgets.length === 0) return;
 
         console.log('[DashboardGrid] 위젯 자동 정렬 시작');
@@ -190,7 +190,7 @@ export function initDashboardGrid() {
 
         // 변경된 레이아웃 서버 저장
         saveLayout();
-        
+
         if (window.navigator.vibrate) window.navigator.vibrate(20);
     };
 
@@ -258,7 +258,7 @@ export function initDashboardGrid() {
         });
 
         clearLongPressTimer();
-        
+
         // 이동 모드 활성 중이면 롱프레스(컨텍스트 메뉴) 차단
         if (window.innerWidth <= 768 && isMoveModeActive) return;
 
@@ -364,6 +364,9 @@ export function setupDraggable(widget, grid) {
             return;
         }
 
+        // 수정 모드 중에는 드래그 차단
+        if (widget.classList.contains('is-editing')) return;
+
         // 우클릭 제외 (마우스인 경우)
         if (e.type === 'mousedown' && e.button !== 0) return;
 
@@ -415,7 +418,7 @@ export function setupDraggable(widget, grid) {
             if (dist > 7 || (isTouch && duration > 200)) {
                 cleanup();
                 bringToFront(widget);
-                startDrag(e); 
+                startDrag(e);
             }
         };
 
@@ -443,7 +446,7 @@ export function setupDraggable(widget, grid) {
     function startDrag(e) {
         var isMobile = false;
         if (isDragStarted) return;
-        
+
         var isTouch = e && e.type === 'touchstart';
         isMobile = isTouch && (window.innerWidth <= 768);
 
@@ -482,7 +485,7 @@ export function setupDraggable(widget, grid) {
         const touch = e.type === 'touchstart' ? e.touches[0] : e;
         const initialTouchX = touch.clientX;
         const initialTouchY = touch.clientY;
-        
+
         let lastTouchX = initialTouchX;
         let lastTouchY = initialTouchY;
         let currentX = initialTouchX;
@@ -511,22 +514,22 @@ export function setupDraggable(widget, grid) {
         const updateGhost = () => {
             if (!isDragStarted || !ghost) return;
             // 부드러운 추적을 위한 Lerp(선형 보간) 적용
-            const lerpFactor = 0.15; 
+            const lerpFactor = 0.15;
             currentX += (lastTouchX - currentX) * lerpFactor;
             currentY += (lastTouchY - currentY) * lerpFactor;
 
             const dx = currentX - initialTouchX;
             const dy = currentY - initialTouchY;
-            
+
             // 3D 틸트(기울기) 계산: 이동 속도와 방향에 따라 입체적으로 반응
             const vx = (lastTouchX - currentX) * 0.8;
             const vy = (lastTouchY - currentY) * 0.8;
-            
+
             // 회전(Z), 기울기(X, Y) 조합으로 입체감 구현
-            const rotateZ = Math.max(-15, Math.min(15, vx)); 
+            const rotateZ = Math.max(-15, Math.min(15, vx));
             const rotateX = Math.max(-15, Math.min(15, -vy));
             const rotateY = Math.max(-15, Math.min(15, vx));
-            
+
             ghost.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(1.08) perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) rotateZ(${rotateZ}deg)`;
             rafId = requestAnimationFrame(updateGhost);
         };
@@ -593,7 +596,7 @@ export function setupDraggable(widget, grid) {
         const onEnd = () => {
             if (rafId) cancelAnimationFrame(rafId);
             stopAutoScroll();
-            
+
             if (isMobile && ghost) {
                 // 고스트가 플레이스홀더 위치로 스냅되는 효과
                 const pRect = widget.getBoundingClientRect();
@@ -611,7 +614,7 @@ export function setupDraggable(widget, grid) {
                 widget.classList.remove('dragging');
             }
 
-            document.body.style.userSelect = ''; 
+            document.body.style.userSelect = '';
             document.body.style.webkitUserSelect = '';
 
             document.removeEventListener('mousemove', onMove);
@@ -651,7 +654,7 @@ export function setupDraggable(widget, grid) {
  */
 function animateReorder(grid, action) {
     const children = Array.from(grid.querySelectorAll('.draggable-widget'));
-    
+
     // 1. First: 현재 위치 기록
     const firstRects = children.map(c => c.getBoundingClientRect());
 
@@ -673,19 +676,19 @@ function animateReorder(grid, action) {
             // 위치가 변한 요소에 대해 역변환 적용
             child.style.transition = 'none';
             child.style.transform = `translate3d(${dx}px, ${dy}px, 0)`;
-            
+
             // 리플로우 강제 수행
             child.getClientRects();
 
             // 목표 위치로 부드럽게 이동 (더 쫀득하고 부드러운 cubic-bezier 적용)
             child.style.transition = 'transform 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
             child.style.transform = 'translate3d(0, 0, 0)';
-            
+
             // 위치 이동 시 약간의 스케일 효과 추가 (생동감 부여)
             if (child.classList.contains('placeholder')) {
                 child.style.scale = '1';
             }
-            
+
             // 애니메이션 종료 후 스타일 정리 (충돌 방지)
             const handleFinish = (e) => {
                 if (e.propertyName === 'transform') {
@@ -719,21 +722,21 @@ function reassignMobileZIndices() {
         const state = isCollapsed ? 'collapsed' : 'expanded';
         const layoutKey = `mobile_${state}`;
         const newZ = 100 + (index * 10);
-        
+
         w.style.zIndex = newZ;
 
         try {
-            const res = await apiFetch(`/api/widgets`); 
+            const res = await apiFetch(`/api/widgets`);
             const data = await res.json();
             const widgetData = data.widgets.find(item => item.id == id);
-            
+
             if (widgetData) {
                 const settings = widgetData.settings || {};
                 if (!settings.layouts) settings.layouts = {};
                 if (!settings.layouts[layoutKey]) settings.layouts[layoutKey] = {};
-                
+
                 settings.layouts[layoutKey].z = newZ;
-                
+
                 await apiFetch(`/api/widgets/${id}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ settings, zIndex: newZ })
@@ -812,7 +815,7 @@ export function saveLayout() {
 
     const platform = isMobile ? 'mobile' : 'pc';
     const widgets = grid.querySelectorAll('.draggable-widget');
-    
+
     widgets.forEach(async (w) => {
         const id = w.dataset.id;
         if (!id) return;
@@ -833,7 +836,7 @@ export function saveLayout() {
             const res = await apiFetch(`/api/widgets`);
             const data = await res.json();
             const widgetData = data.widgets.find(item => item.id == id);
-            
+
             if (widgetData) {
                 const settings = widgetData.settings || {};
                 if (!settings.layouts) settings.layouts = {};
@@ -841,7 +844,7 @@ export function saveLayout() {
 
                 await apiFetch(`/api/widgets/${id}`, {
                     method: 'PATCH',
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                         settings,
                         // 하위 호환성을 위해 기존 컬럼도 순수 PC/기본값으로 업데이트
                         x: currentLayout.x,
@@ -960,7 +963,7 @@ function initScrollBounceEffect(container, grid) {
         isAtTop = (scrollTop <= 2);
         isAtBottom = (scrollHeight - scrollTop <= clientHeight + 5);
         touchStartY = e.touches[0].clientY;
-        
+
         grid.classList.remove('is-bouncing-back');
     }, { passive: true });
 
@@ -975,9 +978,9 @@ function initScrollBounceEffect(container, grid) {
             if (e.cancelable) e.preventDefault();
             pullDistance = Math.pow(Math.abs(diff), 0.8) * damping;
             pullDistance = Math.min(pullDistance, maxBounce);
-            
+
             grid.style.transform = `translateY(${pullDistance}px)`;
-            
+
             // 상단 네온 효과
             if (pullDistance > 2) {
                 glowTop.classList.add('visible');
@@ -1016,7 +1019,7 @@ function initScrollBounceEffect(container, grid) {
         if (pullDistance > 0) {
             grid.classList.add('is-bouncing-back');
             grid.style.transform = '';
-            
+
             glowTop.classList.remove('visible');
             glowTop.style.opacity = '0';
             glowTop.style.transform = 'scaleX(0.4)';

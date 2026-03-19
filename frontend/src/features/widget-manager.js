@@ -107,18 +107,18 @@ export class WidgetManager {
           width: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
           height: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
           settings: {
-            ...(type === 'milestone' 
-                ? { syncWithMemo: false, summaryData: [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }] }
-                : (type === 'recipe' ? { recipes: [] } : {})
+            ...(type === 'milestone'
+              ? { syncWithMemo: false, summaryData: [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }] }
+              : (type === 'recipe' ? { recipes: [] } : {})
             ),
             layouts: {
-                [`${window.innerWidth <= 768 ? 'mobile' : 'pc'}_expanded`]: {
-                    x: Math.round(Number(x)),
-                    y: Math.round(Number(y)),
-                    w: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
-                    h: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
-                    z: 100
-                }
+              [`${window.innerWidth <= 768 ? 'mobile' : 'pc'}_expanded`]: {
+                x: Math.round(Number(x)),
+                y: Math.round(Number(y)),
+                w: Math.round(Number(width || (type === 'todo' ? 400 : (type === 'recipe' ? 500 : 700)))),
+                h: Math.round(Number(height || (type === 'todo' ? 500 : (type === 'recipe' ? 600 : 350)))),
+                z: 100
+              }
             }
           }
         })
@@ -155,7 +155,7 @@ export class WidgetManager {
     const platform = isMobile ? 'mobile' : 'pc';
     const state = isCollapsed ? 'collapsed' : 'expanded';
     const layoutKey = `${platform}_${state}`;
-    
+
     // 기본값 설정
     let x = widgetData.x;
     let y = widgetData.y;
@@ -166,12 +166,12 @@ export class WidgetManager {
     // settings.layouts에 저장된 값이 있으면 우선 적용
     const layouts = widgetData.settings?.layouts;
     if (layouts && layouts[layoutKey]) {
-        const l = layouts[layoutKey];
-        if (l.x !== undefined) x = l.x;
-        if (l.y !== undefined) y = l.y;
-        if (l.w !== undefined) w = l.w;
-        if (l.h !== undefined) h = l.h;
-        if (l.z !== undefined) z = l.z;
+      const l = layouts[layoutKey];
+      if (l.x !== undefined) x = l.x;
+      if (l.y !== undefined) y = l.y;
+      if (l.w !== undefined) w = l.w;
+      if (l.h !== undefined) h = l.h;
+      if (l.z !== undefined) z = l.z;
     }
 
     widget.style.left = `${x}px`;
@@ -381,6 +381,9 @@ export class WidgetManager {
                 </div>
               </div>
               <h3 class="recipe-widget-title">${data.settings?.title || '나만의 레시피 북'}</h3>
+              <button class="btn-edit-title edit-recipe-title-btn" title="제목 수정">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              </button>
             </div>
             <div class="header-actions">
               <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">

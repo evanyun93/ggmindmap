@@ -302,12 +302,12 @@
   cursor: pointer;
   border-radius: 12px !important;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-  
+
   /* Glassmorphism 베이스 */
   background: rgba(99, 102, 241, 0.08) !important;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  
+
   /* 포인트 컬러 (Indigo) */
   border: 1px solid rgba(139, 92, 246, 0.3) !important;
   border-left: 4px solid #6366f1 !important;
@@ -1883,18 +1883,75 @@ input:checked+.switch-slider:before {
 
 .btn-del-widget,
 .edit-todo-title-btn,
-.edit-milestone-title-btn {
-  width: 28px !important;
-  height: 28px !important;
-  border-radius: 50% !important;
+.edit-todo-title-btn,
+.edit-milestone-title-btn,
+.edit-recipe-title-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.15);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  color: #c084fc;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-left: 8px;
+}
+
+.edit-todo-title-btn:hover,
+.edit-milestone-title-btn:hover,
+.edit-recipe-title-btn:hover {
+  background: rgba(139, 92, 246, 0.3);
+  border-color: #a855f7;
+  color: #ffffff;
+  transform: scale(1.08);
+}
+
+/* 수정 모드용 입력창 공통 스타일 */
+.recipe-title-edit-input,
+.todo-title-edit-input,
+.milestone-title-edit-input {
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  cursor: text !important;
+  position: relative;
+  z-index: 10001 !important;
+  pointer-events: auto !important;
   background: rgba(139, 92, 246, 0.2) !important;
-  border: 1px solid rgba(139, 92, 246, 0.3) !important;
-  color: #c084fc !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  transition: all 0.3s ease !important;
-  padding: 0 !important;
+  border: 1px solid #a855f7 !important;
+}
+
+/* 수정 모드 활성화 시 스타일 */
+.is-editing {
+  box-shadow: 0 0 35px rgba(139, 92, 246, 0.7) !important;
+  border: 2px solid #a855f7 !important;
+  z-index: 9999 !important;
+}
+
+.is-editing .widget-header {
+  border-bottom: 2px solid rgba(139, 92, 246, 0.5) !important;
+}
+
+.is-editing .clickable-header {
+  cursor: default !important;
+}
+
+.is-editing .edit-todo-title-btn,
+.is-editing .edit-milestone-title-btn,
+.is-editing .edit-recipe-title-btn {
+  background: #a855f7 !important;
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+  position: relative;
+  z-index: 10001 !important;
+}
+
+transition: all 0.3s ease !important;
+padding: 0 !important;
 }
 
 .btn-del-widget:hover {

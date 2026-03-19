@@ -12,7 +12,7 @@ export function initRecipe(el, data) {
     const editTitleBtn = el.querySelector('.edit-recipe-title-btn');
     const iconBtn = el.querySelector('.recipe-main-icon');
     const iconPalette = el.querySelector('.recipe-icon-palette');
-    
+
     // 데이터 로드
     let settings = data.settings || {};
     let recipes = Array.isArray(settings.recipes) ? settings.recipes : [];
@@ -76,7 +76,7 @@ export function initRecipe(el, data) {
         '호두': '알', '아몬드': '알', '땅콩': '알', '잣': '작은술', '해바라기씨': '줌',
         '식빵': '장', '바게트': '조각', '모닝빵': '개'
     };
-    
+
     const STAR_SVG_PATH = "M12,17.27L18.18,21l-1.64-7.03L22,9.24l-7.19-0.61L12,2L9.19,8.63L2,9.24l5.46,4.73L5.82,21L12,17.27z";
 
     /**
@@ -90,7 +90,7 @@ export function initRecipe(el, data) {
             let cls = 'star-svg';
             if (i <= fullStars) cls += ' active';
             else if (i === fullStars + 1 && hasHalf) cls += ' half';
-            
+
             html += `
                 <svg class="${cls}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                     <path d="${STAR_SVG_PATH}"/>
@@ -107,6 +107,8 @@ export function initRecipe(el, data) {
     // 2. 헤더 클릭 시 접기/펼치기
     let isDragging = false;
     el.addEventListener('mousedown', (e) => {
+        // 타이틀 수정 모드 중에는 모든 카드 상호작용(접기, 드래그 등)을 차단
+        if (el.classList.contains('is-editing')) return;
         if (e.target.closest('button, input, textarea') || e.target.closest('.recipe-icon-wrapper')) return;
         isDragging = false;
         const startX = e.clientX;
@@ -119,11 +121,11 @@ export function initRecipe(el, data) {
         const onUp = (upEvent) => {
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('mouseup', onUp);
-            
+
             if (!isDragging && upEvent.target.closest('.recipe-header')) {
                 const collapsed = el.classList.toggle('collapsed');
                 localStorage.setItem(`recipe_collapsed_${widgetId}`, collapsed);
-                
+
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());
             }
@@ -174,7 +176,7 @@ export function initRecipe(el, data) {
             `;
             document.body.appendChild(svg);
         }
-        
+
         // 버튼 및 제목 갱신
         if (view === 'list') {
             headerTitle.textContent = customTitle;
@@ -197,41 +199,70 @@ export function initRecipe(el, data) {
      * 메인 타이틀(위젯 제목) 수정 기능
      */
     if (editTitleBtn && headerTitle) {
-        editTitleBtn.onclick = (e) => {
-            if (currentView !== 'list') return; // 리스트 뷰에서만 수정 허용
-            if (e.target.closest('.recipe-icon-wrapper')) return;
+        const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+        const checkIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events: none;"><path d="M20 6L9 17L4 12"/></svg>`;
+
+        editTitleBtn.innerHTML = pencilIcon; // 초기 아이콘 설정
+        editTitleBtn.title = "제목 수정";
+
+        editTitleBtn.onclick = async (e) => {
+            if (currentView !== 'list') return;
             e.stopPropagation();
-            
-            const current = customTitle;
-            const input = document.createElement('input');
-            input.value = current;
-            input.className = 'recipe-title-edit-input';
-            
-            Object.assign(input.style, {
-                background: 'rgba(0,0,0,0.4)', border: '1px solid #8B5CF6', color: 'white',
-                borderRadius: '6px', padding: '2px 8px', width: '150px', 
-                fontSize: '1.2rem', fontWeight: 'bold', outline: 'none'
-            });
 
-            headerTitle.replaceWith(input);
-            editTitleBtn.style.display = 'none';
-            input.focus();
+            const isEditing = el.classList.contains('is-editing');
 
-            const finish = () => {
-                const newTitle = input.value.trim() || '나만의 레시피 북';
-                customTitle = newTitle;
-                settings.title = customTitle;
-                headerTitle.textContent = customTitle;
+            if (!isEditing) {
+                // 1. 편집 모드 진입
+                el.classList.add('is-editing');
+                editTitleBtn.innerHTML = checkIcon;
+                editTitleBtn.title = "저장";
+
+                const current = customTitle;
+                const input = document.createElement('input');
+                input.value = current;
+                input.className = 'recipe-title-edit-input';
+
+                Object.assign(input.style, {
+                    background: 'rgba(255, 255, 255, 0.15)', border: '1px solid #8B5CF6', color: 'white',
+                    borderRadius: '6px', padding: '2px 10px', width: '180px',
+                    fontSize: '1.2rem', fontWeight: '700', outline: 'none',
+                    boxShadow: '0 0 15px rgba(139, 92, 246, 0.4)'
+                });
+
+                headerTitle.replaceWith(input);
+                input.focus();
+                input.select();
+
+                // 입력창 내 클릭/드래그 시 상위 위젯의 드래그/접기 이벤트와 충돌 방지
+                input.onmousedown = (e) => e.stopPropagation();
+
+                input.onkeydown = (e) => {
+                    e.stopPropagation();
+                    if (e.key === 'Enter') editTitleBtn.click();
+                    if (e.key === 'Escape') { input.value = current; exitEditMode(current); }
+                };
+            } else {
+                // 2. 편집 완료 및 저장
+                const input = el.querySelector('.recipe-title-edit-input');
+                if (input) {
+                    const newTitle = input.value.trim() || '나만의 레시피 북';
+                    customTitle = newTitle;
+                    settings.title = customTitle;
+                    await saveSettings(); // DB 저장
+                    exitEditMode(newTitle);
+                }
+            }
+        };
+
+        const exitEditMode = (title) => {
+            const input = el.querySelector('.recipe-title-edit-input');
+            if (input) {
+                headerTitle.textContent = title;
                 input.replaceWith(headerTitle);
-                editTitleBtn.style.display = 'flex';
-                saveSettings(); // DB 저장
-            };
-
-            input.onblur = finish;
-            input.onkeydown = (e) => {
-                if (e.key === 'Enter') finish();
-                if (e.key === 'Escape') { input.value = current; finish(); }
-            };
+            }
+            el.classList.remove('is-editing');
+            editTitleBtn.innerHTML = pencilIcon;
+            editTitleBtn.title = "제목 수정";
         };
     }
 
@@ -352,12 +383,12 @@ export function initRecipe(el, data) {
             card.ondragover = (e) => {
                 e.preventDefault();
                 container.querySelectorAll('.recipe-card').forEach(c => c.classList.remove('drag-over', 'drag-over-after'));
-                
+
                 if (card === draggedItem) {
                     stopAutoScroll();
                     return;
                 }
-                
+
                 // 오토 스크롤 감지 (상/하단 15% 영역)
                 const containerRect = container.getBoundingClientRect();
                 const threshold = containerRect.height * 0.15;
@@ -401,7 +432,7 @@ export function initRecipe(el, data) {
                 if (draggedIndex === -1 || isNaN(targetIndex)) return;
 
                 const [removed] = recipes.splice(draggedIndex, 1);
-                
+
                 let insertIndex = targetIndex;
                 if (isAfter) insertIndex++;
                 if (draggedIndex < insertIndex) insertIndex--;
@@ -497,11 +528,11 @@ export function initRecipe(el, data) {
         container.querySelector('.btn-recipe-back').onclick = () => renderView('list');
         container.querySelector('.btn-recipe-edit-action').onclick = () => renderView('edit', currentRecipeId);
         container.querySelector('.delete-current-recipe').onclick = () => {
-             if (confirm('이 레시피를 정말 삭제하시겠습니까?')) {
-                  recipes = recipes.filter(x => x.id !== recipe.id);
-                  saveSettings();
-                  renderView('list');
-             }
+            if (confirm('이 레시피를 정말 삭제하시겠습니까?')) {
+                recipes = recipes.filter(x => x.id !== recipe.id);
+                saveSettings();
+                renderView('list');
+            }
         };
     };
 
@@ -513,8 +544,8 @@ export function initRecipe(el, data) {
         const emoji = recipe ? recipe.emoji : '🍳';
         const ings = recipe ? (recipe.ingredients || []).join('\n') : '';
         // 데이터가 없으면 '1. '로 강제 시작
-        const steps = (recipe && recipe.steps && recipe.steps.length > 0) 
-            ? recipe.steps.map((s, i) => `${i + 1}. ${s}`).join('\n') 
+        const steps = (recipe && recipe.steps && recipe.steps.length > 0)
+            ? recipe.steps.map((s, i) => `${i + 1}. ${s}`).join('\n')
             : '1. ';
 
         container.innerHTML = `
@@ -540,17 +571,17 @@ export function initRecipe(el, data) {
                          <input type="text" id="recipeTitleInput" class="recipe-title-input" placeholder="레시피 제목" value="${title}">
                          <div class="recipe-rating-selector" id="recipeRatingSelector">
                              ${[1, 2, 3, 4, 5].map(n => {
-                                 const r = recipe?.rating || 0;
-                                 let cls = '';
-                                 if (n <= Math.floor(r)) cls = 'active';
-                                 else if (n === Math.ceil(r) && r % 1 !== 0) cls = 'half-preview';
-                                 return `
+            const r = recipe?.rating || 0;
+            let cls = '';
+            if (n <= Math.floor(r)) cls = 'active';
+            else if (n === Math.ceil(r) && r % 1 !== 0) cls = 'half-preview';
+            return `
                                     <span class="star-icon ${cls}" data-value="${n}">
                                         <svg class="star-svg" viewBox="0 0 24 24">
                                             <path d="${STAR_SVG_PATH}"/>
                                         </svg>
                                     </span>`;
-                             }).join('')}
+        }).join('')}
                              <span class="rating-value-text">${recipe?.rating ? recipe.rating + '점' : '평가 전'}</span>
                          </div>
                      </div>
@@ -561,7 +592,15 @@ export function initRecipe(el, data) {
                     <div class="ai-banner-content">
                         <span class="ai-banner-icon">✨</span>
                         <span class="ai-banner-text">YouTube 영상에서 AI가 자동으로 레시피를 채워드립니다</span>
-                        <button type="button" class="btn-ai-generate" id="btnAiGenerate">🤖 AI 자동 생성</button>
+                        <div class="ai-banner-btns" style="display: flex; gap: 8px;">
+                            <button type="button" class="btn-go-youtube" id="btnGoYoutube">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18">
+                                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                                </svg>
+                                YouTube 이동
+                            </button>
+                            <button type="button" class="btn-ai-generate" id="btnAiGenerate">🤖 AI 자동 생성</button>
+                        </div>
                     </div>
                 </div>
 
@@ -598,13 +637,13 @@ export function initRecipe(el, data) {
                 </div>
             </div>
         `;
-        
+
         let selectedRating = recipe ? (recipe.rating || 0) : 0;
         const ratingSelector = container.querySelector('#recipeRatingSelector');
         if (ratingSelector) {
             const stars = ratingSelector.querySelectorAll('.star-icon');
             const valText = ratingSelector.querySelector('.rating-value-text');
-            
+
             const updateUI = (val) => {
                 stars.forEach(s => {
                     const sVal = parseInt(s.dataset.value);
@@ -651,7 +690,7 @@ export function initRecipe(el, data) {
 
         if (btnCustomThumbnail && thumbnailInput) {
             btnCustomThumbnail.onclick = () => thumbnailInput.click();
-            
+
             thumbnailInput.onchange = (e) => {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -751,69 +790,142 @@ export function initRecipe(el, data) {
             // 조리 순서 채우기 (steps 또는 instructions 키 모두 대응)
             const stepInput = container.querySelector('#recipeStepInput');
             const stepsArray = recipe.steps || recipe.instructions || [];
-            
+
             if (Array.isArray(stepsArray) && stepsArray.length > 0 && stepInput) {
                 const stepText = stepsArray.map((s, idx) => {
                     if (typeof s === 'object') {
                         // 객체로 들어온 경우 첫 번째 value 추출 시도
                         return `${idx + 1}. ${Object.values(s)[0] || JSON.stringify(s)}`;
-                    } 
+                    }
                     // 이미 번호가 붙어있는지 정규식 확인 (1. 1) 등)
                     const cleanStep = String(s).replace(/^\d+[\.\)]\s*/, '');
                     return `${idx + 1}. ${cleanStep}`;
                 }).join('\n');
-                
+
                 stepInput.value = stepText;
             }
         };
 
-        if (btnAiGenerate) {
-            btnAiGenerate.onclick = async () => {
-                const youtubeUrl = prompt('🎬 유튜브 URL을 입력하세요:\n(예: https://youtu.be/xxxx 또는 https://www.youtube.com/watch?v=xxxx)');
-                if (!youtubeUrl || !youtubeUrl.trim()) return;
+        const showYoutubeUrlModal = (callback) => {
+            const modalHTML = `
+                <div class="youtube-url-modal-overlay" id="youtubeUrlModalOverlay">
+                    <div class="youtube-url-modal-container">
+                        <div class="youtube-modal-header">
+                            <span class="youtube-modal-icon">🎬</span>
+                            <h3 class="youtube-modal-title">유튜브 레시피 추출</h3>
+                            <p class="youtube-modal-desc">분석할 영상의 주소를 입력해주세요</p>
+                        </div>
+                        <input type="text" class="youtube-url-input" id="youtubeUrlInput" placeholder="https://www.youtube.com/watch?v=..." spellcheck="false" autocomplete="off">
+                        <div class="youtube-modal-actions">
+                            <button type="button" class="btn-youtube-modal-cancel" id="btnYoutubeModalCancel">취소</button>
+                            <button type="button" class="btn-youtube-modal-submit" id="btnYoutubeModalSubmit">분석 시작</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            const overlay = document.getElementById('youtubeUrlModalOverlay');
+            const input = document.getElementById('youtubeUrlInput');
+            const cancelBtn = document.getElementById('btnYoutubeModalCancel');
+            const submitBtn = document.getElementById('btnYoutubeModalSubmit');
 
-                setLoading(true, 'YouTube 영상 정보를 가져오는 중...');
+            setTimeout(() => overlay.classList.add('visible'), 10);
+            input.focus();
 
-                try {
-                    // 자막 추출 시도 중 메시지
-                    setTimeout(() => setLoading(true, '자막을 분석하는 중...'), 1200);
-                    setTimeout(() => setLoading(true, 'AI가 레시피를 정리하는 중...'), 3000);
+            const close = () => {
+                overlay.classList.remove('visible');
+                setTimeout(() => overlay.remove(), 300);
+            };
 
-                    const response = await apiFetch('/api/recipe/parse-youtube', {
-                        method: 'POST',
-                        body: JSON.stringify({ url: youtubeUrl.trim() })
-                    });
+            cancelBtn.onclick = close;
+            overlay.onclick = (e) => { if (e.target === overlay) close(); };
 
-                    let data;
-                    const responseText = await response.text();
-                    
-                    try {
-                        data = JSON.parse(responseText);
-                    } catch (e) {
-                        console.error('[RecipeAI] JSON Parse Error. Raw response:', responseText);
-                        throw new Error(`서버 응답이 올바른 형식이 아닙니다. (Status: ${response.status})\n응답 내용: ${responseText.substring(0, 50)}...`);
-                    }
-
-                    if (!response.ok) {
-                        throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
-                    }
-
-                    setLoading(false);
-                    fillRecipeFromAI(data.recipe, data.videoId);
-
-                    // 성공 피드백
-                    btnAiGenerate.textContent = '✅ 완료! 수정 후 저장해주세요';
-                    btnAiGenerate.style.background = 'rgba(16, 185, 129, 0.2)';
-                    btnAiGenerate.style.borderColor = 'rgba(16, 185, 129, 0.5)';
-                    btnAiGenerate.style.color = '#10b981';
+            const handleSubmit = () => {
+                const url = input.value.trim();
+                if (url) {
+                    close();
+                    callback(url);
+                } else {
+                    input.style.borderColor = '#ff6b6b';
+                    input.placeholder = 'URL을 입력해주세요!';
                     setTimeout(() => {
-                        btnAiGenerate.textContent = '🤖 AI 자동 생성 (재시도)';
-                        btnAiGenerate.style = '';
-                    }, 5000);
+                        input.style.borderColor = '';
+                        input.placeholder = 'https://www.youtube.com/watch?v=...';
+                    }, 2000);
+                }
+            };
 
-                } catch (err) {
-                    setLoading(false);
-                    alert('❌ AI 생성 실패: ' + err.message);
+            submitBtn.onclick = handleSubmit;
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') handleSubmit();
+                if (e.key === 'Escape') close();
+            };
+        };
+
+        if (btnAiGenerate) {
+            btnAiGenerate.onclick = () => {
+                showYoutubeUrlModal(async (youtubeUrl) => {
+                    setLoading(true, 'YouTube 영상 정보를 가져오는 중...');
+
+                    try {
+                        // 자막 추출 시도 중 메시지
+                        setTimeout(() => setLoading(true, '자막을 분석하는 중...'), 1200);
+                        setTimeout(() => setLoading(true, 'AI가 레시피를 정리하는 중...'), 3000);
+
+                        const response = await apiFetch('/api/recipe/parse-youtube', {
+                            method: 'POST',
+                            body: JSON.stringify({ url: youtubeUrl.trim() })
+                        });
+
+                        let data;
+                        const responseText = await response.text();
+
+                        try {
+                            data = JSON.parse(responseText);
+                        } catch (e) {
+                            console.error('[RecipeAI] JSON Parse Error. Raw response:', responseText);
+                            throw new Error(`서버 응답이 올바른 형식이 아닙니다. (Status: ${response.status})\n응답 내용: ${responseText.substring(0, 50)}...`);
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(data.error || '알 수 없는 오류가 발생했습니다.');
+                        }
+
+                        setLoading(false);
+                        fillRecipeFromAI(data.recipe, data.videoId);
+
+                        // 성공 피드백
+                        btnAiGenerate.textContent = '✅ 완료! 수정 후 저장해주세요';
+                        btnAiGenerate.style.background = 'rgba(16, 185, 129, 0.2)';
+                        btnAiGenerate.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                        btnAiGenerate.style.color = '#10b981';
+                        setTimeout(() => {
+                            btnAiGenerate.textContent = '🤖 AI 자동 생성 (재시도)';
+                            btnAiGenerate.style = '';
+                        }, 5000);
+
+                    } catch (err) {
+                        setLoading(false);
+                        alert('❌ AI 생성 실패: ' + err.message);
+                    }
+                });
+            };
+        }
+
+        const btnGoYoutube = container.querySelector('#btnGoYoutube');
+        if (btnGoYoutube) {
+            btnGoYoutube.onclick = () => {
+                const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+                if (isMobile) {
+                    // 환경 요구사항: 모바일 어플리케이션을 화면위에 띄우고
+                    window.location.href = "youtube://www.youtube.com";
+                    // 1.5초 후에도 반응이 없으면 (앱 미설치 등) 브라우저로 폴백
+                    setTimeout(() => {
+                        window.open("https://www.youtube.com", "_blank");
+                    }, 1500);
+                } else {
+                    // 환경 요구사항: PC 환경인 경우 탭을 추가로 띄움
+                    window.open("https://www.youtube.com", "_blank");
                 }
             };
         }
@@ -881,7 +993,7 @@ export function initRecipe(el, data) {
 
         const stepInput = container.querySelector('#recipeStepInput');
         const stepLabel = container.querySelector('#stepInputLabel');
-        
+
         if (stepLabel) stepLabel.innerHTML += '';
 
         // 스크롤 상단 이동 (모바일에서 키보드가 즉시 올라와 화면을 가리는 것을 방지)
@@ -947,7 +1059,7 @@ export function initRecipe(el, data) {
 
         const emojiBtn = container.querySelector('#recipeEmojiInput');
         const emojiPalette = container.querySelector('.item-icon-palette');
-        
+
         if (emojiBtn && emojiPalette) {
             emojiBtn.onclick = (e) => {
                 e.stopPropagation();
