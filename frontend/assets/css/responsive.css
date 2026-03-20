@@ -113,6 +113,15 @@
   }
   .btn-manual:active { background: rgba(99, 102, 241, 0.15) !important; transform: scale(0.95); }
 
+  .btn-refresh {
+    width: 38px !important;
+    height: 38px !important;
+    flex: 0 0 38px !important; /* 고정 크기 유지 */
+    margin-right: 0 !important;
+    border-radius: 10px !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+
   .btn-collapse-all {
     border-left: 3px solid #10b981 !important; /* Emerald */
   }

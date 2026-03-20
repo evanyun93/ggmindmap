@@ -202,6 +202,14 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
         editBtn.innerHTML = pencilIcon;
         editBtn.title = "제목 수정";
     };
+
+    // 실시간 동기화 리스너 추가
+    syncService.addListener(SYNC_DATA_TYPES.MILESTONE_TITLE, (updatedWidgetId, newTitle) => {
+        if (updatedWidgetId == widgetId && !el.classList.contains('is-editing')) {
+            titleEl.textContent = newTitle;
+            if (settings) settings.title = newTitle;
+        }
+    });
 }
 
 /**

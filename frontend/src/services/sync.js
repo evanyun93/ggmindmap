@@ -580,7 +580,18 @@ class SyncService {
         // 위젯 설정 병합
         if (serverData.widgetSettings) {
             for (const setting of serverData.widgetSettings) {
-                this.saveToLocalStorage(setting.setting_key, setting.widget_id, setting.setting_value);
+                const type = setting.setting_key;
+                const widgetId = setting.widget_id;
+                const value = setting.setting_value;
+                const cacheKey = widgetId ? `${type}_${widgetId}` : type;
+
+                // 레거시 로컬 스토리지 업데이트
+                this.saveToLocalStorage(type, widgetId, value);
+                // 현재 캐시 업데이트 (매우 중요: getData가 최신 데이터를 보려면 필요)
+                this.saveCache(cacheKey, value);
+                
+                // 개별 변경 이벤트 발생
+                this.emit(type, widgetId, value);
             }
         }
         
@@ -646,6 +657,13 @@ class SyncService {
     }
 
     /**
+     * addListener 에일리어스 (on과 동일)
+     */
+    addListener(event, callback) {
+        this.on(event, callback);
+    }
+
+    /**
      * 이벤트 리스너 제거
      */
     off(event, callback) {
@@ -666,7 +684,8 @@ class SyncService {
         
         for (const callback of this.listeners.get(event)) {
             try {
-                callback(data, widgetId);
+                // 인자 순서 표준화: (widgetId, data)
+                callback(widgetId, data);
             } catch (err) {
                 console.error('[Sync] 이벤트 콜백 오류:', err);
             }

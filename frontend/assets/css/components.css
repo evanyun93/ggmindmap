@@ -340,6 +340,53 @@
   box-shadow: 0 4px 10px rgba(99, 102, 241, 0.2);
 }
 
+/* 새로고침 버튼 (정사각형 소형 프리미엄 스타일) */
+.btn-refresh {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 40px !important;
+  height: 40px !important;
+  padding: 0 !important;
+  cursor: pointer;
+  border-radius: 12px !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: rgba(255, 255, 255, 0.8) !important;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  margin-right: 8px;
+}
+
+.btn-refresh svg {
+  width: 20px;
+  height: 20px;
+  transition: transform 0.3s ease;
+}
+
+.btn-refresh:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+  color: #fff !important;
+  transform: translateY(-2px) rotate(30deg);
+  box-shadow: 0 8px 25px rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.3) !important;
+}
+
+.btn-refresh:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.btn-refresh.spinning svg {
+  animation: spin-once 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes spin-once {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
 
 /* 게시판 페이지네이션 버튼 */
 .page-btn {

@@ -126,6 +126,36 @@ export async function initTodo(el) {
 
     // 3. 데이터 로딩 (비동기, 백그라운드)
     loadTodoList(el);
+
+    // 4. 자정(날짜 변경) 감지 및 자동 새로고침 설정
+    setupDailyReset(el);
+}
+
+/**
+ * 날짜 변경 감지 및 자동 새로고침 설정
+ * @param {HTMLElement} el 위젯 루트 엘리먼트
+ */
+function setupDailyReset(el) {
+    let lastDate = new Date().toDateString();
+    
+    // 1분마다 날짜 변경 확인
+    const interval = setInterval(() => {
+        if (!document.body.contains(el)) {
+            clearInterval(interval);
+            return;
+        }
+
+        const currentDate = new Date().toDateString();
+        if (lastDate !== currentDate) {
+            lastDate = currentDate;
+            // 자동 삭제가 활성화되어 있으면 목록 새로고침 (백엔드에서 삭제됨)
+            const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
+            if (autoDeleteCheck && autoDeleteCheck.checked) {
+                console.log('[Todo] 날짜 변경 감지: 목록 자동 갱신');
+                loadTodoList(el);
+            }
+        }
+    }, 60000); // 1분 간격
 }
 
 async function applyCheckboxColor(el, color) {
@@ -202,6 +232,13 @@ async function setupTitleEdit(el, titleEl, editBtn) {
         editBtn.innerHTML = pencilIcon;
         editBtn.title = "제목 수정";
     };
+
+    // 실시간 동기화 리스너 추가
+    syncService.addListener(SYNC_DATA_TYPES.TODO_TITLE, (updatedWidgetId, newTitle) => {
+        if (updatedWidgetId == widgetId && !el.classList.contains('is-editing')) {
+            titleEl.textContent = newTitle;
+        }
+    });
 }
 
 async function loadTodoList(el) {
@@ -304,7 +341,8 @@ function renderTodos(el, todos) {
             // Date 객체거나 유효한 문자열인지 확인 후 파싱
             if (typeof alarmStr === 'string') {
                 alarmStr = alarmStr.replace(' ', 'T');
-                // 타임존 정보가 없을 경우에만 Z(UTC) 추가
+                // TIMESTAMPTZ로 변경되었으므로 이제 API에서 Z 또는 +09:00이 포함되어 옵니다.
+                // 하위 호환성을 위해 타임존 정보가 정말 없는 경우에만 Z(UTC) 추가
                 if (!alarmStr.includes('Z') && !alarmStr.includes('+')) {
                     alarmStr += 'Z';
                 }
@@ -312,12 +350,13 @@ function renderTodos(el, todos) {
             const time = new Date(alarmStr);
 
             // 시각적 확인을 위한 보정 (항상 KST Asia/Seoul 강제)
-            const timeStr = new Intl.DateTimeFormat('ko-KR', {
+            const formatter = new Intl.DateTimeFormat('ko-KR', {
                 timeZone: 'Asia/Seoul',
                 hour12: false,
                 hour: '2-digit',
                 minute: '2-digit'
-            }).format(time);
+            });
+            const timeStr = formatter.format(time);
 
             const isPast = time < new Date() && !checked;
             alarmHtml = `

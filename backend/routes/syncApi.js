@@ -16,7 +16,8 @@ const DATA_TYPES = {
     DDAY_TARGET: 'dday_target',
     FAB_POS: 'fab_pos',
     SPREADSHEET_DATA: 'spreadsheet_data',
-    SPREADSHEET_HEADERS: 'spreadsheet_headers'
+    SPREADSHEET_HEADERS: 'spreadsheet_headers',
+    TODO_AUTO_DELETE: 'todo_auto_delete'
 };
 
 /**
@@ -104,12 +105,24 @@ router.get('/data', authenticateToken, async (req, res) => {
                 WHERE user_id = $1 AND updated_at > $2`,
                 [userId, lastUpdate]
             );
+
+            // 4. 투두 자동 삭제 설정 조회 (tba_users 테이블에서)
+            const userResult = await client.query(
+                'SELECT todo_auto_delete FROM tba_users WHERE id = $1',
+                [userId]
+            );
+            const todoAutoDelete = userResult.rows[0]?.todo_auto_delete;
+            
+            const finalUserSettings = userSettings.rows[0]?.settings || {};
+            if (todoAutoDelete !== undefined) {
+                finalUserSettings.todo_auto_delete = todoAutoDelete;
+            }
             
             res.json({
                 success: true,
                 data: {
                     widgetSettings: widgetSettings.rows,
-                    userSettings: userSettings.rows[0]?.settings || {},
+                    userSettings: finalUserSettings,
                     spreadsheets: spreadsheets.rows
                 },
                 serverTime: new Date().toISOString()
@@ -156,6 +169,14 @@ router.post('/data', authenticateToken, async (req, res) => {
                         SET settings = tba_user_settings.settings || $2,
                             updated_at = CURRENT_TIMESTAMP`,
                         [userId, JSON.stringify({ [settingKey]: data })]
+                    );
+                    break;
+                
+                case DATA_TYPES.TODO_AUTO_DELETE:
+                    // tba_users 테이블의 컬럼 업데이트
+                    await client.query(
+                        'UPDATE tba_users SET todo_auto_delete = $1 WHERE id = $2',
+                        [!!data, userId]
                     );
                     break;
                     

@@ -43,6 +43,21 @@ async function initDatabase() {
         );
       `);
 
+      // 알람 시간 컬럼 추가 및 타입 변경 (v1.6.0 ~ v1.8.1 Fix)
+      try {
+        // 컬럼이 없으면 TIMESTAMPTZ로 추가
+        await client.query('ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS alarm_time TIMESTAMPTZ');
+        // 컬럼이 이미 있다면 타입을 TIMESTAMPTZ로 변경 (이미 데이터가 있을 경우를 고려하여 USING 절 사용)
+        await client.query(`
+          ALTER TABLE tba_todos 
+          ALTER COLUMN alarm_time TYPE TIMESTAMPTZ 
+          USING alarm_time AT TIME ZONE 'Asia/Seoul'
+        `);
+        console.log('✅ tba_todos.alarm_time 컬럼을 TIMESTAMPTZ로 마이그레이션 완료');
+      } catch (e) { 
+        console.error('⚠️ alarm_time 마이그레이션 중 오류:', e.message); 
+      }
+
       // 기존 테이블에 컬럼이 없는 경우 추가 (Migration)
       await client.query(`
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;

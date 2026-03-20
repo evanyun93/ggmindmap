@@ -111,6 +111,32 @@ function initUtilities() {
     const adminBtn = document.getElementById('adminBtn');
     if (adminBtn) adminBtn.onclick = initAdmin;
 
+    // 새로고침 버튼 연동
+    const refreshBtn = document.getElementById('refreshBtn');
+    if (refreshBtn) {
+        refreshBtn.onclick = async () => {
+            if (refreshBtn.classList.contains('spinning')) return;
+            
+            console.log('[Dashboard] 수동 새로고침 시작...');
+            refreshBtn.classList.add('spinning');
+            
+            try {
+                // syncService 동적 임포트 (전역에 없을 경우 대비)
+                const { syncService } = await import('../services/sync.js');
+                await syncService.pollForUpdates();
+                
+                // 최소 0.8초(애니메이션 1회) 유지 후 종료
+                setTimeout(() => {
+                    refreshBtn.classList.remove('spinning');
+                    console.log('[Dashboard] 수동 새로고침 완료.');
+                }, 800);
+            } catch (error) {
+                console.error('[Dashboard] 새로고침 중 오류:', error);
+                refreshBtn.classList.remove('spinning');
+            }
+        };
+    }
+
     // 이메일 추가 버튼
     const addEmailBtn = document.getElementById('addEmailBtn');
     if (addEmailBtn) {
