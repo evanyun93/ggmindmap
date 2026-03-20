@@ -26,6 +26,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (user) {
         showDashboardView(user);
     } else {
+        // 인증되지 않은 사용자일 경우에만 로그인 화면(.auth-container)을 표시
+        const authContainer = document.getElementById('authContainer');
+        if (authContainer) authContainer.style.display = '';
         initAuthView();
     }
 
