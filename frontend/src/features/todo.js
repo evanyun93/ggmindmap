@@ -104,7 +104,8 @@ export async function initTodo(el) {
         const savedAutoDelete = await syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId);
         // 동기화 서비스에 값이 없으면 현재 사용자 설정에서 fallback
         if (savedAutoDelete !== null) {
-            autoDeleteCheck.checked = savedAutoDelete;
+            // 서버에서 문자열로 반환되므로 불리언으로 명시적 변환
+            autoDeleteCheck.checked = savedAutoDelete === true || savedAutoDelete === 'true';
         } else if (window.currentUser && window.currentUser.todoAutoDelete) {
             autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
         }
@@ -122,6 +123,18 @@ export async function initTodo(el) {
                 autoDeleteCheck.checked = !active;
             }
         };
+
+        // 다른 기기에서 설정이 변경되었을 때 실시간으로 체크박스 상태 업데이트
+        syncService.addListener(SYNC_DATA_TYPES.TODO_AUTO_DELETE, (updatedWidgetId, newValue) => {
+            if (String(updatedWidgetId) === String(widgetId)) {
+                const newChecked = newValue === true || newValue === 'true';
+                if (autoDeleteCheck.checked !== newChecked) {
+                    autoDeleteCheck.checked = newChecked;
+                    if (window.currentUser) window.currentUser.todoAutoDelete = newChecked;
+                    loadTodoList(el);
+                }
+            }
+        });
     }
 
     // 3. 데이터 로딩 (비동기, 백그라운드)

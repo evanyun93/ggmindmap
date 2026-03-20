@@ -227,7 +227,7 @@ export class WidgetManager {
                     <div class="todo-auto-delete-container">
                       <span class="todo-auto-delete-text">오늘만 유지</span>
                       <label class="premium-switch">
-                        <input type="checkbox" class="todo-auto-delete-check">
+                        <input type="checkbox" class="todo-auto-delete-check" ${(data.settings?.autoDelete === true || data.settings?.autoDelete === 'true') ? 'checked' : ''}>
                         <span class="switch-slider"></span>
                       </label>
                     </div>

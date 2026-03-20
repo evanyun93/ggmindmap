@@ -5,10 +5,49 @@
 
 import { apiFetch } from '../services/api.js';
 
+// localStorage 키: 오늘 날짜 기준으로 발송된 알람 ID를 저장 (날짜가 바뀌면 자동 초기화)
+const SENT_ALARMS_KEY = 'ggmind_sent_alarms';
+
+/**
+ * 오늘 날짜(YYYY-MM-DD 형식, KST 기준) 반환
+ */
+function getTodayKST() {
+    return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
+}
+
+/**
+ * localStorage에서 오늘 발송된 알람 ID 목록 불러오기
+ * (날짜가 다르면 초기화하여 오래된 데이터 제거)
+ */
+function loadSentAlarms() {
+    try {
+        const raw = localStorage.getItem(SENT_ALARMS_KEY);
+        if (!raw) return { date: getTodayKST(), ids: [] };
+        const parsed = JSON.parse(raw);
+        // 날짜가 바뀌면 초기화
+        if (parsed.date !== getTodayKST()) {
+            return { date: getTodayKST(), ids: [] };
+        }
+        return parsed;
+    } catch {
+        return { date: getTodayKST(), ids: [] };
+    }
+}
+
+/**
+ * 발송된 알람 ID를 localStorage에 저장
+ */
+function saveSentAlarm(id) {
+    const data = loadSentAlarms();
+    if (!data.ids.includes(id)) {
+        data.ids.push(id);
+        localStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(data));
+    }
+}
+
 class TodoAlarmSystem {
     constructor() {
         this.checkInterval = 30000; // 30초마다 체크
-        this.sentAlarms = new Set(); // 이미 알림을 보낸 알람 ID (세션 유지)
         this.timerId = null;
     }
 
@@ -58,23 +97,23 @@ class TodoAlarmSystem {
             const data = await res.json();
 
             if (data.success && data.todos) {
-                // 현재 시간을 한국 표준시(KST) 기준으로 변환하여 비교 준비
                 const now = new Date();
-                
+                // localStorage에서 오늘 이미 발송된 알람 ID 목록 불러오기
+                const sentData = loadSentAlarms();
+
                 data.todos.forEach(todo => {
                     if (todo.alarm_time && !todo.is_completed) {
                         let alarmStr = todo.alarm_time;
-                        // 타임존 정보 유실 대비 보정 (ISO 형식 유지 확인)
                         if (typeof alarmStr === 'string' && !alarmStr.includes('Z') && !alarmStr.includes('+')) {
                             alarmStr = alarmStr.replace(' ', 'T') + 'Z';
                         }
                         const alarmDate = new Date(alarmStr);
-                        const id = todo.id;
+                        const id = String(todo.id);
 
-                        // 절대 시간 비교 (타임존 독립적)
-                        if (alarmDate <= now && !this.sentAlarms.has(id)) {
+                        // 알람 시간이 지났고, 아직 오늘 발송되지 않은 경우에만 알림 전송
+                        if (alarmDate <= now && !sentData.ids.includes(id)) {
                             this.notify(todo, alarmDate);
-                            this.sentAlarms.add(id);
+                            saveSentAlarm(id);
                         }
                     }
                 });
@@ -90,20 +129,20 @@ class TodoAlarmSystem {
      * 실제 사용자 알림 전송 (KST 시간 포함)
      */
     notify(todo, alarmDate) {
-        // 항상 한국 기준(Asia/Seoul)으로 시간 표시
-        const timeStr = new Intl.DateTimeFormat('ko-KR', { 
-            timeZone: 'Asia/Seoul', 
-            hour12: false, 
-            hour: '2-digit', 
-            minute: '2-digit' 
+        const timeStr = new Intl.DateTimeFormat('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
         }).format(alarmDate);
-        
-        const title = `⏰ [${timeStr}] 할 일 알람`;
+
+        const title = `GGMIND-알리미`;
         const options = {
-            body: todo.task,
-            icon: '/assets/img/logo-v2.png',
+            body: `⏰ [${timeStr}] ${todo.task}`,
+            icon: '/assets/advanced-icon.png',
             vibrate: [200, 100, 200],
-            tag: `todo-alarm-${todo.id}`
+            tag: `todo-alarm-${todo.id}`,
+            renotify: false // 같은 tag는 재알림 방지
         };
 
         // 1. 브라우저 푸시 알림
@@ -111,7 +150,7 @@ class TodoAlarmSystem {
             new Notification(title, options);
         }
 
-        // 2. 대시보드 내 시각적 효과 (진동 등)
+        // 2. 진동 (모바일)
         if (window.navigator.vibrate) {
             window.navigator.vibrate([200, 100, 200]);
         }

@@ -346,6 +346,9 @@ class SyncService {
                  break;
                  
              case SYNC_DATA_TYPES.TODO_AUTO_DELETE:
+                 if (widgetId) {
+                     return localStorage.getItem(`todo_auto_delete_${widgetId}`);
+                 }
                  return localStorage.getItem('todo_auto_delete');
                  
              case SYNC_DATA_TYPES.DDAY_TARGET:
@@ -424,6 +427,14 @@ class SyncService {
         const value = typeof data === 'string' ? data : JSON.stringify(data);
         
         switch (type) {
+            case SYNC_DATA_TYPES.TODO_AUTO_DELETE:
+                if (widgetId) {
+                    localStorage.setItem(`todo_auto_delete_${widgetId}`, value);
+                } else {
+                    localStorage.setItem('todo_auto_delete', value);
+                }
+                break;
+
             case SYNC_DATA_TYPES.TODO_COLOR:
                 localStorage.setItem('todo_checkbox_color', value);
                 break;

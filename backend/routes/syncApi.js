@@ -106,17 +106,7 @@ router.get('/data', authenticateToken, async (req, res) => {
                 [userId, lastUpdate]
             );
 
-            // 4. 투두 자동 삭제 설정 조회 (tba_users 테이블에서)
-            const userResult = await client.query(
-                'SELECT todo_auto_delete FROM tba_users WHERE id = $1',
-                [userId]
-            );
-            const todoAutoDelete = userResult.rows[0]?.todo_auto_delete;
-            
             const finalUserSettings = userSettings.rows[0]?.settings || {};
-            if (todoAutoDelete !== undefined) {
-                finalUserSettings.todo_auto_delete = todoAutoDelete;
-            }
             
             res.json({
                 success: true,
@@ -172,14 +162,6 @@ router.post('/data', authenticateToken, async (req, res) => {
                     );
                     break;
                 
-                case DATA_TYPES.TODO_AUTO_DELETE:
-                    // tba_users 테이블의 컬럼 업데이트
-                    await client.query(
-                        'UPDATE tba_users SET todo_auto_delete = $1 WHERE id = $2',
-                        [!!data, userId]
-                    );
-                    break;
-                    
                 case DATA_TYPES.TODO_COLLAPSED:
                 case DATA_TYPES.TODO_TITLE:
                 case DATA_TYPES.MILESTONE_COLLAPSED:
@@ -195,6 +177,25 @@ router.post('/data', authenticateToken, async (req, res) => {
                         ON CONFLICT (user_id, widget_id, setting_key) 
                         DO UPDATE SET setting_value = $4, updated_at = CURRENT_TIMESTAMP`,
                         [userId, widgetId, type, String(data)]
+                    );
+                    break;
+
+                case DATA_TYPES.TODO_AUTO_DELETE:
+                    // 위젯별 설정으로 저장
+                    if (!widgetId) {
+                        return res.status(400).json({ success: false, message: 'widgetId가 필요합니다.' });
+                    }
+                    await client.query(
+                        `INSERT INTO tba_widget_settings (user_id, widget_id, setting_key, setting_value, updated_at)
+                        VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+                        ON CONFLICT (user_id, widget_id, setting_key) 
+                        DO UPDATE SET setting_value = $4, updated_at = CURRENT_TIMESTAMP`,
+                        [userId, widgetId, type, String(data)]
+                    );
+                    // todoApi.js의 삭제 로직이 사용하는 tba_users 테이블도 함께 업데이트
+                    await client.query(
+                        `UPDATE tba_users SET todo_auto_delete = $1 WHERE id = $2`,
+                        [data === true || data === 'true', userId]
                     );
                     break;
                     
