@@ -63,6 +63,14 @@ export function initFeedback() {
 async function switchToBoard(container) {
     container.innerHTML = getBoardHTML();
 
+    const returnBtn = document.getElementById('returnToDashboardBtnTop');
+    if (returnBtn) {
+        returnBtn.addEventListener('click', () => {
+            const feedbackBtn = document.getElementById('feedbackBtn');
+            if (feedbackBtn) feedbackBtn.click();
+        });
+    }
+
     const toggleBtn = document.getElementById('toggleWriteBtn');
     const writeSection = document.getElementById('boardWriteSection');
     const submitBtn = document.getElementById('submitBoardFeedback');

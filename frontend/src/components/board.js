@@ -10,8 +10,12 @@
 export function getBoardHTML() {
     return `
         <div class="board-container">
-            <div class="board-header">
+            <div class="board-header" style="display: flex; justify-content: space-between; align-items: center;">
                 <h2>고객의 소리함 (Q&A)</h2>
+                <button id="returnToDashboardBtnTop" class="btn-secondary" style="padding: 8px 16px; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+                    대시보드로 돌아가기
+                </button>
             </div>
 
             <div class="board-main-layout">

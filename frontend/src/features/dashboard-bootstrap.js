@@ -57,8 +57,8 @@ function initWidgets() {
     initFeedback();
     initMilestone();
 
-    // 지연 로딩 피처들
-    import('./todo.js').then(module => module.initTodo());
+    // dashboard-grid가 위젯을 로드하면, 각 위젯에서 widget-manager.js → initWidgetLogic → initTodo(el) 을 올바르게 호출합니다.
+    // 이 곳에서 initTodo()를 별도로 호출하면 인자 없이 실행되어 모든 위젯에 동일 초기화가 적용되는 버그가 발생합니다.
     import('./dashboard-grid.js').then(module => module.initDashboardGrid());
 }
 
@@ -114,26 +114,16 @@ function initUtilities() {
     // 새로고침 버튼 연동
     const refreshBtn = document.getElementById('refreshBtn');
     if (refreshBtn) {
-        refreshBtn.onclick = async () => {
+        refreshBtn.onclick = () => {
             if (refreshBtn.classList.contains('spinning')) return;
             
-            console.log('[Dashboard] 수동 새로고침 시작...');
+            console.log('[Dashboard] 수동 새로고침 시작 (F5와 완벽히 동일한 동작)');
             refreshBtn.classList.add('spinning');
             
-            try {
-                // syncService 동적 임포트 (전역에 없을 경우 대비)
-                const { syncService } = await import('../services/sync.js');
-                await syncService.pollForUpdates();
-                
-                // 최소 0.8초(애니메이션 1회) 유지 후 종료
-                setTimeout(() => {
-                    refreshBtn.classList.remove('spinning');
-                    console.log('[Dashboard] 수동 새로고침 완료.');
-                }, 800);
-            } catch (error) {
-                console.error('[Dashboard] 새로고침 중 오류:', error);
-                refreshBtn.classList.remove('spinning');
-            }
+            // 애니메이션 피드백을 0.5초 보여준 뒤 페이지 전체(F5) 새로고침
+            setTimeout(() => {
+                window.location.reload();
+            }, 500);
         };
     }
 
