@@ -348,6 +348,67 @@ function resetZIndexSequence() {
 }
 
 /**
+ * 타이틀 수정 중 다른 이벤트 시도 시 경고 피드백 (흔들기 + 메시지)
+ */
+export function showEditWarning(widget) {
+    if (!document.getElementById('edit-warning-style')) {
+        const style = document.createElement('style');
+        style.id = 'edit-warning-style';
+        style.textContent = `
+            @keyframes shakeEditBtn {
+                0%, 100% { transform: translateX(0); }
+                20%, 60% { transform: translateX(-4px); }
+                40%, 80% { transform: translateX(4px); }
+            }
+            .shake-animation {
+                animation: shakeEditBtn 0.4s ease-in-out;
+            }
+            .shake-animation path, .shake-animation circle, .shake-animation polyline {
+                stroke: #ef4444 !important;
+            }
+            .edit-warning-msg {
+                position: absolute;
+                top: -30px;
+                right: 10px;
+                background: rgba(239, 68, 68, 0.9);
+                color: white;
+                font-size: 11px;
+                font-weight: 500;
+                padding: 4px 8px;
+                border-radius: 4px;
+                opacity: 0;
+                animation: fadeInOut 2s forwards;
+                pointer-events: none;
+                z-index: 1000;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            }
+            @keyframes fadeInOut {
+                0% { opacity: 0; transform: translateY(5px); }
+                10% { opacity: 1; transform: translateY(0); }
+                80% { opacity: 1; transform: translateY(0); }
+                100% { opacity: 0; transform: translateY(-5px); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+
+    const editBtns = widget.querySelectorAll('.edit-todo-title-btn, .edit-title-btn'); // 범용적으로 찾기
+    editBtns.forEach(btn => {
+        btn.classList.remove('shake-animation');
+        void btn.offsetWidth; // 리플로우 강제 (애니메이션 재시작)
+        btn.classList.add('shake-animation');
+    });
+
+    let warningMsg = widget.querySelector('.edit-warning-msg');
+    if (warningMsg) warningMsg.remove();
+    
+    warningMsg = document.createElement('div');
+    warningMsg.className = 'edit-warning-msg';
+    warningMsg.textContent = '먼저 수정을 완료해주세요!';
+    widget.appendChild(warningMsg);
+}
+
+/**
  * 절대 좌표 기반 드래그 기능 (픽셀 단위)
  */
 export function setupDraggable(widget, grid) {
@@ -355,7 +416,7 @@ export function setupDraggable(widget, grid) {
 
     // 마우스 드래그 시작
     widget.addEventListener('mousedown', (e) => handleStart(e));
-    // 터치 드래그 시작 (모바일 지원)
+    // 모바일 지원 터치 드래그
     widget.addEventListener('touchstart', (e) => handleStart(e), { passive: false });
 
     function handleStart(e) {
@@ -364,8 +425,11 @@ export function setupDraggable(widget, grid) {
             return;
         }
 
-        // 수정 모드 중에는 드래그 차단
-        if (widget.classList.contains('is-editing')) return;
+        // 수정 모드 중에는 드래그 차단 및 경고 표시
+        if (widget.classList.contains('is-editing')) {
+            showEditWarning(widget);
+            return;
+        }
 
         // 우클릭 제외 (마우스인 경우)
         if (e.type === 'mousedown' && e.button !== 0) return;

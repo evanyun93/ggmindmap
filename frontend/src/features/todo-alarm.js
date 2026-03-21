@@ -11,41 +11,41 @@
 import { apiFetch } from '../services/api.js';
 
 // ────────────────────────────────────────────────
-// localStorage 키 (오늘 날짜 기준으로 자동 초기화)
+// localStorage 키
 // ────────────────────────────────────────────────
 const SENT_ALARMS_KEY = 'ggmind_sent_alarms';
 
-/** 오늘의 날짜 문자열 반환 (KST, sv-SE 포맷 = YYYY-MM-DD) */
-function getTodayKST() {
-    return new Intl.DateTimeFormat('sv-SE', { timeZone: 'Asia/Seoul' }).format(new Date());
-}
-
-/** 오늘 발송된 알람 ID 목록 로드 (날짜 바뀌면 초기화) */
+/** 발송된 알람 ID 목록 로드 */
 function loadSentAlarms() {
     try {
         const raw = localStorage.getItem(SENT_ALARMS_KEY);
-        if (!raw) return { date: getTodayKST(), ids: [] };
+        if (!raw) return [];
         const parsed = JSON.parse(raw);
-        if (parsed.date !== getTodayKST()) return { date: getTodayKST(), ids: [] };
-        return parsed;
+        if (Array.isArray(parsed)) return parsed;
+        if (parsed.ids) return parsed.ids; // 이전 버전 호환
+        return [];
     } catch {
-        return { date: getTodayKST(), ids: [] };
+        return [];
     }
 }
 
 /** 발송된 알람 ID를 localStorage에 기록 */
 function markAlarmSent(id) {
-    const data = loadSentAlarms();
+    const ids = loadSentAlarms();
     const strId = String(id);
-    if (!data.ids.includes(strId)) {
-        data.ids.push(strId);
-        localStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(data));
+    if (!ids.includes(strId)) {
+        ids.push(strId);
+        // 무한정 커지지 않도록 최대 500개 유지
+        if (ids.length > 500) {
+            ids.splice(0, ids.length - 500);
+        }
+        localStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(ids));
     }
 }
 
-/** 이미 오늘 발송된 알람인지 확인 */
+/** 이미 발송된 알람인지 확인 */
 function isAlarmSent(id) {
-    return loadSentAlarms().ids.includes(String(id));
+    return loadSentAlarms().includes(String(id));
 }
 
 // ────────────────────────────────────────────────

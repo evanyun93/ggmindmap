@@ -58,18 +58,52 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 /**
- * To-Do 상태 변경 (완료/미완료)
+ * To-Do 상태 변경 (완료/미완료 및 텍스트/알람 변경)
  */
 router.patch('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { isCompleted } = req.body;
-        await pool.query(
-            'UPDATE tba_todos SET is_completed = $1 WHERE id = $2 AND user_id = $3',
-            [isCompleted, id, req.user.id]
-        );
+        const { isCompleted, task, color, alarmTime } = req.body;
+        
+        const updateFields = [];
+        const params = [];
+        let paramIndex = 1;
+
+        if (isCompleted !== undefined) {
+            updateFields.push(`is_completed = $${paramIndex++}`);
+            params.push(isCompleted);
+        }
+        if (task !== undefined) {
+            updateFields.push(`task = $${paramIndex++}`);
+            params.push(task);
+        }
+        if (color !== undefined) {
+            updateFields.push(`color = $${paramIndex++}`);
+            params.push(color);
+        }
+        if (alarmTime !== undefined) {
+            updateFields.push(`alarm_time = $${paramIndex++}`);
+            params.push(alarmTime || null);
+        }
+
+        if (updateFields.length === 0) {
+            return res.status(400).json({ success: false, message: '변경할 데이터가 없습니다.' });
+        }
+
+        params.push(id, req.user.id);
+        const idIndex = paramIndex++;
+        const userIdIndex = paramIndex;
+
+        const query = `
+            UPDATE tba_todos 
+            SET ${updateFields.join(', ')} 
+            WHERE id = $${idIndex} AND user_id = $${userIdIndex}
+        `;
+
+        await pool.query(query, params);
         res.json({ success: true });
     } catch (error) {
+        console.error('To-Do 변경 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류' });
     }
 });

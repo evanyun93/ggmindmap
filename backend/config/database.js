@@ -180,6 +180,23 @@ async function initDatabase() {
       await client.query("SET TIME ZONE 'Asia/Seoul'");
 
       console.log('✅ PostgreSQL 데이터베이스 초기화 완료');
+
+      // 🔥 7일 이상 지난 오래된 알람 데이터 영구 자동 삭제 스케줄러 등록 (1시간 간격 동작)
+      setInterval(async () => {
+        try {
+          // DB에 남겨두면 리소스가 낭비되므로 명확하게 시스템 차원에서 삭제
+          const cleanupResult = await pool.query(`
+            DELETE FROM tba_todos 
+            WHERE alarm_time < NOW() - INTERVAL '7 days'
+          `);
+          if (cleanupResult.rowCount > 0) {
+            console.log(`🧹 [스케줄러] 7일 이상 지난 오래된 알람 완료 투두 ${cleanupResult.rowCount}개 자동 삭제 완료`);
+          }
+        } catch (e) {
+          console.error('⚠️ [스케줄러] 알람 정리 스케줄 오류:', e.message);
+        }
+      }, 1000 * 60 * 60); // 1시간 주기
+
     } finally {
       client.release();
     }

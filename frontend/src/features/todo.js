@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../services/api.js';
 import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
+import { showEditWarning } from './dashboard-grid.js';
 
 /** 기본 체크박스 색상 */
 const DEFAULT_CHECKBOX_COLOR = '#8B5CF6';
@@ -45,7 +46,10 @@ export async function initTodo(el) {
     // 접기/펼치기
     header.addEventListener('mousedown', (e) => {
         // 타이틀 수정 모드 중에는 모든 카드 상호작용(접기, 드래그 등)을 차단
-        if (el.classList.contains('is-editing')) return;
+        if (el.classList.contains('is-editing')) {
+            showEditWarning(el);
+            return;
+        }
         if (e.target.closest('button, input, .todo-widget-title')) return;
 
         let isDragging = false;
@@ -320,16 +324,34 @@ function parseTimeFromTask(taskContent) {
             }).formatToParts(new Date());
 
             const getV = (t) => kstParts.find(p => p.type === t).value;
-            const year = getV('year');
-            const month = getV('month');
-            const day = getV('day');
+            const year = parseInt(getV('year'), 10);
+            const month = parseInt(getV('month'), 10) - 1; // 0-indexed
+            const day = parseInt(getV('day'), 10);
+            
+            let currentHour = parseInt(getV('hour'), 10);
+            if (currentHour === 24) currentHour = 0;
+            const currentMinute = parseInt(getV('minute'), 10);
 
-            // 오늘 날짜로 일단 타겟 생성
+            let targetYear = year;
+            let targetMonth = month;
+            let targetDay = day;
+
+            // 이미 지난 시간이면 명일로 설정
+            if (hours < currentHour || (hours === currentHour && minutes <= currentMinute)) {
+                const tempDate = new Date(year, month, day + 1);
+                targetYear = tempDate.getFullYear();
+                targetMonth = tempDate.getMonth();
+                targetDay = tempDate.getDate();
+            }
+
+            const yyyy = String(targetYear);
+            const mm = String(targetMonth + 1).padStart(2, '0');
+            const dd = String(targetDay).padStart(2, '0');
             const hh = String(hours).padStart(2, '0');
-            const mm = String(minutes).padStart(2, '0');
+            const min = String(minutes).padStart(2, '0');
 
             // 명시적인 KST 성분으로 ISO 문자열 재구성 (+09:00 오프셋 강제)
-            const kstIso = `${year}-${month}-${day}T${hh}:${mm}:00+09:00`;
+            const kstIso = `${yyyy}-${mm}-${dd}T${hh}:${min}:00+09:00`;
             alarmTime = kstIso; // .toISOString()을 쓰지 않고 KST 오프셋을 그대로 유지하여 전송
         }
     }
@@ -388,17 +410,23 @@ function renderTodos(el, todos) {
                        data-id="${todo.id}" data-color="${color}" class="todo-check">
                 <div class="todo-content-wrap">
                     <span class="todo-text">${todo.task}</span>
+                    <input type="text" class="todo-edit-input hidden" value="${todo.task}" style="background:transparent; border:1px solid var(--todo-checkbox-color, #8B5CF6); color:inherit; border-radius:4px; padding:2px 6px; width:100%; outline:none; font-size:inherit;">
                     ${alarmHtml}
                 </div>
             </div>
-            <button class="todo-del-btn" data-id="${todo.id}" title="삭제">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                    <line x1="10" y1="11" x2="10" y2="17"></line>
-                    <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-            </button>
+            <div class="todo-actions" style="display:flex; gap:4px; align-items:center;">
+                <button class="todo-edit-btn" data-id="${todo.id}" title="수정" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#9ca3af'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                </button>
+                <button class="todo-del-btn" data-id="${todo.id}" title="삭제" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#9ca3af'">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polyline points="3 6 5 6 21 6"></polyline>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                        <line x1="10" y1="11" x2="10" y2="17"></line>
+                        <line x1="14" y1="11" x2="14" y2="17"></line>
+                    </svg>
+                </button>
+            </div>
         </div>`;
     }).join('');
 
@@ -440,6 +468,66 @@ function renderTodos(el, todos) {
                 await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
                 document.querySelectorAll('.widget-todo').forEach(w => loadTodoList(w));
             } catch (err) { }
+        };
+    });
+
+    // 수정 버튼 로직 및 더블클릭 이벤트 연결
+    container.querySelectorAll('.todo-edit-btn').forEach(btn => {
+        const itemEl = btn.closest('.todo-item');
+        const textEl = itemEl.querySelector('.todo-text');
+        
+        // 더블클릭 시 텍스트 수정 가능하도록 연결
+        if (textEl) {
+            textEl.style.cursor = 'text';
+            textEl.ondblclick = () => btn.click();
+        }
+
+        btn.onclick = (e) => {
+            const id = btn.dataset.id;
+            const inputEl = itemEl.querySelector('.todo-edit-input');
+            const alarmBadge = itemEl.querySelector('.todo-alarm-badge');
+
+            // UI 토글
+            textEl.classList.add('hidden');
+            if (alarmBadge) alarmBadge.classList.add('hidden');
+            inputEl.classList.remove('hidden');
+            
+            inputEl.focus();
+            inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+
+            const saveEdit = async () => {
+                const newTask = inputEl.value.trim();
+                
+                // 변경 없거나 빈 칸이면 원상복귀만
+                if (!newTask || newTask === textEl.textContent) {
+                    textEl.classList.remove('hidden');
+                    if (alarmBadge) alarmBadge.classList.remove('hidden');
+                    inputEl.classList.add('hidden');
+                    return;
+                }
+
+                // 시간 문자열 재파싱
+                const { task, alarmTime } = parseTimeFromTask(newTask);
+
+                try {
+                    await apiFetch(`/api/todos/${id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ task, alarmTime })
+                    });
+                    document.querySelectorAll('.widget-todo').forEach(w => loadTodoList(w));
+                } catch (err) { }
+            };
+
+            // 이벤트 처리
+            inputEl.onblur = saveEdit;
+            inputEl.onkeydown = (ev) => {
+                ev.stopPropagation(); // 위젯 드래그 방지
+                if (ev.key === 'Enter') inputEl.blur();
+                if (ev.key === 'Escape') {
+                    inputEl.value = textEl.textContent;
+                    inputEl.blur(); // 저장 없이 닫기 유도
+                }
+            };
         };
     });
 }
