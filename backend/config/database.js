@@ -34,11 +34,11 @@ async function initDatabase() {
           display_name VARCHAR(100),
           social_id VARCHAR(100),
           provider VARCHAR(20),
-          last_login_at TIMESTAMP,
+          last_login_at TIMESTAMPTZ,
           todo_auto_delete BOOLEAN DEFAULT FALSE,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           reset_code VARCHAR(10),
-          reset_code_expires_at TIMESTAMP,
+          reset_code_expires_at TIMESTAMPTZ,
           UNIQUE(social_id, provider)
         );
       `);
@@ -60,13 +60,13 @@ async function initDatabase() {
 
       // 기존 테이블에 컬럼이 없는 경우 추가 (Migration)
       await client.query(`
-        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMP;
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS todo_auto_delete BOOLEAN DEFAULT FALSE;
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS social_id VARCHAR(100);
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS provider VARCHAR(20);
         ALTER TABLE tba_users ALTER COLUMN password DROP NOT NULL;
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10);
-        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMP;
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ;
       `);
 
       // email 필드 추가 (중복 가입 방지)
@@ -115,7 +115,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS tba_usage_logs (
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id),
-          login_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          login_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           duration_minutes INTEGER DEFAULT 0
         );
       `);
@@ -126,7 +126,7 @@ async function initDatabase() {
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id),
           content TEXT NOT NULL,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -139,7 +139,7 @@ async function initDatabase() {
           task TEXT NOT NULL,
           is_completed BOOLEAN DEFAULT FALSE,
           color VARCHAR(20) DEFAULT '#8B5CF6',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -162,7 +162,7 @@ async function initDatabase() {
           height INTEGER DEFAULT 300,
           z_index INTEGER DEFAULT 100,
           settings JSONB DEFAULT '{}',
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -172,12 +172,38 @@ async function initDatabase() {
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id) NOT NULL,
           data JSONB NOT NULL,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
       // DB 세션 타임존을 한국 시간으로 고정 (조회 시 시차 혼선 방지)
       await client.query("SET TIME ZONE 'Asia/Seoul'");
+
+      // 전역 TIMESTAMP -> TIMESTAMPTZ 데이터베이스 마이그레이션 (안전한 멱등성 보장)
+      try {
+        await client.query(`
+          DO $$ 
+          DECLARE
+            col_type text;
+          BEGIN
+            SELECT data_type INTO col_type FROM information_schema.columns WHERE table_name = 'tba_users' AND column_name = 'last_login_at';
+            IF col_type = 'timestamp without time zone' THEN
+              ALTER TABLE tba_users ALTER COLUMN last_login_at TYPE TIMESTAMPTZ USING last_login_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_users ALTER COLUMN reset_code_expires_at TYPE TIMESTAMPTZ USING reset_code_expires_at AT TIME ZONE 'Asia/Seoul';
+              
+              ALTER TABLE tba_todos ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_usage_logs ALTER COLUMN login_at TYPE TIMESTAMPTZ USING login_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_feedback ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_user_widgets ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_mindmaps ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING updated_at AT TIME ZONE 'Asia/Seoul';
+            END IF;
+          END $$;
+        `);
+        console.log('✅ 전역 TIMESTAMP -> TIMESTAMPTZ 마이그레이션 완료');
+      } catch (e) {
+        console.error('⚠️ 마이그레이션 실패:', e.message);
+      }
 
       console.log('✅ PostgreSQL 데이터베이스 초기화 완료');
 

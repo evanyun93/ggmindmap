@@ -82,14 +82,7 @@ async function sendNotification(todo, alarmDate) {
     const notifBody = `⏰ [${timeStr}] ${todo.task}`;
     const notifTag = `todo-alarm-${todo.id}`;
 
-    // 화면을 보는 중이면 도메인이 강제 노출되는 네이티브 알람 대신 아름다운 인앱 토스트 알람 사용
-    if (document.visibilityState === 'visible' && window.appToast) {
-        window.appToast(notifBody);
-        if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-        return;
-    }
-
-    // 화면이 가려져 백그라운드 상태일 때만 Service Worker / 일반 Notification을 통해 강제 알림
+    // Service Worker 경유 (PC/모바일 네이티브 알람 발송)
     const sw = swRegistration?.active ?? (await navigator.serviceWorker?.ready.then(r => r.active).catch(() => null));
     if (sw) {
         sw.postMessage({ type: 'SHOW_ALARM', title: notifTitle, body: notifBody, tag: notifTag });
