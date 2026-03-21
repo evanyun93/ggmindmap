@@ -424,7 +424,15 @@ export function showEditWarning(widget) {
         document.head.appendChild(style);
     }
 
-    const editBtns = widget.querySelectorAll('.edit-todo-title-btn, .edit-title-btn, .todo-edit-btn'); // 범용적으로 찾기
+    let btnSelectors = [];
+    if (widget.classList.contains('is-editing')) {
+        btnSelectors.push('.edit-todo-title-btn', '.edit-title-btn');
+    } else if (widget.classList.contains('is-editing-task')) {
+        btnSelectors.push('.todo-edit-btn');
+    } else {
+        btnSelectors.push('.edit-todo-title-btn', '.edit-title-btn', '.todo-edit-btn');
+    }
+    const editBtns = widget.querySelectorAll(btnSelectors.join(', '));
     editBtns.forEach(btn => {
         btn.classList.remove('shake-animation');
         void btn.offsetWidth; // 리플로우 강제 (애니메이션 재시작)

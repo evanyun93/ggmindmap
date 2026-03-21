@@ -45,12 +45,14 @@ export async function initTodo(el) {
 
     // 접기/펼치기
     header.addEventListener('mousedown', (e) => {
-        // 타이틀 수정 모드 중에는 모든 카드 상호작용(접기, 드래그 등)을 차단
+        // 버튼, 인풋 등을 클릭했을 때는 수정 중이라 하더라도 정상적인 작동(저장/아웃)을 위해 먼저 차단 면제
+        if (e.target.closest('button, input, .todo-widget-title')) return;
+
+        // 타이틀 수정 모드 중에는 접은상태로 변경되거나 위젯이 드래그되는 기본 스와이프를 차단
         if (el.classList.contains('is-editing')) {
             showEditWarning(el);
             return;
         }
-        if (e.target.closest('button, input, .todo-widget-title')) return;
 
         let isDragging = false;
         const startY = e.clientY;
