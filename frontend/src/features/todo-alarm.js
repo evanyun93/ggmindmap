@@ -60,11 +60,44 @@ async function registerServiceWorker() {
         await navigator.serviceWorker.ready; // SW가 활성화될 때까지 대기
         swRegistration = reg;
         console.log('[TodoAlarm] Service Worker 등록 완료');
+
+        // Periodic Background Sync 등록 (Chrome/Edge 전용)
+        if ('periodicSync' in reg) {
+            try {
+                const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+                if (status.state === 'granted') {
+                    await reg.periodicSync.register('ggmind-alarm-check', {
+                        // 최소 간격 1분 (실제 브라우저가 허용하는 최솟값은 보통 5~15분)
+                        minInterval: 60 * 1000
+                    });
+                    console.log('[TodoAlarm] Periodic Background Sync 등록 완료 - 백그라운드 알람 활성화');
+                } else {
+                    console.warn('[TodoAlarm] Periodic Background Sync 권한 없음 - 탭 열림 상태에서만 알람 동작');
+                }
+            } catch (e) {
+                console.warn('[TodoAlarm] Periodic Background Sync 등록 실패:', e);
+            }
+        }
         return reg;
     } catch (err) {
         console.warn('[TodoAlarm] Service Worker 등록 실패 (일반 Notification으로 폴백):', err);
         return null;
     }
+}
+
+/**
+ * 대기 중인 알람 목록을 Service Worker의 IndexedDB에 동기화합니다.
+ * 탭이 닫혀도 SW가 알람을 기억하게 합니다.
+ */
+async function syncAlarmsToSW(pendingAlarms) {
+    const sw = swRegistration?.active ?? (await navigator.serviceWorker?.ready.then(r => r.active).catch(() => null));
+    if (!sw || pendingAlarms.length === 0) return;
+
+    sw.postMessage({
+        type: 'SYNC_ALARMS',
+        alarms: pendingAlarms // [{id, alarmTime (ms), body}, ...]
+    });
+    console.log(`[TodoAlarm] SW에 알람 ${pendingAlarms.length}개 동기화 완료`);
 }
 
 // ────────────────────────────────────────────────
@@ -149,6 +182,7 @@ class TodoAlarmSystem {
             if (!data.success || !data.todos) return;
 
             const now = Date.now();
+            const pendingAlarms = []; // SW IndexedDB에 동기화할 미래 알람 목록
 
             for (const todo of data.todos) {
                 if (!todo.alarm_time || todo.is_completed) continue;
@@ -157,9 +191,6 @@ class TodoAlarmSystem {
 
                 // 이미 오늘 발송한 알람이면 건너뜀
                 if (isAlarmSent(id)) continue;
-
-                // 이미 이 todo에 타이머가 설정되어 있으면 건너뜀 (중복 방지)
-                if (this._timers.has(id)) continue;
 
                 // 알람 시각 파싱
                 let alarmStr = todo.alarm_time;
@@ -174,19 +205,34 @@ class TodoAlarmSystem {
                     await sendNotification(todo, new Date(alarmTime));
                     markAlarmSent(id);
                 } else {
-                    // 미래 알람: 정확한 시각에 setTimeout 스케줄링
-                    const timerId = setTimeout(async () => {
-                        if (!isAlarmSent(id)) {
-                            await sendNotification(todo, new Date(alarmTime));
-                            markAlarmSent(id);
-                        }
-                        this._timers.delete(id);
-                    }, delay);
+                    // 미래 알람: 메인 탭 setTimeout 스케줄링
+                    if (!this._timers.has(id)) {
+                        const timerId = setTimeout(async () => {
+                            if (!isAlarmSent(id)) {
+                                await sendNotification(todo, new Date(alarmTime));
+                                markAlarmSent(id);
+                            }
+                            this._timers.delete(id);
+                        }, delay);
 
-                    this._timers.set(id, timerId);
-                    console.log(`[TodoAlarm] 알람 스케줄: "${todo.task}" → ${Math.round(delay / 1000)}초 후`);
+                        this._timers.set(id, timerId);
+                        console.log(`[TodoAlarm] 알람 스케줄: "${todo.task}" → ${Math.round(delay / 1000)}초 후`);
+                    }
+
+                    // SW가 백그라운드에서도 울릴 수 있도록 알람 정보를 추가
+                    const timeStr = new Intl.DateTimeFormat('ko-KR', {
+                        timeZone: 'Asia/Seoul', hour12: false, hour: '2-digit', minute: '2-digit'
+                    }).format(new Date(alarmTime));
+                    pendingAlarms.push({
+                        id,
+                        alarmTime,
+                        body: `⏰ [${timeStr}] ${todo.task}`
+                    });
                 }
             }
+
+            // SW IndexedDB에 미래 알람 목록 동기화 (탭 종료 후에도 백그라운드 알람 가능)
+            await syncAlarmsToSW(pendingAlarms);
         } catch (err) {
             console.error('[TodoAlarm] 알람 목록 갱신 중 에러:', err);
         }
