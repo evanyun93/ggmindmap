@@ -38,14 +38,14 @@ export function initDashboardGrid() {
             editingElements.forEach(el => {
                 // 위젯 타이틀 수정 중일 때
                 if (el.classList.contains('is-editing')) {
-                    // 클릭한 요소가 해당 입력칸/버튼 내부면 허용
-                    if (e.target.closest('.todo-title-edit-input, .edit-title-input, .edit-todo-title-btn, .edit-title-btn')) return;
+                    // 클릭한 요소가 해당 입력칸/버튼(취소버튼 포함) 내부면 허용
+                    if (e.target.closest('.todo-title-edit-input, .edit-title-input, .edit-todo-title-btn, .edit-title-btn, .cancel-title-edit-btn')) return;
                     blocked = true;
                     showEditWarning(el);
                 } 
                 // 투두 아이템 수정 중일 때
                 else if (el.classList.contains('is-editing-task')) {
-                    if (e.target.closest('.todo-edit-input, .todo-edit-btn')) return;
+                    if (e.target.closest('.todo-edit-input, .todo-edit-btn, .todo-cancel-btn')) return;
                     blocked = true;
                     showEditWarning(el);
                 }

@@ -219,6 +219,19 @@ async function setupTitleEdit(el, titleEl, editBtn) {
                 borderRadius: '4px', padding: '2px 8px', width: '150px'
             });
 
+            // 취소 버튼 추가
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-title-edit-btn';
+            cancelBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            cancelBtn.title = "취소";
+            cancelBtn.style.cssText = "background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px;";
+            cancelBtn.onclick = (ev) => {
+                ev.stopPropagation();
+                input.value = current;
+                exitEditMode(current);
+            };
+            editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
+
             titleEl.replaceWith(input);
             input.focus();
             input.select();
@@ -228,7 +241,7 @@ async function setupTitleEdit(el, titleEl, editBtn) {
             input.onkeydown = (e) => {
                 e.stopPropagation(); // 브라우저 뒤로가기 방지용 전파 차단은 유지
                 if (e.key === 'Enter') editBtn.click();
-                if (e.key === 'Escape') { input.value = current; exitEditMode(current); }
+                if (e.key === 'Escape') cancelBtn.click();
             };
         } else {
             // 저장 실행
@@ -247,6 +260,8 @@ async function setupTitleEdit(el, titleEl, editBtn) {
             titleEl.textContent = title;
             input.replaceWith(titleEl);
         }
+        const cancelBtn = el.querySelector('.cancel-title-edit-btn');
+        if (cancelBtn) cancelBtn.remove();
         el.classList.remove('is-editing');
         editBtn.innerHTML = pencilIcon;
         editBtn.title = "제목 수정";
@@ -481,7 +496,7 @@ function renderTodos(el, todos) {
         // 더블클릭 시 텍스트 수정 가능하도록 연결
         if (textEl) {
             textEl.style.cursor = 'text';
-            textEl.ondblclick = () => btn.click();
+            textEl.ondblclick = () => { if (!itemEl.classList.contains('is-editing-task')) btn.click(); };
         }
 
         btn.onclick = (e) => {
@@ -489,15 +504,48 @@ function renderTodos(el, todos) {
             const inputEl = itemEl.querySelector('.todo-edit-input');
             const alarmBadge = itemEl.querySelector('.todo-alarm-badge');
 
+            if (itemEl.classList.contains('is-editing-task')) {
+                // 이미 수정 중일 때 체크 버튼을 클릭하면 완료
+                inputEl.blur();
+                return;
+            }
+
+            // 편집 진입
+            itemEl.classList.add('is-editing-task');
+
             // UI 토글
             textEl.classList.add('hidden');
             if (alarmBadge) alarmBadge.classList.add('hidden');
             inputEl.classList.remove('hidden');
-            
+
+            const pencilIcon = btn.innerHTML; // 나중에 복원용
+            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events:none;"><path d="M20 6L9 17L4 12"/></svg>`;
+            btn.style.color = '#10b981';
+            btn.title = "저장";
+
+            // 취소 버튼 추가
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'todo-cancel-btn';
+            cancelBtn.title = "취소";
+            cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1);`;
+            cancelBtn.onclick = (ev) => {
+                ev.stopPropagation();
+                inputEl.value = textEl.textContent; // 수정 전으로 복구
+                inputEl.blur(); // 저장 로직 수행(변경 사항이 없으므로 자동 종료)
+            };
+            btn.parentNode.insertBefore(cancelBtn, btn.nextSibling);
+
             inputEl.focus();
             inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
 
             const saveEdit = async () => {
+                itemEl.classList.remove('is-editing-task');
+                if (cancelBtn.parentNode) cancelBtn.remove();
+                btn.innerHTML = pencilIcon; // 연필로 원복
+                btn.style.color = '#9ca3af';
+                btn.title = "수정";
+
                 const newTask = inputEl.value.trim();
                 
                 // 변경 없거나 빈 칸이면 원상복귀만
@@ -525,10 +573,7 @@ function renderTodos(el, todos) {
             inputEl.onkeydown = (ev) => {
                 ev.stopPropagation(); // 위젯 드래그 방지
                 if (ev.key === 'Enter') inputEl.blur();
-                if (ev.key === 'Escape') {
-                    inputEl.value = textEl.textContent;
-                    inputEl.blur(); // 저장 없이 닫기 유도
-                }
+                if (ev.key === 'Escape') cancelBtn.click();
             };
         };
     });
