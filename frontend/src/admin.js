@@ -37,6 +37,109 @@ function createAdminOverlay() {
   };
 }
 
+let adminUsersData = [];
+let sortState = { key: 'created_at', desc: true };
+
+window.sortAdminUsers = (key) => {
+  if (sortState.key === key) {
+    sortState.desc = !sortState.desc;
+  } else {
+    sortState.key = key;
+    sortState.desc = true;
+  }
+  renderAdminTable();
+};
+
+const formatSize = (bytes) => {
+  if (bytes === 0 || !bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+};
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  return date.toLocaleString('ko-KR', {
+    timeZone: 'Asia/Seoul',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+};
+
+function renderAdminTable() {
+  const container = document.getElementById('adminUserList');
+  if (!container) return;
+
+  const users = [...adminUsersData];
+  users.sort((a, b) => {
+    let valA = a[sortState.key];
+    let valB = b[sortState.key];
+    
+    // 타임스탬프 변환
+    if (sortState.key === 'created_at' || sortState.key === 'last_login_at') {
+      valA = valA ? new Date(valA).getTime() : 0;
+      valB = valB ? new Date(valB).getTime() : 0;
+    } else {
+      valA = valA || 0;
+      valB = valB || 0;
+    }
+    
+    if (valA < valB) return sortState.desc ? 1 : -1;
+    if (valA > valB) return sortState.desc ? -1 : 1;
+    return 0;
+  });
+
+  const getSortIcon = (key) => {
+    if (sortState.key !== key) return '<span style="color:transparent; font-size: 0.8em; margin-left: 4px;">▼</span>';
+    return sortState.desc 
+        ? '<span style="color:#a78bfa; font-size: 0.8em; margin-left: 4px;">▼</span>' 
+        : '<span style="color:#a78bfa; font-size: 0.8em; margin-left: 4px;">▲</span>';
+  };
+
+  container.innerHTML = `
+    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem;">
+      <thead>
+        <tr style="text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1); color: #94a3b8; user-select: none;">
+          <th style="padding: 12px;">ID</th>
+          <th style="padding: 12px;">아이디/닉네임</th>
+          <th style="padding: 12px; cursor: pointer; transition: color 0.2s;" onclick="window.sortAdminUsers('created_at')" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">
+            가입일 ${getSortIcon('created_at')}
+          </th>
+          <th style="padding: 12px; cursor: pointer; transition: color 0.2s;" onclick="window.sortAdminUsers('last_login_at')" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">
+            최근 활동 ${getSortIcon('last_login_at')}
+          </th>
+          <th style="padding: 12px;">월 사용시간</th>
+          <th style="padding: 12px; cursor: pointer; transition: color 0.2s;" onclick="window.sortAdminUsers('data_size_bytes')" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='#94a3b8'">
+            용량 ${getSortIcon('data_size_bytes')}
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        ${users.map(u => `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
+            <td style="padding: 15px; color: #64748b;">${u.id}</td>
+            <td style="padding: 15px;">
+              <div style="font-weight: 600;">${u.display_name || u.login_id}</div>
+              <div style="font-size: 0.8rem; color: #64748b;">@${u.login_id} (${u.provider || 'local'})</div>
+            </td>
+            <td style="padding: 15px; color: #94a3b8;">${formatDate(u.created_at)}</td>
+            <td style="padding: 15px; color: #a78bfa; font-weight: 500;">${formatDate(u.last_login_at)}</td>
+            <td style="padding: 15px; color: #06b6d4;">${u.monthly_usage_minutes || 0} 분</td>
+            <td style="padding: 15px;">
+              <span style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; font-family: monospace;">${formatSize(u.data_size_bytes || 0)}</span>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
 async function loadUserList() {
   const container = document.getElementById('adminUserList');
   if (!container) return;
@@ -56,58 +159,8 @@ async function loadUserList() {
       return;
     }
 
-    const formatSize = (bytes) => {
-      if (bytes === 0) return '0 B';
-      const k = 1024;
-      const sizes = ['B', 'KB', 'MB', 'GB'];
-      const i = Math.floor(Math.log(bytes) / Math.log(k));
-      return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
-    };
-
-    const formatDate = (dateStr) => {
-      if (!dateStr) return '-';
-      const date = new Date(dateStr);
-      return date.toLocaleString('ko-KR', {
-        timeZone: 'Asia/Seoul',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    };
-
-    container.innerHTML = `
-      <table style="width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.95rem;">
-        <thead>
-          <tr style="text-align: left; border-bottom: 2px solid rgba(255,255,255,0.1); color: #94a3b8;">
-            <th style="padding: 12px;">ID</th>
-            <th style="padding: 12px;">아이디/닉네임</th>
-            <th style="padding: 12px;">가입일</th>
-            <th style="padding: 12px;">마지막 접속</th>
-            <th style="padding: 12px;">월 사용시간</th>
-            <th style="padding: 12px;">용량</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${res.users.map(u => `
-            <tr style="border-bottom: 1px solid rgba(255,255,255,0.05); transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.02)'" onmouseout="this.style.background='transparent'">
-              <td style="padding: 15px; color: #64748b;">${u.id}</td>
-              <td style="padding: 15px;">
-                <div style="font-weight: 600;">${u.display_name || u.login_id}</div>
-                <div style="font-size: 0.8rem; color: #64748b;">@${u.login_id} (${u.provider || 'local'})</div>
-              </td>
-              <td style="padding: 15px; color: #94a3b8;">${formatDate(u.created_at)}</td>
-              <td style="padding: 15px; color: #a78bfa; font-weight: 500;">${formatDate(u.last_login_at)}</td>
-              <td style="padding: 15px; color: #06b6d4;">${u.monthly_usage_minutes || 0} 분</td>
-              <td style="padding: 15px;">
-                <span style="background: rgba(255,255,255,0.05); padding: 4px 8px; border-radius: 6px; font-family: monospace;">${formatSize(u.data_size_bytes || 0)}</span>
-              </td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
+    adminUsersData = res.users;
+    renderAdminTable();
   } catch (err) {
     console.error('관리자 페이지 로드 에러:', err);
     container.innerHTML = `<div style="color: #ef4444; text-align: center; padding: 40px;">클라이언트 오류 발생: ${err.message}</div>`;
