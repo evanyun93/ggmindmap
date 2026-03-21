@@ -34,28 +34,19 @@ export function initDashboardGrid() {
             const editingElements = document.querySelectorAll('.is-editing, .is-editing-task');
             if (editingElements.length === 0) return;
 
-            let blocked = false;
+            // 허용된 텍스트박스나 조작 버튼(취소, 확인 등)을 클릭한 거면 어떠한 방해도 하지 않음
+            const allowedSelectors = '.todo-title-edit-input, .edit-title-input, .edit-todo-title-btn, .edit-title-btn, .cancel-title-edit-btn, .todo-edit-input, .todo-edit-btn, .todo-cancel-btn';
+            if (e.target.closest(allowedSelectors)) {
+                return; 
+            }
+
+            // 위에서 허용된 요소를 클릭한 게 아니라면, 모두 차단하고 경고
             editingElements.forEach(el => {
-                // 위젯 타이틀 수정 중일 때
-                if (el.classList.contains('is-editing')) {
-                    // 클릭한 요소가 해당 입력칸/버튼(취소버튼 포함) 내부면 허용
-                    if (e.target.closest('.todo-title-edit-input, .edit-title-input, .edit-todo-title-btn, .edit-title-btn, .cancel-title-edit-btn')) return;
-                    blocked = true;
-                    showEditWarning(el);
-                } 
-                // 투두 아이템 수정 중일 때
-                else if (el.classList.contains('is-editing-task')) {
-                    if (e.target.closest('.todo-edit-input, .todo-edit-btn, .todo-cancel-btn')) return;
-                    blocked = true;
-                    showEditWarning(el);
-                }
+                showEditWarning(el);
             });
 
-            // 외부 클릭이면 모든 기본 동작 및 이벤트 전파 완벽 차단
-            if (blocked) {
-                e.preventDefault();
-                e.stopPropagation();
-            }
+            e.preventDefault();
+            e.stopPropagation();
         }, { capture: true }); // 가장 상위 캡처 단계에서 가로채기
         grid._hasGlobalEditBlocker = true;
     }

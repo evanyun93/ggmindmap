@@ -529,10 +529,13 @@ function renderTodos(el, todos) {
             cancelBtn.title = "취소";
             cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
             cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1);`;
-            cancelBtn.onclick = (ev) => {
+            
+            // onblur 때문에 클릭이 씹히는 현상을 방지하기 위해 onmousedown 사용
+            cancelBtn.onmousedown = (ev) => {
+                ev.preventDefault(); // 인풋에서 포커스가 빠져나가는 것을 막아 onblur가 즉시 실행되지 않게 함
                 ev.stopPropagation();
                 inputEl.value = textEl.textContent; // 수정 전으로 복구
-                inputEl.blur(); // 저장 로직 수행(변경 사항이 없으므로 자동 종료)
+                inputEl.blur(); // 복구시킨 텍스트 상태로 수동 blur 발생 -> saveEdit가 변동없음을 감지하고 깔끔하게 닫음.
             };
             btn.parentNode.insertBefore(cancelBtn, btn.nextSibling);
 
