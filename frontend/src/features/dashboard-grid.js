@@ -433,6 +433,11 @@ export function showEditWarning(widget) {
         btn.classList.remove('shake-animation');
         void btn.offsetWidth; // 리플로우 강제 (애니메이션 재시작)
         btn.classList.add('shake-animation');
+        
+        // 애니메이션(0.4s)이 끝나면 즉시 클래스를 지워서 빨간색 점유 해제
+        btn.addEventListener('animationend', () => {
+            btn.classList.remove('shake-animation');
+        }, { once: true });
     });
 
     let warningMsg = widget.querySelector('.edit-warning-msg');
