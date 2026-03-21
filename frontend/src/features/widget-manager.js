@@ -73,7 +73,7 @@ export class WidgetManager {
       }
     } catch (err) {
       console.error('[WidgetManager] 위젯 로드 도중 예외 발생:', err);
-      // alert('대시보드 위젯 로딩 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
+      // window.appAlert('대시보드 위젯 로딩 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
     }
   }
 
@@ -423,7 +423,7 @@ export class WidgetManager {
   }
 
   async deleteWidget(id) {
-    if (!confirm('이 위젯을 삭제하시겠습니까?')) return;
+    if (!(await window.appConfirm('이 위젯을 삭제하시겠습니까?'))) return;
     try {
       const res = await apiFetch(`/api/widgets/${id}`, {
         method: 'DELETE'

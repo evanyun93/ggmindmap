@@ -39,7 +39,7 @@ export async function initSocialAuth() {
         try {
             const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
             if (!token) {
-                alert('로그인이 필요합니다.');
+                window.appAlert('로그인이 필요합니다.');
                 return;
             }
 
@@ -53,14 +53,14 @@ export async function initSocialAuth() {
             const result = await response.json();
 
             if (result.success) {
-                alert(result.message);
+                window.appAlert(result.message);
                 window.location.reload();
             } else {
-                alert(result.message || '연동 중 오류가 발생했습니다.');
+                window.appAlert(result.message || '연동 중 오류가 발생했습니다.');
             }
         } catch (error) {
             console.error('소셜 연동 에러:', error);
-            alert('서버와 통신할 수 없습니다.');
+            window.appAlert('서버와 통신할 수 없습니다.');
         }
     };
 
@@ -110,8 +110,8 @@ export async function initSocialAuth() {
  * 카카오 로그인 실행
  */
 function loginWithKakao() {
-    if (!KAKAO_JS_KEY) { alert('💡 설정을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
-    if (typeof Kakao === 'undefined') { alert('💡 SDK가 로드되지 않았습니다.'); return; }
+    if (!KAKAO_JS_KEY) { window.appAlert('💡 설정을 불러오는 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
+    if (typeof Kakao === 'undefined') { window.appAlert('💡 SDK가 로드되지 않았습니다.'); return; }
 
     if (!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY);
 
@@ -138,7 +138,7 @@ function loginWithKakao() {
                 }
             });
         },
-        fail: (err) => { console.error(err); alert('로그인 실패'); }
+        fail: (err) => { console.error(err); window.appAlert('로그인 실패'); }
     });
 }
 
@@ -146,7 +146,7 @@ function loginWithKakao() {
  * 네이버 로그인 실행
  */
 function loginWithNaver() {
-    if (!NAVER_CLIENT_ID) { alert('💡 설정을 확인해 주세요.'); return; }
+    if (!NAVER_CLIENT_ID) { window.appAlert('💡 설정을 확인해 주세요.'); return; }
     const url = `https://nid.naver.com/oauth2.0/authorize?response_type=token&client_id=${NAVER_CLIENT_ID}&redirect_uri=${encodeURIComponent(window.location.origin)}&state=STATE_STRING`;
     window.open(url, 'naverLoginPopup', 'width=500,height=600');
 }
@@ -155,8 +155,8 @@ function loginWithNaver() {
  * 구글 로그인 실행
  */
 function loginWithGoogle() {
-    if (!GOOGLE_CLIENT_ID) { alert('💡 구글 클라이언트 ID가 설정되지 않았습니다.'); return; }
-    if (typeof google === 'undefined') { alert('💡 구글 SDK를 로드하는 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
+    if (!GOOGLE_CLIENT_ID) { window.appAlert('💡 구글 클라이언트 ID가 설정되지 않았습니다.'); return; }
+    if (typeof google === 'undefined') { window.appAlert('💡 구글 SDK를 로드하는 중입니다. 잠시 후 다시 시도해 주세요.'); return; }
 
     google.accounts.id.initialize({
         client_id: GOOGLE_CLIENT_ID,
@@ -192,7 +192,7 @@ async function handleGoogleResponse(response) {
         });
     } catch (error) {
         console.error('구글 데이터 처리 에러:', error);
-        alert('구글 로그인 데이터 처리에 실패했습니다.');
+        window.appAlert('구글 로그인 데이터 처리에 실패했습니다.');
     }
 }
 
@@ -241,11 +241,11 @@ window.addEventListener('message', async (e) => {
                     email: naverUser.email || null
                 });
             } else {
-                alert(result.message || '네이버 로그인 정보를 가져올 수 없습니다.');
+                window.appAlert(result.message || '네이버 로그인 정보를 가져올 수 없습니다.');
             }
         } catch (error) {
             console.error('네이버 사용자 정보 가져오기 실패:', error);
-            alert('네이버 로그인 중 오류가 발생했습니다.\n\n잠시 후 다시 시도해 주세요.');
+            window.appAlert('네이버 로그인 중 오류가 발생했습니다.\n\n잠시 후 다시 시도해 주세요.');
             return;
         }
     }
@@ -291,7 +291,7 @@ function showEmailInputModal(naverUser) {
         console.log('[Naver Login] Email submitted:', email, 'naverUser:', naverUser);
         
         if (!email || !email.includes('@')) {
-            alert('올바른 이메일을 입력해 주세요.');
+            window.appAlert('올바른 이메일을 입력해 주세요.');
             return;
         }
 
@@ -323,7 +323,7 @@ async function processSocialLogin(socialData) {
         if (currentMode === 'link') {
             const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
             if (!token) {
-                alert('로그인이 필요합니다.');
+                window.appAlert('로그인이 필요합니다.');
                 return;
             }
 
@@ -337,10 +337,10 @@ async function processSocialLogin(socialData) {
             const result = await response.json();
 
             if (result.success) {
-                alert(result.message);
+                window.appAlert(result.message);
                 window.location.reload();
             } else {
-                alert(result.message || '연동 중 오류가 발생했습니다.');
+                window.appAlert(result.message || '연동 중 오류가 발생했습니다.');
             }
             return;
         }
@@ -357,7 +357,7 @@ async function processSocialLogin(socialData) {
             window.location.reload();
         } else if (result.linked && result.type === 'already_linked') {
             // 다른 소셜에 연동된 계정이 있음
-            alert(result.message);
+            window.appAlert(result.message);
             // 사용자에게 기존 계정으로 로그인하도록 유도
             const loginCard = document.getElementById('loginCard');
             const registerCard = document.getElementById('registerCard');
@@ -366,11 +366,11 @@ async function processSocialLogin(socialData) {
                 loginCard.classList.remove('hidden');
             }
         } else {
-            alert(result.message || '로그인 처리 중 오류가 발생했습니다.');
+            window.appAlert(result.message || '로그인 처리 중 오류가 발생했습니다.');
         }
     } catch (error) {
         console.error('소셜 로그인 에러:', error);
-        alert('서버와 통신할 수 없습니다.');
+        window.appAlert('서버와 통신할 수 없습니다.');
     }
 }
 
@@ -406,11 +406,11 @@ async function doSocialLogin(socialData, mode) {
             }
             window.location.reload();
         } else {
-            alert(result.message || '처리 중 오류가 발생했습니다.');
+            window.appAlert(result.message || '처리 중 오류가 발생했습니다.');
         }
     } catch (error) {
         console.error('인증 에러:', error);
-        alert('서버와 통신할 수 없습니다.');
+        window.appAlert('서버와 통신할 수 없습니다.');
     }
 }
 
@@ -462,7 +462,7 @@ function showSocialLinkModal(socialData, email) {
         const password = document.getElementById('linkPassword').value;
 
         if (!login_id || !password) {
-            alert('아이디와 비밀번호를 모두 입력해 주세요.');
+            window.appAlert('아이디와 비밀번호를 모두 입력해 주세요.');
             return;
         }
 
@@ -485,10 +485,10 @@ function showSocialLinkModal(socialData, email) {
                 localStorage.setItem('mindmap_token', result.token);
                 window.location.reload();
             } else {
-                alert(result.message || '연동 중 오류가 발생했습니다.');
+                window.appAlert(result.message || '연동 중 오류가 발생했습니다.');
             }
         } catch (error) {
-            alert('서버와 통신할 수 없습니다.');
+            window.appAlert('서버와 통신할 수 없습니다.');
         }
     });
 
@@ -549,12 +549,12 @@ function showSocialRegisterModal(socialData) {
         console.log('가입 시도 - login_id:', login_id, 'password:', password);
 
         if (!login_id || !password) {
-            alert('아이디와 비밀번호를 모두 입력해 주세요.');
+            window.appAlert('아이디와 비밀번호를 모두 입력해 주세요.');
             return;
         }
 
         if (password.length < 4) {
-            alert('비밀번호는 4자 이상이어야 합니다.');
+            window.appAlert('비밀번호는 4자 이상이어야 합니다.');
             return;
         }
 
@@ -577,10 +577,10 @@ function showSocialRegisterModal(socialData) {
                 localStorage.setItem('mindmap_token', result.token);
                 window.location.reload();
             } else {
-                alert(result.message || '회원가입 중 오류가 발생했습니다.');
+                window.appAlert(result.message || '회원가입 중 오류가 발생했습니다.');
             }
         } catch (error) {
-            alert('서버와 통신할 수 없습니다.');
+            window.appAlert('서버와 통신할 수 없습니다.');
         }
     });
 

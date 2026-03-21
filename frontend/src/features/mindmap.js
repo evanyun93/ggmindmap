@@ -70,7 +70,7 @@ function initEditorEvents() {
             const id = window._editNodeId;
             if (id == null) return;
             const node = nodes.find(n => n.id === id);
-            if (!node || node.isMain) { if (node?.isMain) alert('중심 노드는 삭제할 수 없습니다.'); return; }
+            if (!node || node.isMain) { if (node?.isMain) window.appAlert('중심 노드는 삭제할 수 없습니다.'); return; }
             nodes = nodes.filter(n => n.id !== id);
             links = links.filter(l => l.source !== id && l.target !== id);
             renderMindmap(); saveMindmap(); closeEditor();
@@ -336,7 +336,7 @@ function setupEvents() {
             if (selectedNodeId != null) {
                 const node = nodes.find(n => n.id === selectedNodeId);
                 if (!node || node.isMain) {
-                    if (node?.isMain) alert('중심 노드는 삭제할 수 없습니다.');
+                    if (node?.isMain) window.appAlert('중심 노드는 삭제할 수 없습니다.');
                     return;
                 }
                 deleteNode(selectedNodeId);
@@ -440,13 +440,13 @@ window._nodeContextMenu = (e, id) => {
 
     if (!node.isMain) {
         menuItems.push({ type: 'separator' });
-        menuItems.push({ 
-            label: '🗑️ 노드 삭제', 
-            action: () => {
-                if (confirm(`'${node.text || '이름 없음'}' 노드를 삭제하시겠습니까?`)) {
+        menuItems.push({
+            label: '🗑️ 노드 삭제',
+            action: async () => {
+                if (await window.appConfirm(`'${node.text || '이름 없음'}' 노드를 삭제하시겠습니까?`)) {
                     deleteNode(id);
                 }
-            } 
+            }
         });
     }
 

@@ -158,7 +158,7 @@ export function initDashboardGrid() {
                 label: '전체 위젯 초기화 (기본 배치)',
                 icon: '🔄',
                 action: async () => {
-                    if (confirm('현재 배치된 모든 위젯을 삭제하고 초기 상태로 되돌리시겠습니까?')) {
+                    if (await window.appConfirm('현재 배치된 모든 위젯을 삭제하고 초기 상태로 되돌리시겠습니까?')) {
                         try {
                             await apiFetch('/api/widgets/all', {
                                 method: 'DELETE'
@@ -167,7 +167,7 @@ export function initDashboardGrid() {
                             location.reload();
                         } catch (err) {
                             console.error('초기화 실패:', err);
-                            alert('초기화 중 오류가 발생했습니다.');
+                            window.appAlert('초기화 중 오류가 발생했습니다.');
                         }
                     }
                 }

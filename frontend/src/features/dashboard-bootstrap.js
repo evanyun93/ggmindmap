@@ -134,7 +134,7 @@ function initUtilities() {
             const email = prompt('이메일을 입력해 주세요:');
             if (!email) return;
             if (!email.includes('@')) {
-                alert('올바른 이메일을 입력해 주세요.');
+                window.appAlert('올바른 이메일을 입력해 주세요.');
                 return;
             }
             try {
@@ -144,7 +144,7 @@ function initUtilities() {
                     console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
                 } else {
                     console.log('[DEBUG] 토큰이 없습니다. 로그인이 필요합니다.');
-                    alert('로그인이 필요합니다');
+                    window.appAlert('로그인이 필요합니다');
                     return;
                 }
                 const response = await apiFetch('/api/auth/settings', {
@@ -154,13 +154,13 @@ function initUtilities() {
                 });
                 const result = await response.json();
                 if (result.success) {
-                    alert('이메일이 저장되었습니다!');
+                    window.appAlert('이메일이 저장되었습니다!');
                     window.location.reload();
                 } else {
-                    alert(result.message || '이메일 저장에 실패했습니다.');
+                    window.appAlert(result.message || '이메일 저장에 실패했습니다.');
                 }
             } catch (error) {
-                alert('서버와 통신할 수 없습니다.');
+                window.appAlert('서버와 통신할 수 없습니다.');
             }
         };
     }
@@ -191,14 +191,14 @@ function initUtilities() {
         submitNicknameBtn.onclick = async () => {
             const newNickname = changeDisplayNameInput.value.trim();
             if (!newNickname) {
-                alert('변경할 닉네임을 입력해 주세요.');
+                window.appAlert('변경할 닉네임을 입력해 주세요.');
                 return;
             }
 
             try {
                 const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
                 if (!token) {
-                    alert('로그인이 필요합니다.');
+                    window.appAlert('로그인이 필요합니다.');
                     return;
                 }
 
@@ -213,14 +213,14 @@ function initUtilities() {
 
                 const result = await response.json();
                 if (result.success) {
-                    alert('닉네임이 성공적으로 변경되었습니다!');
+                    window.appAlert('닉네임이 성공적으로 변경되었습니다!');
                     window.location.reload();
                 } else {
-                    alert(result.message || '닉네임 변경에 실패했습니다.');
+                    window.appAlert(result.message || '닉네임 변경에 실패했습니다.');
                 }
             } catch (error) {
                 console.error('닉네임 변경 에러:', error);
-                alert('서버와 통신할 수 없습니다.');
+                window.appAlert('서버와 통신할 수 없습니다.');
             } finally {
                 submitNicknameBtn.disabled = false;
                 submitNicknameBtn.textContent = '변경';
@@ -323,7 +323,7 @@ function initUtilities() {
             const email = emailInput ? emailInput.value.trim() : '';
 
             if (!email || !email.includes('@')) {
-                alert('유효한 이메일을 입력해 주세요.');
+                window.appAlert('유효한 이메일을 입력해 주세요.');
                 return;
             }
 
@@ -339,7 +339,7 @@ function initUtilities() {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert(result.message || '인증번호가 발송되었습니다.');
+                    window.appAlert(result.message || '인증번호가 발송되었습니다.');
                     // UI 변경: 인증번호 입력 단계 노출, 이메일 변경 불가
                     document.getElementById('pwdResetStep1').style.display = 'none';
                     document.getElementById('pwdResetStep2').style.display = 'block';
@@ -348,11 +348,11 @@ function initUtilities() {
                         emailInput.style.background = '#f8f9fa';
                     }
                 } else {
-                    alert(result.message || '인증번호 전송에 실패했습니다.');
+                    window.appAlert(result.message || '인증번호 전송에 실패했습니다.');
                 }
             } catch (error) {
                 console.error('인증번호 요청 에러:', error);
-                alert('서버 오류가 발생했습니다.');
+                window.appAlert('서버 오류가 발생했습니다.');
             } finally {
                 sendResetCodeBtn.textContent = originalText;
                 sendResetCodeBtn.disabled = false;
@@ -368,11 +368,11 @@ function initUtilities() {
             const newPassword = document.getElementById('resetNewPassword').value;
 
             if (!code) {
-                alert('인증번호를 입력해 주세요.');
+                window.appAlert('인증번호를 입력해 주세요.');
                 return;
             }
             if (!newPassword || newPassword.length < 4) {
-                alert('새 비밀번호는 4자 이상이어야 합니다.');
+                window.appAlert('새 비밀번호는 4자 이상이어야 합니다.');
                 return;
             }
 
@@ -388,14 +388,14 @@ function initUtilities() {
                 const result = await response.json();
 
                 if (result.success) {
-                    alert('비밀번호가 성공적으로 변경되었습니다!');
+                    window.appAlert('비밀번호가 성공적으로 변경되었습니다!');
                     window.location.reload();
                 } else {
-                    alert(result.message || '비밀번호 변경에 실패했습니다.');
+                    window.appAlert(result.message || '비밀번호 변경에 실패했습니다.');
                 }
             } catch (error) {
                 console.error('비밀번호 변경 에러:', error);
-                alert('서버 통신 중 오류가 발생했습니다.');
+                window.appAlert('서버 통신 중 오류가 발생했습니다.');
             } finally {
                 verifyAndResetPwdBtn.textContent = originalText;
                 verifyAndResetPwdBtn.disabled = false;
@@ -510,7 +510,7 @@ function initUtilities() {
                              console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
                          } else {
                              console.log('[DEBUG] 토큰이 없습니다. 로그인이 필요합니다.');
-                             alert('로그인이 필요합니다');
+                             window.appAlert('로그인이 필요합니다');
                              return;
                          }
                          console.log('[DEBUG] API 호출 시작: /api/auth/check-login-id?login_id=', newLoginId);
@@ -570,22 +570,22 @@ function initUtilities() {
                 const confirmPassword = document.getElementById('confirmPassword').value;
 
                 if (!newLoginId || newLoginId.length < 4) {
-                    alert('아이디는 4자 이상이어야 합니다.');
+                    window.appAlert('아이디는 4자 이상이어야 합니다.');
                     return;
                 }
 
                 if (!isLoginIdChecked) {
-                    alert('아이디 중복 확인을 해주세요.');
+                    window.appAlert('아이디 중복 확인을 해주세요.');
                     return;
                 }
 
                 if (!newPassword || newPassword.length < 4) {
-                    alert('비밀번호는 4자 이상이어야 합니다.');
+                    window.appAlert('비밀번호는 4자 이상이어야 합니다.');
                     return;
                 }
 
                 if (newPassword !== confirmPassword) {
-                    alert('비밀번호가 일치하지 않습니다.');
+                    window.appAlert('비밀번호가 일치하지 않습니다.');
                     return;
                 }
 
@@ -601,13 +601,13 @@ function initUtilities() {
                     document.getElementById('setPasswordModal').remove();
 
                     if (result.success) {
-                        alert(result.message);
+                        window.appAlert(result.message);
                         window.location.reload();
                     } else {
-                        alert(result.message || '설정에 실패했습니다.');
+                        window.appAlert(result.message || '설정에 실패했습니다.');
                     }
                 } catch (error) {
-                    alert('서버와 통신할 수 없습니다.');
+                    window.appAlert('서버와 통신할 수 없습니다.');
                 }
             });
 

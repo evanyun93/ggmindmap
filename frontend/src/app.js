@@ -10,6 +10,7 @@ import { initSocialAuth } from './services/social-auth.js'; // social-auth 임�
 import { getDashboardHTML } from './components/dashboard.js';
 import { initChangelog } from './features/changelog.js';
 import { initDashboardFeatures } from './features/dashboard-bootstrap.js';
+import './utils/dialog.js'; // 전역 커스텀 Alert/Confirm/Toast 등록
 
 // 피드백 모듈 등에서 initDashboardFeatures를 사용할 수 있도록 re-export
 export { initDashboardFeatures };

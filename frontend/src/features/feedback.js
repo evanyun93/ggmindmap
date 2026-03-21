@@ -184,7 +184,7 @@ window.changeFeedbackPage = (page) => {
 
 // 피드백 삭제 요청 (관리자 전용)
 window.deleteFeedback = async (id) => {
-    if (!confirm('이 의견을 삭제하시겠습니까?')) return;
+    if (!(await window.appConfirm('이 의견을 삭제하시겠습니까?'))) return;
 
     try {
         const res = await apiFetch(`/api/feedback/${id}`, {
@@ -197,9 +197,9 @@ window.deleteFeedback = async (id) => {
             const listSection = document.getElementById('boardListSection');
             loadFeedbackList(listSection);
         } else {
-            alert(result.message || '삭제에 실패했습니다.');
+            window.appAlert(result.message || '삭제에 실패했습니다.');
         }
     } catch (err) {
-        alert('서버와 통신할 수 없습니다.');
+        window.appAlert('서버와 통신할 수 없습니다.');
     }
 };

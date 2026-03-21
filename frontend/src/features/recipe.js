@@ -546,8 +546,8 @@ export function initRecipe(el, data) {
 
         container.querySelector('.btn-recipe-back').onclick = () => renderView('list');
         container.querySelector('.btn-recipe-edit-action').onclick = () => renderView('edit', currentRecipeId);
-        container.querySelector('.delete-current-recipe').onclick = () => {
-            if (confirm('이 레시피를 정말 삭제하시겠습니까?')) {
+        container.querySelector('.delete-current-recipe').onclick = async () => {
+            if (await window.appConfirm('이 레시피를 정말 삭제하시겠습니까?')) {
                 recipes = recipes.filter(x => x.id !== recipe.id);
                 saveSettings();
                 renderView('list');
@@ -925,7 +925,7 @@ export function initRecipe(el, data) {
 
                     } catch (err) {
                         setLoading(false);
-                        alert('❌ AI 생성 실패: ' + err.message);
+                        window.appAlert('❌ AI 생성 실패: ' + err.message);
                     }
                 });
             };
