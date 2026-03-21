@@ -35,7 +35,12 @@ export function initDashboardGrid() {
             if (editingElements.length === 0) return;
 
             // 허용된 텍스트박스나 조작 버튼(취소, 확인 등)을 클릭한 거면 어떠한 방해도 하지 않음
-            const allowedSelectors = '.todo-title-edit-input, .edit-title-input, .edit-todo-title-btn, .edit-title-btn, .cancel-title-edit-btn, .todo-edit-input, .todo-edit-btn, .todo-cancel-btn';
+            const allowedSelectors = `
+                .todo-title-edit-input, .recipe-title-edit-input, .milestone-title-edit-input, .edit-title-input,
+                .edit-todo-title-btn, .edit-recipe-title-btn, .edit-milestone-title-btn, .edit-title-btn,
+                .cancel-title-edit-btn,
+                .todo-edit-input, .todo-edit-btn, .todo-cancel-btn
+            `;
             if (e.target.closest(allowedSelectors)) {
                 return; 
             }
@@ -417,11 +422,11 @@ export function showEditWarning(widget) {
 
     let btnSelectors = [];
     if (widget.classList.contains('is-editing')) {
-        btnSelectors.push('.edit-todo-title-btn', '.edit-title-btn');
+        btnSelectors.push('.edit-todo-title-btn', '.edit-recipe-title-btn', '.edit-milestone-title-btn', '.edit-title-btn');
     } else if (widget.classList.contains('is-editing-task')) {
         btnSelectors.push('.todo-edit-btn');
     } else {
-        btnSelectors.push('.edit-todo-title-btn', '.edit-title-btn', '.todo-edit-btn');
+        btnSelectors.push('.edit-todo-title-btn', '.edit-recipe-title-btn', '.edit-milestone-title-btn', '.edit-title-btn', '.todo-edit-btn');
     }
     const editBtns = widget.querySelectorAll(btnSelectors.join(', '));
     editBtns.forEach(btn => {

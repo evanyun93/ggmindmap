@@ -170,6 +170,24 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
                 borderRadius: '4px', padding: '2px 8px', width: '150px'
             });
 
+            // 취소 버튼 추가
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'cancel-title-edit-btn';
+            cancelBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            cancelBtn.title = "취소";
+            cancelBtn.style.cssText = "background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px; position:relative; z-index:9999; pointer-events:auto;";
+            
+            // 모바일 터치 및 블러 충돌 방지
+            cancelBtn.onmousedown = (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                input.value = current;
+                exitEditMode(current);
+            };
+            cancelBtn.ontouchstart = cancelBtn.onmousedown;
+            
+            editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
+
             titleEl.replaceWith(input);
             input.focus();
             input.select();
@@ -179,7 +197,7 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
             input.onkeydown = (e) => {
                 e.stopPropagation(); // 브라우저 뒤로가기 방지용 전파 차단은 유지
                 if (e.key === 'Enter') editBtn.click();
-                if (e.key === 'Escape') { input.value = current; exitEditMode(current); }
+                if (e.key === 'Escape') cancelBtn.click();
             };
         } else {
             // 저장 실행
@@ -198,6 +216,8 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
             titleEl.textContent = title;
             input.replaceWith(titleEl);
         }
+        const cancelBtn = el.querySelector('.cancel-title-edit-btn');
+        if (cancelBtn) cancelBtn.remove();
         el.classList.remove('is-editing');
         editBtn.innerHTML = pencilIcon;
         editBtn.title = "제목 수정";
