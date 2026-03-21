@@ -28,6 +28,38 @@ export function initDashboardGrid() {
     // 모바일 이동 모드 상태 초기화 (재진입 시 일관성 유지)
     isMoveModeActive = false;
 
+    // 글로벌 mousedown 캡처: 편집 모드 시 모든 외부 클릭 차단 및 경고
+    if (!grid._hasGlobalEditBlocker) {
+        document.addEventListener('mousedown', (e) => {
+            const editingElements = document.querySelectorAll('.is-editing, .is-editing-task');
+            if (editingElements.length === 0) return;
+
+            let blocked = false;
+            editingElements.forEach(el => {
+                // 위젯 타이틀 수정 중일 때
+                if (el.classList.contains('is-editing')) {
+                    // 클릭한 요소가 해당 입력칸/버튼 내부면 허용
+                    if (e.target.closest('.todo-title-edit-input, .edit-title-input, .edit-todo-title-btn, .edit-title-btn')) return;
+                    blocked = true;
+                    showEditWarning(el);
+                } 
+                // 투두 아이템 수정 중일 때
+                else if (el.classList.contains('is-editing-task')) {
+                    if (e.target.closest('.todo-edit-input, .todo-edit-btn')) return;
+                    blocked = true;
+                    showEditWarning(el);
+                }
+            });
+
+            // 외부 클릭이면 모든 기본 동작 및 이벤트 전파 완벽 차단
+            if (blocked) {
+                e.preventDefault();
+                e.stopPropagation();
+            }
+        }, { capture: true }); // 가장 상위 캡처 단계에서 가로채기
+        grid._hasGlobalEditBlocker = true;
+    }
+
     const dashboardContent = document.getElementById('dashboardContent');
     const widgetsSection = grid.closest('.widgets-section');
     const longPressScope = dashboardContent || widgetsSection || grid;
@@ -392,7 +424,7 @@ export function showEditWarning(widget) {
         document.head.appendChild(style);
     }
 
-    const editBtns = widget.querySelectorAll('.edit-todo-title-btn, .edit-title-btn'); // 범용적으로 찾기
+    const editBtns = widget.querySelectorAll('.edit-todo-title-btn, .edit-title-btn, .todo-edit-btn'); // 범용적으로 찾기
     editBtns.forEach(btn => {
         btn.classList.remove('shake-animation');
         void btn.offsetWidth; // 리플로우 강제 (애니메이션 재시작)
@@ -405,6 +437,12 @@ export function showEditWarning(widget) {
     warningMsg = document.createElement('div');
     warningMsg.className = 'edit-warning-msg';
     warningMsg.textContent = '먼저 수정을 완료해주세요!';
+    
+    // 할 일(Todo) 아이템인 경우 relative 포지셔닝 보장
+    if (widget.classList.contains('todo-item')) {
+        widget.style.position = 'relative';
+    }
+    
     widget.appendChild(warningMsg);
 }
 
