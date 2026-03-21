@@ -224,12 +224,17 @@ async function setupTitleEdit(el, titleEl, editBtn) {
             cancelBtn.className = 'cancel-title-edit-btn';
             cancelBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
             cancelBtn.title = "취소";
-            cancelBtn.style.cssText = "background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px;";
-            cancelBtn.onclick = (ev) => {
+            cancelBtn.style.cssText = "background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px; position:relative; z-index:9999; pointer-events:auto;";
+            
+            // 모바일 터치 및 블러 충돌 방지 차원에서 mousedown 선점
+            cancelBtn.onmousedown = (ev) => {
+                ev.preventDefault();
                 ev.stopPropagation();
                 input.value = current;
                 exitEditMode(current);
             };
+            cancelBtn.ontouchstart = cancelBtn.onmousedown; // 터치 환경 즉각 대응
+            
             editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
 
             titleEl.replaceWith(input);
@@ -528,7 +533,7 @@ function renderTodos(el, todos) {
             cancelBtn.className = 'todo-cancel-btn';
             cancelBtn.title = "취소";
             cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-            cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1);`;
+            cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1); position:relative; z-index:9999; pointer-events:auto;`;
             
             // onblur 때문에 클릭이 씹히는 현상을 방지하기 위해 onmousedown 사용
             cancelBtn.onmousedown = (ev) => {
@@ -537,6 +542,7 @@ function renderTodos(el, todos) {
                 inputEl.value = textEl.textContent; // 수정 전으로 복구
                 inputEl.blur(); // 복구시킨 텍스트 상태로 수동 blur 발생 -> saveEdit가 변동없음을 감지하고 깔끔하게 닫음.
             };
+            cancelBtn.ontouchstart = cancelBtn.onmousedown;
             btn.parentNode.insertBefore(cancelBtn, btn.nextSibling);
 
             inputEl.focus();
