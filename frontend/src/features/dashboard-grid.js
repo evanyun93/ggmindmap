@@ -39,10 +39,25 @@ export function initDashboardGrid() {
                 .todo-title-edit-input, .recipe-title-edit-input, .milestone-title-edit-input, .edit-title-input,
                 .edit-todo-title-btn, .edit-recipe-title-btn, .edit-milestone-title-btn, .edit-title-btn,
                 .cancel-title-edit-btn,
-                .todo-edit-input, .todo-edit-btn, .todo-cancel-btn
+                .todo-edit-input, .todo-edit-btn, .todo-cancel-btn, .todo-cancel-btn *,
+                .btn-del-widget, .btn-del-widget *,
+                #mobileReorderBtn, #mobileReorderBtn *,
+                .theme-toggle, .theme-toggle *
             `;
             if (e.target.closest(allowedSelectors)) {
                 return; 
+            }
+
+            // [추가] 만약 실제 입력 필드가 DOM에 없다면 강제로 편집 상태 해제 (안전장치)
+            let hasActualInput = false;
+            editingElements.forEach(el => {
+                if (el.querySelector('input, textarea')) hasActualInput = true;
+            });
+            if (!hasActualInput) {
+                editingElements.forEach(el => {
+                    el.classList.remove('is-editing', 'is-editing-task');
+                });
+                return;
             }
 
             // 위에서 허용된 요소를 클릭한 게 아니라면, 모두 차단하고 경고

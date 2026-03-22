@@ -32,14 +32,16 @@ export async function initTodo(el) {
 
     const widgetId = el.dataset.id;
 
-    // 1. 초기 UI 상태 설정 (동기) - SyncService에서 로컬 캐시 먼저 확인
-    const collapsedValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLLAPSED, widgetId);
-    const isCollapsed = collapsedValue === 'true';
-    if (isCollapsed) el.classList.add('collapsed');
+    // 1. 초기 UI 상태 설정 (비동기) - SyncService에서 로컬 캐시 먼저 확인
+    // 블로킹을 피하기 위해 await를 제거하고 즉시 이벤트 바인딩으로 넘어갑니다.
+    syncService.getData(SYNC_DATA_TYPES.TODO_COLLAPSED, widgetId).then(collapsedValue => {
+        if (collapsedValue === 'true') el.classList.add('collapsed');
+    });
 
-    const colorValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLOR);
-    const savedColor = colorValue || DEFAULT_CHECKBOX_COLOR;
-    applyCheckboxColor(el, savedColor);
+    syncService.getData(SYNC_DATA_TYPES.TODO_COLOR).then(colorValue => {
+        const savedColor = colorValue || DEFAULT_CHECKBOX_COLOR;
+        applyCheckboxColor(el, savedColor);
+    });
 
     // 2. 이벤트 바인딩 (데이터 로딩보다 먼저 수행하여 즉시 인터랙션 대응)
 
@@ -106,15 +108,14 @@ export async function initTodo(el) {
     // 자동 삭제
     const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
     if (autoDeleteCheck) {
-        // 초기 상태 동기화 서비스에서 로드
-        const savedAutoDelete = await syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId);
-        // 동기화 서비스에 값이 없으면 현재 사용자 설정에서 fallback
-        if (savedAutoDelete !== null) {
-            // 서버에서 문자열로 반환되므로 불리언으로 명시적 변환
-            autoDeleteCheck.checked = savedAutoDelete === true || savedAutoDelete === 'true';
-        } else if (window.currentUser && window.currentUser.todoAutoDelete) {
-            autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
-        }
+        // 초기 상태 동기화 서비스에서 로드 (비동기)
+        syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId).then(savedAutoDelete => {
+            if (savedAutoDelete !== null) {
+                autoDeleteCheck.checked = savedAutoDelete === true || savedAutoDelete === 'true';
+            } else if (window.currentUser && window.currentUser.todoAutoDelete) {
+                autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
+            }
+        });
 
         autoDeleteCheck.onchange = async () => {
             const active = autoDeleteCheck.checked;
@@ -232,8 +233,9 @@ async function applyCheckboxColor(el, color) {
 
 async function setupTitleEdit(el, titleEl, editBtn) {
     const widgetId = el.dataset.id;
-    const savedTitle = await syncService.getData(SYNC_DATA_TYPES.TODO_TITLE, widgetId);
-    if (savedTitle) titleEl.textContent = savedTitle;
+    syncService.getData(SYNC_DATA_TYPES.TODO_TITLE, widgetId).then(savedTitle => {
+        if (savedTitle) titleEl.textContent = savedTitle;
+    });
 
     const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
     const checkIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events: none;"><path d="M20 6L9 17L4 12"/></svg>`;
@@ -362,8 +364,8 @@ async function addTodo(el) {
 
     // 시간 파싱
     const { task, alarmTime } = parseTimeFromTask(taskContent);
-    const colorValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLOR);
-    const color = colorValue || DEFAULT_CHECKBOX_COLOR;
+    // 현재 위젯의 스타일에서 색상을 가져오거나 캐시에서 즉시 읽음 (비차단)
+    const color = el.style.getPropertyValue('--todo-checkbox-color') || DEFAULT_CHECKBOX_COLOR;
     const widgetId = el.closest('.draggable-widget')?.dataset?.id;
 
     // 낙관적 UI (Optimistic UI): 서버 응답을 기다리지 않고 화면에 먼저 임시 아이템 추가
@@ -777,4 +779,5 @@ function renderTodos(el, todos) {
     if (Notification.permission === 'default') {
         Notification.requestPermission();
     }
+}
 

@@ -29,9 +29,10 @@ export async function initMilestone(el, widgetData) {
     let settings = widgetData.settings || {};
 
     // 1. 초기 UI 상태 설정 - SyncService에서 로컬 캐시 먼저 확인
-    const collapsedValue = await syncService.getData(SYNC_DATA_TYPES.MILESTONE_COLLAPSED, widgetId);
-    const isCollapsed = collapsedValue === 'true';
-    if (isCollapsed) el.classList.add('collapsed');
+    // 블로킹을 피하기 위해 즉시 이벤트 바인딩으로 넘어갑니다.
+    syncService.getData(SYNC_DATA_TYPES.MILESTONE_COLLAPSED, widgetId).then(collapsedValue => {
+        if (collapsedValue === 'true') el.classList.add('collapsed');
+    });
 
     // 2. 이벤트 바인딩
 
@@ -141,8 +142,9 @@ export async function initMilestone(el, widgetData) {
  */
 async function setupTitleEdit(el, titleEl, editBtn, settings) {
     const widgetId = el.dataset.id;
-    const savedTitle = await syncService.getData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId);
-    if (savedTitle) titleEl.textContent = savedTitle;
+    syncService.getData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId).then(savedTitle => {
+        if (savedTitle) titleEl.textContent = savedTitle;
+    });
 
     const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
     const checkIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events: none;"><path d="M20 6L9 17L4 12"/></svg>`;
