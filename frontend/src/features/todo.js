@@ -400,21 +400,167 @@ async function addTodo(el) {
         });
         const result = await res.json();
         
-        // 서버 처리 후 전체 목록을 다시 불러와서 임시 노드를 실제 노드로 대체
-        // 약간의 지연 후 갱신되므로 사용자에게 빠른 피드백 제공
         if (result.success) {
-            loadTodoList(el, true); 
+            // 서버 응답이 오면 리스트 전체를 갱신하지 않고, 임시 노드만 즉시 실제 노드로 확정 (물리적 지연 시간 체감 0)
+            const newId = result.id;
+            const tempEl = container.querySelector(`[data-id="${tempId}"]`);
+            if (tempEl) {
+                tempEl.dataset.id = newId;
+                tempEl.style.opacity = '1';
+                
+                const checkInput = tempEl.querySelector('.todo-check');
+                if (checkInput) checkInput.dataset.id = newId;
+                
+                const editBtn = tempEl.querySelector('.todo-edit-btn');
+                if (editBtn) editBtn.dataset.id = newId;
+                
+                const delBtn = tempEl.querySelector('.todo-del-btn');
+                if (delBtn) delBtn.dataset.id = newId;
+
+                // 새 이벤트 리스너 바인딩
+                bindTodoEventsToElement(el, tempEl, newId, color);
+            } else {
+                // 어떤 이유로 임시 노드를 못 찾은 경우에만 폴백으로 전체 새로고침
+                loadTodoList(el, true);
+            }
         } else {
             // 실패 시 임시 노드 삭제
-            const tempEl = container.querySelector(`[data-id="${tempId}"]`)?.closest('.todo-item');
+            const tempEl = container.querySelector(`[data-id="${tempId}"]`);
             if (tempEl) tempEl.remove();
             console.error('[Todo] 추가 에러: 서버 응답 오류');
         }
     } catch (err) {
         console.error('[Todo] 추가 에러:', err);
         // 실패 시 임시 노드 삭제
-        const tempEl = container?.querySelector(`[data-id="${tempId}"]`)?.closest('.todo-item');
+        const tempEl = container?.querySelector(`[data-id="${tempId}"]`);
         if (tempEl) tempEl.remove();
+    }
+}
+
+/**
+ * 방금 추가된 낙관적 UI 단일 요소에만 이벤트 리스너를 붙여주는 헬퍼 함수
+ */
+function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
+    const chk = itemEl.querySelector('.todo-check');
+    if (chk) {
+        chk.onchange = async (e) => {
+            const isCompleted = e.target.checked;
+            try {
+                await apiFetch(`/api/todos/${id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({ isCompleted })
+                });
+                document.querySelectorAll('.widget-todo').forEach(w => {
+                    const target = w.querySelector(`.todo-check[data-id="${id}"]`);
+                    if (target) {
+                        target.checked = isCompleted;
+                        target.parentElement.closest('.todo-item').classList.toggle('completed', isCompleted);
+                        target.style.backgroundColor = isCompleted ? color : 'transparent';
+                    }
+                });
+            } catch (err) { e.target.checked = !isCompleted; }
+        };
+    }
+
+    const delBtn = itemEl.querySelector('.todo-del-btn');
+    if (delBtn) {
+        delBtn.onclick = async (e) => {
+            try {
+                await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
+                document.querySelectorAll('.widget-todo').forEach(w => {
+                    const targetEl = w.querySelector(`.todo-item[data-id="${id}"]`);
+                    if (targetEl) targetEl.remove();
+                });
+            } catch (err) {}
+        };
+    }
+
+    const editBtn = itemEl.querySelector('.todo-edit-btn');
+    const textEl = itemEl.querySelector('.todo-text');
+    if (editBtn && textEl) {
+        textEl.style.cursor = 'text';
+        textEl.ondblclick = () => { if (!itemEl.classList.contains('is-editing-task')) editBtn.click(); };
+
+        editBtn.onclick = (e) => {
+            const inputEl = itemEl.querySelector('.todo-edit-input');
+            const alarmBadge = itemEl.querySelector('.todo-alarm-badge');
+
+            if (itemEl.classList.contains('is-editing-task')) {
+                inputEl.blur();
+                return;
+            }
+
+            itemEl.classList.add('is-editing-task');
+            textEl.classList.add('hidden');
+            if (alarmBadge) alarmBadge.classList.add('hidden');
+            inputEl.classList.remove('hidden');
+
+            const pencilIcon = editBtn.innerHTML;
+            editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events:none;"><path d="M20 6L9 17L4 12"/></svg>`;
+            editBtn.style.color = '#10b981';
+            editBtn.title = "저장";
+
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'todo-cancel-btn';
+            cancelBtn.title = "취소";
+            cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+            cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1); position:relative; z-index:9999; pointer-events:auto;`;
+            
+            cancelBtn.onmousedown = (ev) => {
+                ev.preventDefault();
+                ev.stopPropagation();
+                inputEl.value = textEl.textContent;
+                inputEl.blur();
+            };
+            cancelBtn.ontouchstart = cancelBtn.onmousedown;
+            editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
+
+            inputEl.focus();
+            inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
+
+            const saveEdit = async () => {
+                itemEl.classList.remove('is-editing-task');
+                if (cancelBtn.parentNode) cancelBtn.remove();
+                editBtn.innerHTML = pencilIcon;
+                editBtn.style.color = '#9ca3af';
+                editBtn.title = "수정";
+
+                const newTask = inputEl.value.trim();
+                if (!newTask || newTask === textEl.textContent) {
+                    inputEl.value = textEl.textContent;
+                    textEl.classList.remove('hidden');
+                    if (alarmBadge) alarmBadge.classList.remove('hidden');
+                    inputEl.classList.add('hidden');
+                    return;
+                }
+
+                textEl.textContent = newTask;
+                textEl.classList.remove('hidden');
+                inputEl.classList.add('hidden');
+                
+                try {
+                    await apiFetch(`/api/todos/${id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ task: newTask })
+                    });
+                    
+                    const { alarmTime: newAlarmTime } = parseTimeFromTask(newTask);
+                    if (newAlarmTime && newAlarmTime !== textEl._lastAlarm) {
+                        textEl._lastAlarm = newAlarmTime;
+                        setTimeout(() => loadTodoList(widgetEl, true), 500);
+                    }
+                } catch (err) {
+                    console.error('Todo 수정 에러:', err);
+                }
+            };
+
+            inputEl.onblur = saveEdit;
+            inputEl.onkeydown = (ev) => {
+                ev.stopPropagation();
+                if (ev.key === 'Enter') inputEl.blur();
+                if (ev.key === 'Escape') cancelBtn.dispatchEvent(new MouseEvent('mousedown'));
+            };
+        };
     }
 }
 
