@@ -57,6 +57,11 @@ async function deleteAlarm(id) {
 }
 
 // ── 알람 체크 & 발송 ──────────────────────────────────────────
+const ALARM_ACTIONS = [
+    { action: 'dismiss', title: '✅ 해제' },
+    { action: 'snooze',  title: '⏰ 5분 뒤 다시 알림' }
+];
+
 async function checkAndFireAlarms() {
     const now = Date.now();
     let alarms;
@@ -74,9 +79,11 @@ async function checkAndFireAlarms() {
                 icon: '/assets/advanced-icon.png',
                 badge: '/assets/advanced-icon.png',
                 tag: `todo-alarm-${alarm.id}`,
-                renotify: false,
+                renotify: true,
                 vibrate: [200, 100, 200],
                 requireInteraction: true,
+                actions: ALARM_ACTIONS,
+                data: { body: alarm.body, id: alarm.id }
             });
             // 발송 후 DB에서 제거
             await deleteAlarm(alarm.id);
@@ -110,9 +117,11 @@ self.addEventListener('message', (event) => {
                 icon: '/assets/advanced-icon.png',
                 badge: '/assets/advanced-icon.png',
                 tag,
-                renotify: false,
+                renotify: true,
                 vibrate: [200, 100, 200],
-                requireInteraction: false,
+                requireInteraction: true,
+                actions: ALARM_ACTIONS,
+                data: { body }
             })
         );
         return;
@@ -149,26 +158,58 @@ self.addEventListener('push', (event) => {
             icon: data.icon || '/assets/advanced-icon.png',
             badge: data.badge || '/assets/advanced-icon.png',
             tag: data.tag,
-            renotify: false,
+            renotify: true,
             vibrate: [200, 100, 200],
             requireInteraction: true,
+            actions: ALARM_ACTIONS,
+            data: { body: data.body }
         })
     );
 });
 
-// ── 알림 클릭 시 앱 탭 열기 또는 포커스 ─────────────────────
+// ── 알림 클릭 / 액션 버튼 처리 ─────────────────────
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    event.waitUntil(
-        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-            for (const client of clientList) {
-                if (client.url && 'focus' in client) {
-                    return client.focus();
-                }
-            }
-            if (self.clients.openWindow) {
-                return self.clients.openWindow('/');
-            }
-        })
-    );
+
+    // '해제' 버튼 또는 알림 본체 클릭: 앱 탭 열기
+    if (event.action === 'dismiss' || event.action === '') {
+        if (event.action === '') {
+            // 알림 본체를 클릭한 경우 → 앱 탭 포커스
+            event.waitUntil(
+                self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+                    for (const client of clientList) {
+                        if (client.url && 'focus' in client) return client.focus();
+                    }
+                    if (self.clients.openWindow) return self.clients.openWindow('/');
+                })
+            );
+        }
+        // '해제' 버튼은 그냥 닫기만 (위에서 close() 이미 호출)
+        return;
+    }
+
+    // '5분 뒤 다시 알림' 버튼
+    if (event.action === 'snooze') {
+        const body = event.notification.data?.body || event.notification.body;
+        const tag  = event.notification.tag;
+
+        event.waitUntil(
+            new Promise((resolve) => {
+                setTimeout(async () => {
+                    await self.registration.showNotification('GGMIND-알리미 (다시 알림)', {
+                        body,
+                        icon: '/assets/advanced-icon.png',
+                        badge: '/assets/advanced-icon.png',
+                        tag: tag + '-snooze',
+                        renotify: true,
+                        vibrate: [200, 100, 200],
+                        requireInteraction: true,
+                        actions: ALARM_ACTIONS,
+                        data: { body }
+                    });
+                    resolve();
+                }, 5 * 60 * 1000); // 5분
+            })
+        );
+    }
 });
