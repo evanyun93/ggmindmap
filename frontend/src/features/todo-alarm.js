@@ -276,8 +276,11 @@ class TodoAlarmSystem {
 
                 const id = String(todo.id);
 
-                // 이미 오늘 발송한 알람이면 건너뜀
-                if (isAlarmSent(id)) continue;
+                // 이미 단말기 로컬에서 발송했거나, 이미 백엔드 스케줄러가 발송완료(push_sent_at)한 알람이면 건너뜀
+                if (isAlarmSent(id) || todo.push_sent_at) {
+                    markAlarmSent(id); // 서버 처리를 로컬에도 동기화하여 향후 오발송 완전 차단
+                    continue;
+                }
 
                 // 알람 시각 파싱
                 let alarmStr = todo.alarm_time;

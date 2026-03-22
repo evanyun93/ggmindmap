@@ -750,6 +750,7 @@ export function setupDraggable(widget, grid) {
                 reassignMobileZIndices();
             } else {
                 saveLayout();
+                adjustGridHeight();
             }
         };
 
@@ -909,6 +910,7 @@ export function setupResizable(widget, grid) {
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             saveLayout();
+            adjustGridHeight();
         };
 
         document.addEventListener('mousemove', onMouseMove);
@@ -1040,6 +1042,7 @@ function setInitialLayout(grid) {
         }
     });
     saveLayout();
+    adjustGridHeight();
 }
 
 
@@ -1143,4 +1146,34 @@ function initScrollBounceEffect(container, grid) {
             if (window.navigator.vibrate) window.navigator.vibrate(10);
         }
     }, { passive: true });
+}
+
+/**
+ * PC 대시보드 그리드 높이 동적 조정
+ * 최하단에 위치한 위젯의 좌표를 기준으로 그리드의 minHeight를 증가시킵니다.
+ */
+export function adjustGridHeight() {
+    const grid = document.getElementById('widgetGrid');
+    if (!grid) return;
+    
+    // 모바일에서는 자동 높이를 사용하므로 처리 불필요
+    if (window.innerWidth <= 768) {
+        grid.style.minHeight = '';
+        return;
+    }
+
+    const widgets = Array.from(grid.querySelectorAll('.draggable-widget:not(.widget-ghost)'));
+    let maxBottom = 0;
+
+    widgets.forEach(w => {
+        const top = parseFloat(w.style.top) || 0;
+        const height = parseFloat(w.style.height) || w.offsetHeight;
+        if (top + height > maxBottom) {
+            maxBottom = top + height;
+        }
+    });
+
+    // 기본 최소 높이 1000px, 최하단 위젯 + 여유 공간 100px
+    const minHeight = Math.max(1000, maxBottom + 100);
+    grid.style.minHeight = `${minHeight}px`;
 }

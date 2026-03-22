@@ -686,141 +686,95 @@ function renderTodos(el, todos) {
     const container = el.querySelector('.todo-list-container');
     if (!container) return;
 
-    const sortedTodos = [...todos].sort((a, b) => b.id - a.id);
-    const html = sortedTodos.map(todo => generateTodoHtml(todo)).join('');
+    if (todos.length === 0) {
+        container.innerHTML = '<div class="no-data-mini">할 일이 없습니다.</div>';
+        return;
+    }
 
-    container.innerHTML = html || '<div class="no-data-mini">할 일이 없습니다.</div>';
+    // "할 일이 없습니다" 메시지가 있으면 제거
+    const noDataMsg = container.querySelector('.no-data-mini');
+    if (noDataMsg) noDataMsg.remove();
+
+    const sortedTodos = [...todos].sort((a, b) => b.id - a.id);
+    
+    // 현재 DOM에 있는 아이템들을 Map으로 캐싱
+    const existingItems = new Map();
+    container.querySelectorAll('.todo-item').forEach(itemEl => {
+        const id = itemEl.dataset.id;
+        if (id) existingItems.set(String(id), itemEl);
+    });
+
+    // 1. 순회하며 업데이트 또는 새 노드 추가 (순서 맞추기)
+    let previousNode = null;
+
+    sortedTodos.forEach(todo => {
+        const strId = String(todo.id);
+        const color = todo.color || DEFAULT_CHECKBOX_COLOR;
+        const checked = todo.is_completed;
+        const newHtml = generateTodoHtml(todo).trim();
+        
+        // 템플릿 노드 생성 헬퍼
+        const createNode = (htmlStr) => {
+            const div = document.createElement('div');
+            div.innerHTML = htmlStr;
+            return div.firstElementChild;
+        };
+
+        if (existingItems.has(strId)) {
+            // 이미 존재하는 요소 업데이트 (상태 변경 체크)
+            const itemEl = existingItems.get(strId);
+            const chk = itemEl.querySelector('.todo-check');
+            const textEl = itemEl.querySelector('.todo-text');
+
+            // 내용이 다르다면 교체 (낙관적 UI 렌더링 중인 노드는 건드리지 않음)
+            if (itemEl.style.opacity !== '0.5') {
+                const needsUpdate = (chk && chk.checked !== checked) || 
+                                    (textEl && textEl.textContent !== todo.task) || 
+                                    (chk && chk.dataset.color !== color);
+                                    
+                if (needsUpdate && !itemEl.classList.contains('is-editing-task')) {
+                    const newNode = createNode(newHtml);
+                    itemEl.replaceWith(newNode);
+                    bindTodoEventsToElement(el, newNode, todo.id, color);
+                    existingItems.set(strId, newNode); // 참조 갱신
+                } else {
+                    // 순서 재배치를 위해 DOM 트리 이동 (필요한 경우만)
+                    if (previousNode) {
+                        if (previousNode.nextElementSibling !== itemEl) {
+                            previousNode.after(itemEl);
+                        }
+                    } else if (container.firstElementChild !== itemEl) {
+                        container.prepend(itemEl);
+                    }
+                }
+            }
+        } else {
+            // 2. 새 요소 삽입
+            const newNode = createNode(newHtml);
+            if (previousNode) {
+                previousNode.after(newNode);
+            } else {
+                container.prepend(newNode);
+            }
+            bindTodoEventsToElement(el, newNode, todo.id, color);
+            existingItems.set(strId, newNode);
+        }
+
+        previousNode = existingItems.get(strId);
+    });
+
+    // 3. 서버 리스트에 없는 로컬 노드 삭제 (낙관적 UI 임시 노드 제외)
+    const serverIds = new Set(sortedTodos.map(t => String(t.id)));
+    existingItems.forEach((itemEl, id) => {
+        if (!serverIds.has(id)) {
+            if (!id.startsWith('temp-')) {
+                itemEl.remove();
+            }
+        }
+    });
 
     // 알람 권한 요청 (최초 렌더링 시 1회 시도)
     if (Notification.permission === 'default') {
         Notification.requestPermission();
     }
 
-    // 리스너 재할당
-    container.querySelectorAll('.todo-check').forEach(chk => {
-        chk.onchange = async (e) => {
-            const id = e.target.dataset.id;
-            const isCompleted = e.target.checked;
-            const color = e.target.dataset.color;
-            try {
-                await apiFetch(`/api/todos/${id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({ isCompleted })
-                });
-                // 모든 위젯 동기화
-                document.querySelectorAll('.widget-todo').forEach(w => {
-                    const target = w.querySelector(`.todo-check[data-id="${id}"]`);
-                    if (target) {
-                        target.checked = isCompleted;
-                        target.parentElement.closest('.todo-item').classList.toggle('completed', isCompleted);
-                        target.style.backgroundColor = isCompleted ? color : 'transparent';
-                    }
-                });
-            } catch (err) { e.target.checked = !isCompleted; }
-        };
-    });
-
-    container.querySelectorAll('.todo-del-btn').forEach(btn => {
-        btn.onclick = async (e) => {
-            const id = e.currentTarget.dataset.id;
-            try {
-                await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
-                document.querySelectorAll('.widget-todo').forEach(w => loadTodoList(w));
-            } catch (err) { }
-        };
-    });
-
-    // 수정 버튼 로직 및 더블클릭 이벤트 연결
-    container.querySelectorAll('.todo-edit-btn').forEach(btn => {
-        const itemEl = btn.closest('.todo-item');
-        const textEl = itemEl.querySelector('.todo-text');
-        
-        // 더블클릭 시 텍스트 수정 가능하도록 연결
-        if (textEl) {
-            textEl.style.cursor = 'text';
-            textEl.ondblclick = () => { if (!itemEl.classList.contains('is-editing-task')) btn.click(); };
-        }
-
-        btn.onclick = (e) => {
-            const id = btn.dataset.id;
-            const inputEl = itemEl.querySelector('.todo-edit-input');
-            const alarmBadge = itemEl.querySelector('.todo-alarm-badge');
-
-            if (itemEl.classList.contains('is-editing-task')) {
-                // 이미 수정 중일 때 체크 버튼을 클릭하면 완료
-                inputEl.blur();
-                return;
-            }
-
-            // 편집 진입
-            itemEl.classList.add('is-editing-task');
-
-            // UI 토글
-            textEl.classList.add('hidden');
-            if (alarmBadge) alarmBadge.classList.add('hidden');
-            inputEl.classList.remove('hidden');
-
-            const pencilIcon = btn.innerHTML; // 나중에 복원용
-            btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events:none;"><path d="M20 6L9 17L4 12"/></svg>`;
-            btn.style.color = '#10b981';
-            btn.title = "저장";
-
-            // 취소 버튼 추가
-            const cancelBtn = document.createElement('button');
-            cancelBtn.className = 'todo-cancel-btn';
-            cancelBtn.title = "취소";
-            cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-            cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1); position:relative; z-index:9999; pointer-events:auto;`;
-            
-            // onblur 때문에 클릭이 씹히는 현상을 방지하기 위해 onmousedown 사용
-            cancelBtn.onmousedown = (ev) => {
-                ev.preventDefault(); // 인풋에서 포커스가 빠져나가는 것을 막아 onblur가 즉시 실행되지 않게 함
-                ev.stopPropagation();
-                inputEl.value = textEl.textContent; // 수정 전으로 복구
-                inputEl.blur(); // 복구시킨 텍스트 상태로 수동 blur 발생 -> saveEdit가 변동없음을 감지하고 깔끔하게 닫음.
-            };
-            cancelBtn.ontouchstart = cancelBtn.onmousedown;
-            btn.parentNode.insertBefore(cancelBtn, btn.nextSibling);
-
-            inputEl.focus();
-            inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
-
-            const saveEdit = async () => {
-                itemEl.classList.remove('is-editing-task');
-                if (cancelBtn.parentNode) cancelBtn.remove();
-                btn.innerHTML = pencilIcon; // 연필로 원복
-                btn.style.color = '#9ca3af';
-                btn.title = "수정";
-
-                const newTask = inputEl.value.trim();
-                
-                // 변경 없거나 빈 칸이면 원상복귀만
-                if (!newTask || newTask === textEl.textContent) {
-                    textEl.classList.remove('hidden');
-                    if (alarmBadge) alarmBadge.classList.remove('hidden');
-                    inputEl.classList.add('hidden');
-                    return;
-                }
-
-                // 시간 문자열 재파싱
-                const { task, alarmTime } = parseTimeFromTask(newTask);
-
-                try {
-                    await apiFetch(`/api/todos/${id}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ task, alarmTime })
-                    });
-                    document.querySelectorAll('.widget-todo').forEach(w => loadTodoList(w));
-                } catch (err) { }
-            };
-
-            // 이벤트 처리
-            inputEl.onblur = saveEdit;
-            inputEl.onkeydown = (ev) => {
-                ev.stopPropagation(); // 위젯 드래그 방지
-                if (ev.key === 'Enter') inputEl.blur();
-                if (ev.key === 'Escape') cancelBtn.click();
-            };
-        };
-    });
-}
