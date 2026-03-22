@@ -161,7 +161,7 @@ router.post('/social-register', async (req, res) => {
                     email: user.email,
                     socialProvider: user.provider,
                     socialIds: user.social_ids || [],
-                    hasPassword: true, // 새 가입이므로 비밀번호가 항상 있음
+                    hasPassword: !!user.password, // 패스워드가 있는 경우만 true
                     todoAutoDelete: user.todo_auto_delete
                 }
             });
@@ -207,7 +207,7 @@ router.post('/social-login', async (req, res) => {
                 
                 // Transfer widgets
                 await pool.query(
-                    'UPDATE tba_widgets SET user_id = $1 WHERE user_id = $2',
+                    'UPDATE tba_user_widgets SET user_id = $1 WHERE user_id = $2',
                     [toUserId, fromUserId]
                 );
                 
@@ -364,8 +364,12 @@ router.post('/social-login', async (req, res) => {
             }
         });
     } catch (error) {
-        console.error('소셜 로그인 에러:', error);
-        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+        console.error('❌ [Social Login Error]:', error);
+        res.status(500).json({ 
+            success: false, 
+            message: '서버 오류가 발생했습니다.',
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined 
+        });
     }
 });
 

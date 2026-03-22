@@ -31,7 +31,7 @@ app.get('/api/health', (req, res) => {
 app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // DB 초기화
-initDatabase();
+// startServer()에서 비동기로 호출됨
 
 // Web Push 스케줄러 시작
 const { startPushScheduler } = require('./utils/pushScheduler');
@@ -85,10 +85,22 @@ app.get('*', (req, res) => {
 
 // ─── 서버 시작 ─────────────────────────────────────────────────
 
-if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT} `);
-  });
+async function startServer() {
+  try {
+    // DB 초기화 완료 후 서버 시작
+    await initDatabase();
+    
+    if (require.main === module) {
+      app.listen(PORT, () => {
+        console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT} `);
+      });
+    }
+  } catch (err) {
+    console.error('❌ 서버 시작 실패:', err);
+    process.exit(1);
+  }
 }
+
+startServer();
 
 module.exports = app;

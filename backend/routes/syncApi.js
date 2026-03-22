@@ -21,54 +21,6 @@ const DATA_TYPES = {
 };
 
 /**
- * 사용자 설정 테이블 생성 (한 번만 실행)
- */
-async function ensureUserSettingsTable(client) {
-    await client.query(`
-        CREATE TABLE IF NOT EXISTS tba_user_settings (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES tba_users(id) NOT NULL UNIQUE,
-            settings JSONB DEFAULT '{}',
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    `);
-    
-    await client.query(`
-        CREATE TABLE IF NOT EXISTS tba_widget_settings (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES tba_users(id) NOT NULL,
-            widget_id INTEGER REFERENCES tba_user_widgets(id),
-            setting_key VARCHAR(100) NOT NULL,
-            setting_value TEXT,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, widget_id, setting_key)
-        );
-    `);
-    
-    await client.query(`
-        CREATE INDEX IF NOT EXISTS idx_widget_settings_user 
-        ON tba_widget_settings(user_id, widget_id);
-    `);
-}
-
-/**
- * 스프레드시트 테이블 생성
- */
-async function ensureSpreadsheetTable(client) {
-    await client.query(`
-        CREATE TABLE IF NOT EXISTS tba_spreadsheets (
-            id SERIAL PRIMARY KEY,
-            user_id INTEGER REFERENCES tba_users(id) NOT NULL,
-            widget_id INTEGER REFERENCES tba_user_widgets(id),
-            data JSONB DEFAULT '{}',
-            headers JSONB DEFAULT '{}',
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_id, widget_id)
-        );
-    `);
-}
-
-/**
  * GET /api/sync/data - 모든 동기화 데이터 조회 (폴링용)
  * 클라이언트가 마지막 업데이트 시간 이후의 변경 사항을 가져옴
  */
@@ -77,10 +29,6 @@ router.get('/data', authenticateToken, async (req, res) => {
         const client = await pool.connect();
         
         try {
-            // 필요한 테이블是否存在 확인
-            await ensureUserSettingsTable(client);
-            await ensureSpreadsheetTable(client);
-            
             const userId = req.user.id;
             const lastUpdate = req.query.lastUpdate || '1970-01-01';
             
@@ -122,7 +70,7 @@ router.get('/data', authenticateToken, async (req, res) => {
             client.release();
         }
     } catch (error) {
-        console.error('-sync/data 조회 에러:', error);
+        console.error('sync/data 조회 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류' });
     }
 });
@@ -135,9 +83,6 @@ router.post('/data', authenticateToken, async (req, res) => {
         const client = await pool.connect();
         
         try {
-            await ensureUserSettingsTable(client);
-            await ensureSpreadsheetTable(client);
-            
             const userId = req.user.id;
             const { type, widgetId, data, timestamp } = req.body;
             
@@ -243,9 +188,6 @@ router.post('/migrate', authenticateToken, async (req, res) => {
         const client = await pool.connect();
         
         try {
-            await ensureUserSettingsTable(client);
-            await ensureSpreadsheetTable(client);
-            
             const userId = req.user.id;
             const { localStorageData } = req.body;
             
