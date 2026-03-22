@@ -148,6 +148,9 @@ export async function initTodo(el) {
 
     // 4. 자정(날짜 변경) 감지 및 자동 새로고침 설정
     setupDailyReset(el);
+
+    // 5. 크로스 디바이스 실시간 동기화: 탭으로 돌아왔을 때 즉시 새로고침
+    setupCrossDeviceSync(el);
 }
 
 /**
@@ -175,6 +178,45 @@ function setupDailyReset(el) {
             }
         }
     }, 60000); // 1분 간격
+}
+
+/**
+ * 크로스 디바이스 실시간 동기화 설정
+ * 탭을 다시 열었을 때, 포커스가 돌아왔을 때, 그리고 주기적으로 투두 목록을 갱신합니다.
+ * @param {HTMLElement} el 위젯 루트 엘리먼트
+ */
+function setupCrossDeviceSync(el) {
+    if (el._hasCrossDeviceSync) return;
+    el._hasCrossDeviceSync = true;
+
+    // 브라우저 탭 활성화 (visbility 상태 변경) 시 즉시 갱신
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && document.body.contains(el)) {
+            console.log('[Todo Sync] 탭 활성화: 투두 목록 갱신');
+            loadTodoList(el, true); // true: 백그라운드 무음 갱신 (애니메이션 끄기용, 선택사항)
+        }
+    });
+
+    // 창에 포커스가 돌아올 때 갱신 (다른 모니터/앱에서 돌아올 때)
+    window.addEventListener('focus', () => {
+        if (document.body.contains(el)) {
+            console.log('[Todo Sync] 창 포커스: 투두 목록 갱신');
+            loadTodoList(el, true);
+        }
+    });
+
+    // 보험용 백그라운드 폴링 (30초마다 갱신 - 같은 띄워둔 화면에서 다른 기기가 바꿀 때 대비)
+    const pollInterval = setInterval(() => {
+        if (!document.body.contains(el)) {
+            clearInterval(pollInterval);
+            return;
+        }
+        // 사용자가 타이틀 수정 중이거나 인풋에 포커스 되어 있을 때는 UI 튀지 않게 방지
+        const isEditing = el.classList.contains('is-editing') || document.activeElement.closest('.todo-list-container');
+        if (!isEditing) {
+            loadTodoList(el, true);
+        }
+    }, 30000); // 30초
 }
 
 async function applyCheckboxColor(el, color) {
@@ -280,14 +322,30 @@ async function setupTitleEdit(el, titleEl, editBtn) {
     });
 }
 
-async function loadTodoList(el) {
+async function loadTodoList(el, isBackgroundSync = false) {
     try {
+        const container = el.querySelector('.todo-list-container');
+        
+        // 낙관적 UI 진행 중(임시 노드가 존재)일 때는 백그라운드 갱신 무시
+        // 그렇지 않으면 입력 직후 서버 통신 전에 화면이 깜빡이거나 임시 노드가 사라짐 
+        if (isBackgroundSync && container && container.querySelector('.todo-item[style*="opacity: 0.5"]')) {
+            console.log('[Todo] 낙관적 UI 처리 중: 백그라운드 갱신 보류');
+            return;
+        }
+
         // 위젯 ID 가져오기
         const widgetId = el.closest('.draggable-widget')?.dataset?.id;
         const query = widgetId ? `?widget_id=${widgetId}` : '';
 
         const res = await apiFetch(`/api/todos${query}`);
         const result = await res.json();
+        
+        // 데이터를 가져오는 사이에 새 임시 노드가 생겼을 수 있으므로 다시 체크
+        if (container && container.querySelector('.todo-item[style*="opacity: 0.5"]')) {
+            console.log('[Todo] 낙관적 UI 처리 중: 렌더링 보류');
+            return;
+        }
+
         if (result.success) renderTodos(el, result.todos);
     } catch (err) {
         console.error('[Todo] 로드 에러:', err);
@@ -299,11 +357,36 @@ async function addTodo(el) {
     const taskContent = input.value.trim();
     if (!taskContent) return;
 
+    // 입력창 즉시 비우기 (반응성 향상)
+    input.value = '';
+
     // 시간 파싱
     const { task, alarmTime } = parseTimeFromTask(taskContent);
     const colorValue = await syncService.getData(SYNC_DATA_TYPES.TODO_COLOR);
     const color = colorValue || DEFAULT_CHECKBOX_COLOR;
     const widgetId = el.closest('.draggable-widget')?.dataset?.id;
+
+    // 낙관적 UI (Optimistic UI): 서버 응답을 기다리지 않고 화면에 먼저 임시 아이템 추가
+    const container = el.querySelector('.todo-list-container');
+    const tempId = 'temp-' + Date.now();
+    const tempTodo = {
+        id: tempId,
+        task: task,
+        color: color,
+        is_completed: false,
+        alarm_time: alarmTime
+    };
+
+    // 임시 DOM 노드 생성 후 먼저 삽입 (맨 위에 추가)
+    if (container) {
+        if (container.querySelector('.no-data-mini')) {
+            container.innerHTML = '';
+        }
+        const tempHtml = generateTodoHtml(tempTodo);
+        container.insertAdjacentHTML('afterbegin', tempHtml);
+        const newEl = container.firstElementChild;
+        newEl.style.opacity = '0.5'; // 진행 중임을 표시
+    }
 
     try {
         const res = await apiFetch('/api/todos', {
@@ -312,16 +395,26 @@ async function addTodo(el) {
                 task,
                 color,
                 widget_id: widgetId,
-                alarmTime // parseTimeFromTask에서 생성한 KST ISO (+09:00) 그대로 전송
+                alarmTime
             })
         });
         const result = await res.json();
+        
+        // 서버 처리 후 전체 목록을 다시 불러와서 임시 노드를 실제 노드로 대체
+        // 약간의 지연 후 갱신되므로 사용자에게 빠른 피드백 제공
         if (result.success) {
-            input.value = '';
-            loadTodoList(el);
+            loadTodoList(el, true); 
+        } else {
+            // 실패 시 임시 노드 삭제
+            const tempEl = container.querySelector(`[data-id="${tempId}"]`)?.closest('.todo-item');
+            if (tempEl) tempEl.remove();
+            console.error('[Todo] 추가 에러: 서버 응답 오류');
         }
     } catch (err) {
         console.error('[Todo] 추가 에러:', err);
+        // 실패 시 임시 노드 삭제
+        const tempEl = container?.querySelector(`[data-id="${tempId}"]`)?.closest('.todo-item');
+        if (tempEl) tempEl.remove();
     }
 }
 
@@ -381,76 +474,74 @@ function parseTimeFromTask(taskContent) {
     return { task, alarmTime };
 }
 
+function generateTodoHtml(todo) {
+    const color = todo.color || DEFAULT_CHECKBOX_COLOR;
+    const checked = todo.is_completed;
+
+    // 알람 표시 생성
+    let alarmHtml = '';
+    if (todo.alarm_time) {
+        let alarmStr = todo.alarm_time;
+
+        if (typeof alarmStr === 'string') {
+            alarmStr = alarmStr.replace(' ', 'T');
+            if (!alarmStr.includes('Z') && !alarmStr.includes('+')) {
+                alarmStr += 'Z';
+            }
+        }
+        const time = new Date(alarmStr);
+
+        const formatter = new Intl.DateTimeFormat('ko-KR', {
+            timeZone: 'Asia/Seoul',
+            hour12: false,
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const timeStr = formatter.format(time);
+
+        const isPast = time < new Date() && !checked;
+        alarmHtml = `
+            <div class="todo-alarm-badge ${isPast ? 'past' : ''}" title="알람 설정됨 (KST): ${timeStr}">
+                <span class="alarm-icon">⏰</span>
+                <span class="alarm-time-text">${timeStr}</span>
+            </div>
+        `;
+    }
+
+    return `
+    <div class="todo-item ${checked ? 'completed' : ''}" data-id="${todo.id}">
+        <div class="todo-item-main">
+            <input type="checkbox" ${checked ? 'checked' : ''} 
+                   style="background:${checked ? color : 'transparent'}; border-color:${color};"
+                   data-id="${todo.id}" data-color="${color}" class="todo-check">
+            <div class="todo-content-wrap">
+                <span class="todo-text">${todo.task}</span>
+                <input type="text" class="todo-edit-input hidden" value="${todo.task}" style="background:transparent; border:1px solid var(--todo-checkbox-color, #8B5CF6); color:inherit; border-radius:4px; padding:2px 6px; width:100%; outline:none; font-size:inherit;">
+                ${alarmHtml}
+            </div>
+        </div>
+        <div class="todo-actions" style="display:flex; gap:4px; align-items:center;">
+            <button class="todo-edit-btn" data-id="${todo.id}" title="수정" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#9ca3af'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+            <button class="todo-del-btn" data-id="${todo.id}" title="삭제" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#9ca3af'">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+            </button>
+        </div>
+    </div>`;
+}
+
 function renderTodos(el, todos) {
     const container = el.querySelector('.todo-list-container');
     if (!container) return;
 
     const sortedTodos = [...todos].sort((a, b) => b.id - a.id);
-    const html = sortedTodos.map(todo => {
-        const color = todo.color || DEFAULT_CHECKBOX_COLOR;
-        const checked = todo.is_completed;
-
-        // 알람 표시 생성
-        let alarmHtml = '';
-        if (todo.alarm_time) {
-            let alarmStr = todo.alarm_time;
-
-            // Date 객체거나 유효한 문자열인지 확인 후 파싱
-            if (typeof alarmStr === 'string') {
-                alarmStr = alarmStr.replace(' ', 'T');
-                // TIMESTAMPTZ로 변경되었으므로 이제 API에서 Z 또는 +09:00이 포함되어 옵니다.
-                // 하위 호환성을 위해 타임존 정보가 정말 없는 경우에만 Z(UTC) 추가
-                if (!alarmStr.includes('Z') && !alarmStr.includes('+')) {
-                    alarmStr += 'Z';
-                }
-            }
-            const time = new Date(alarmStr);
-
-            // 시각적 확인을 위한 보정 (항상 KST Asia/Seoul 강제)
-            const formatter = new Intl.DateTimeFormat('ko-KR', {
-                timeZone: 'Asia/Seoul',
-                hour12: false,
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            const timeStr = formatter.format(time);
-
-            const isPast = time < new Date() && !checked;
-            alarmHtml = `
-                <div class="todo-alarm-badge ${isPast ? 'past' : ''}" title="알람 설정됨 (KST): ${timeStr}">
-                    <span class="alarm-icon">⏰</span>
-                    <span class="alarm-time-text">${timeStr}</span>
-                </div>
-            `;
-        }
-
-        return `
-        <div class="todo-item ${checked ? 'completed' : ''}">
-            <div class="todo-item-main">
-                <input type="checkbox" ${checked ? 'checked' : ''} 
-                       style="background:${checked ? color : 'transparent'}; border-color:${color};"
-                       data-id="${todo.id}" data-color="${color}" class="todo-check">
-                <div class="todo-content-wrap">
-                    <span class="todo-text">${todo.task}</span>
-                    <input type="text" class="todo-edit-input hidden" value="${todo.task}" style="background:transparent; border:1px solid var(--todo-checkbox-color, #8B5CF6); color:inherit; border-radius:4px; padding:2px 6px; width:100%; outline:none; font-size:inherit;">
-                    ${alarmHtml}
-                </div>
-            </div>
-            <div class="todo-actions" style="display:flex; gap:4px; align-items:center;">
-                <button class="todo-edit-btn" data-id="${todo.id}" title="수정" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#9ca3af'">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-                </button>
-                <button class="todo-del-btn" data-id="${todo.id}" title="삭제" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#9ca3af'">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polyline points="3 6 5 6 21 6"></polyline>
-                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                        <line x1="10" y1="11" x2="10" y2="17"></line>
-                        <line x1="14" y1="11" x2="14" y2="17"></line>
-                    </svg>
-                </button>
-            </div>
-        </div>`;
-    }).join('');
+    const html = sortedTodos.map(todo => generateTodoHtml(todo)).join('');
 
     container.innerHTML = html || '<div class="no-data-mini">할 일이 없습니다.</div>';
 
