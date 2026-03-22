@@ -207,9 +207,58 @@ class TodoAlarmSystem {
     /** 알림 권한 요청 */
     async _requestPermission() {
         if (!('Notification' in window)) return;
-        if (Notification.permission === 'default') {
-            await Notification.requestPermission();
+
+        if (Notification.permission === 'denied') {
+            // 차단된 경우 브라우저 설정 안내
+            this._showPermissionGuide();
+            return;
         }
+
+        if (Notification.permission === 'default') {
+            const result = await Notification.requestPermission();
+            if (result === 'denied') {
+                this._showPermissionGuide();
+            }
+        }
+    }
+
+    /** 알림 차단 상태일 때 브라우저 설정 안내 배너 표시 */
+    _showPermissionGuide() {
+        if (document.getElementById('notif-denied-banner')) return;
+
+        const isMobile = /Android|iPhone|iPad/i.test(navigator.userAgent);
+        const guide = isMobile
+            ? '📱 모바일: 브라우저 설정 → 사이트 설정 → 알림 → GGMINDMAP 선택 → <b>허용</b>'
+            : '💻 PC: 주소창 왼쪽 🔒 아이콘 클릭 → 알림 → <b>허용</b>';
+
+        const banner = document.createElement('div');
+        banner.id = 'notif-denied-banner';
+        banner.innerHTML = `
+            <div style="
+                position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+                background: #1e293b; border: 1px solid #f59e0b; border-radius: 12px;
+                padding: 16px 20px; max-width: 420px; width: 90%; z-index: 99999;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.5); color: #f8fafc;
+                font-family: 'Inter', sans-serif; font-size: 0.9rem; line-height: 1.5;
+            ">
+                <div style="display:flex; align-items:flex-start; gap: 12px;">
+                    <span style="font-size:1.4rem; flex-shrink:0;">🔕</span>
+                    <div>
+                        <b style="color:#f59e0b;">알림이 차단되어 있습니다</b><br>
+                        알람을 받으려면 브라우저 설정에서 알림을 허용해주세요.<br>
+                        <span style="color:#94a3b8; font-size:0.82rem;">${guide}</span>
+                    </div>
+                    <button onclick="document.getElementById('notif-denied-banner').remove()" style="
+                        background: none; border: none; color: #64748b;
+                        font-size: 1.2rem; cursor: pointer; flex-shrink: 0; padding: 0; line-height:1;
+                    ">✕</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(banner);
+
+        // 10초 후 자동으로 사라짐
+        setTimeout(() => banner.remove(), 10000);
     }
 
     /** 서버에서 투두 목록을 가져와 알람 스케줄 재정의 */
