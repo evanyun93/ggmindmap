@@ -1,10 +1,10 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// PostgreSQL 연결 설정
+// PostgreSQL 연결 설정 (DB는 Render에 호스팅 → SSL 필수)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ...(process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {})
+  ssl: { rejectUnauthorized: false }
 });
 
 /**

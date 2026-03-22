@@ -12,7 +12,8 @@ const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://ggmindmap.vercel.app'
+    'https://ggmindmap.vercel.app',
+    'https://unperturbable-fatherless-annamae.ngrok-free.dev'
   ],
   credentials: true
 };
