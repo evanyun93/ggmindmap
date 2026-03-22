@@ -1,11 +1,10 @@
 const { Pool } = require('pg');
-const Database = require('better-sqlite3');
 require('dotenv').config();
 
 // PostgreSQL 연결 설정
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false } // 무조건 SSL 허용 (Render DB 접속용)
+  ...(process.env.DB_SSL === 'true' ? { ssl: { rejectUnauthorized: false } } : {})
 });
 
 /**
@@ -174,6 +173,24 @@ async function initDatabase() {
           data JSONB NOT NULL,
           updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
+      `);
+
+      // tba_push_subscriptions 테이블 생성 (Web Push 구독 정보)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_push_subscriptions (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES tba_users(id) ON DELETE CASCADE,
+          endpoint TEXT NOT NULL UNIQUE,
+          subscription JSONB NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_push_subs_user ON tba_push_subscriptions(user_id);
+      `);
+
+      // tba_todos에 push_sent_at 컬럼 추가 (중복 발송 방지)
+      await client.query(`
+        ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS push_sent_at TIMESTAMPTZ;
       `);
 
       // DB 세션 타임존을 한국 시간으로 고정 (조회 시 시차 혼선 방지)

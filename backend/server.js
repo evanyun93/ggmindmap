@@ -7,13 +7,12 @@ const { initDatabase } = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS 설정 - Vercel Frontend, ngrok 및 로컬 개발 허용
+// CORS 설정
 const corsOptions = {
   origin: [
     'http://localhost:3000',
     'http://localhost:3001',
-    'https://ggmindmap.vercel.app',
-    'https://unperturbable-fatherless-annamae.ngrok-free.dev'
+    'https://ggmindmap.vercel.app'
   ],
   credentials: true
 };
@@ -21,11 +20,6 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 
-// ngrok 브라우저 경고 페이지 스킵
-app.use((req, res, next) => {
-  res.setHeader('ngrok-skip-browser-warning', 'true');
-  next();
-});
 
 // 헬스체크 API
 app.get('/api/health', (req, res) => {
@@ -37,6 +31,10 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // DB 초기화
 initDatabase();
+
+// Web Push 스케줄러 시작
+const { startPushScheduler } = require('./utils/pushScheduler');
+startPushScheduler();
 
 // ─── API 라우트 등록 ──────────────────────────────────────────
 
@@ -71,6 +69,10 @@ app.use('/api/recipe', recipeApi);
 // 8. 동기화 API 관련
 const syncApi = require('./routes/syncApi');
 app.use('/api/sync', syncApi);
+
+// 9. Web Push 구독 관련
+const pushApi = require('./routes/pushApi');
+app.use('/api/push', pushApi);
 
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 

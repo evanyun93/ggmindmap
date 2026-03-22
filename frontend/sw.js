@@ -136,6 +136,26 @@ self.addEventListener('periodicsync', (event) => {
     }
 });
 
+// ── 서버에서 발송된 Web Push 수신 ─────────────────────────────
+self.addEventListener('push', (event) => {
+    let data = { title: 'GGMIND-알리미', body: '새 알람이 있습니다.', tag: 'ggmind-push', icon: '/assets/advanced-icon.png' };
+    try {
+        if (event.data) data = { ...data, ...event.data.json() };
+    } catch (e) { /* ignore parse error */ }
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: data.icon || '/assets/advanced-icon.png',
+            badge: data.badge || '/assets/advanced-icon.png',
+            tag: data.tag,
+            renotify: false,
+            vibrate: [200, 100, 200],
+            requireInteraction: true,
+        })
+    );
+});
+
 // ── 알림 클릭 시 앱 탭 열기 또는 포커스 ─────────────────────
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();

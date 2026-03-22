@@ -57,7 +57,7 @@ async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     try {
         const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
-        await navigator.serviceWorker.ready; // SW가 활성화될 때까지 대기
+        await navigator.serviceWorker.ready;
         swRegistration = reg;
         console.log('[TodoAlarm] Service Worker 등록 완료');
 
@@ -66,23 +66,61 @@ async function registerServiceWorker() {
             try {
                 const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
                 if (status.state === 'granted') {
-                    await reg.periodicSync.register('ggmind-alarm-check', {
-                        // 최소 간격 1분 (실제 브라우저가 허용하는 최솟값은 보통 5~15분)
-                        minInterval: 60 * 1000
-                    });
-                    console.log('[TodoAlarm] Periodic Background Sync 등록 완료 - 백그라운드 알람 활성화');
-                } else {
-                    console.warn('[TodoAlarm] Periodic Background Sync 권한 없음 - 탭 열림 상태에서만 알람 동작');
+                    await reg.periodicSync.register('ggmind-alarm-check', { minInterval: 60 * 1000 });
+                    console.log('[TodoAlarm] Periodic Background Sync 등록 완료');
                 }
             } catch (e) {
                 console.warn('[TodoAlarm] Periodic Background Sync 등록 실패:', e);
             }
         }
+
+        // Web Push 구독 등록 (서버에서 직접 발송하는 진짜 백그라운드 알람)
+        await subscribeWebPush(reg);
+
         return reg;
     } catch (err) {
         console.warn('[TodoAlarm] Service Worker 등록 실패 (일반 Notification으로 폴백):', err);
         return null;
     }
+}
+
+/**
+ * Web Push 구독을 생성하고 서버에 저장합니다.
+ */
+async function subscribeWebPush(reg) {
+    // VAPID 공개키: 서버의 환경변수와 일치해야 합니다
+    const VAPID_PUBLIC_KEY = 'BIwtlPfd2BiN_LHF5pNrjMAlrkwN1zuh5KBw6G4oc_feLh7UNBizYsh46ATjTipGE0B2y8hT-IktQKNbUHQnlDs';
+
+    try {
+        // 이미 구독되어 있으면 재사용
+        let subscription = await reg.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await reg.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+            });
+        }
+
+        // 서버에 구독 정보 저장
+        const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+        if (!token) return;
+
+        await apiFetch('/api/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify({ subscription })
+        });
+        console.log('[TodoAlarm] Web Push 구독 서버 저장 완료 → 완전한 백그라운드 알람 활성화');
+    } catch (err) {
+        console.warn('[TodoAlarm] Web Push 구독 실패 (권한 거부 또는 미지원):', err.message);
+    }
+}
+
+/** VAPID 공개키를 Uint8Array로 변환 */
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
 /**
