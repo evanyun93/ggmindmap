@@ -108,11 +108,11 @@ router.post('/data', authenticateToken, async (req, res) => {
                     break;
                 
                 case DATA_TYPES.TODO_COLLAPSED:
-                case DATA_TYPES.TODO_TITLE:
                 case DATA_TYPES.MILESTONE_COLLAPSED:
-                case DATA_TYPES.MILESTONE_TITLE:
                 case DATA_TYPES.MILESTONE_SETTINGS:
-                    // 위젯별 설정으로 저장
+                case DATA_TYPES.TODO_DATA_UPDATE:
+                case DATA_TYPES.MILESTONE_DATA_UPDATE:
+                    // 위젯별 설정으로 저장 (마지막 업데이트 시각 등)
                     if (!widgetId) {
                         return res.status(400).json({ success: false, message: 'widgetId가 필요합니다.' });
                     }
@@ -123,6 +123,25 @@ router.post('/data', authenticateToken, async (req, res) => {
                         DO UPDATE SET setting_value = $4, updated_at = CURRENT_TIMESTAMP`,
                         [userId, widgetId, type, String(data)]
                     );
+                    break;
+
+                case DATA_TYPES.TODO_TITLE:
+                case DATA_TYPES.MILESTONE_TITLE:
+                case DATA_TYPES.RECIPE_TITLE:
+                case 'data_update': // 범용 데이터 업데이트 신호
+                    // 위젯 전용 title 컬럼 또는 범용 업데이트 신호 처리
+                    if (!widgetId) {
+                        return res.status(400).json({ success: false, message: 'widgetId가 필요합니다.' });
+                    }
+                    if (type !== 'data_update') {
+                        await client.query(
+                            `UPDATE tba_user_widgets 
+                             SET title = $1 
+                             WHERE id = $2 AND user_id = $3`,
+                            [String(data), widgetId, userId]
+                        );
+                    }
+                    // 'data_update'는 tba_widget_settings에 저장되어 브로드캐스트됨 (기존 로직 활용)
                     break;
 
                 case DATA_TYPES.TODO_AUTO_DELETE:

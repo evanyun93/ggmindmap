@@ -132,7 +132,13 @@ export async function initMilestone(el, widgetData) {
         };
     }
 
-    // 3. 데이터 로딩 및 주기적 갱신
+    // 3. 실시간 동기화 리스너 (범용 아키텍처 적용)
+    syncService.watchWidget(widgetId, () => {
+        console.log('[Milestone] 실시간 데이터 업데이트 감지 - 렌더링 갱신');
+        renderMilestoneData(el, settings);
+    });
+
+    // 4. 데이터 로딩 및 주기적 갱신
     renderMilestoneData(el, settings);
     setInterval(async () => await renderMilestoneData(el, settings), 5000);
 }
@@ -210,15 +216,16 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
 
                 // 위젯 자체 설정(settings.title)에도 저장하여 다음 로드 시 즉시 반영되도록 함
                 try {
-                    const currentSettings = settings || {};
+                    // 1. 위젯 전용 title 컬럼 업데이트 (최적화)
                     await apiFetch(`/api/widgets/${widgetId}`, {
                         method: 'PATCH',
-                        body: JSON.stringify({ 
-                            title: newTitle,
-                            settings: { ...currentSettings, title: newTitle } 
-                        })
+                        body: JSON.stringify({ title: newTitle })
                     });
-                    // 로컬 데이터도 최신화
+                    
+                    // 2. 실시간 동기화를 위한 브로드캐스트
+                    await syncService.setData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId, newTitle);
+
+                    // 3. 로컬 데이터 최신화
                     if (settings) settings.title = newTitle;
                 } catch (err) {
                     console.error('[Milestone] 제목 설정 저장 실패:', err);
@@ -260,6 +267,8 @@ async function saveSettings(id, settings) {
         for (const [key, value] of Object.entries(settings)) {
             await syncService.setData(key, id, value);
         }
+        // 데이터 변경 신호 브로드캐스트 (실시간 갱신용)
+        await syncService.setData(SYNC_DATA_TYPES.MILESTONE_DATA_UPDATE, id, Date.now());
     } catch (err) {
         console.error('[Milestone] 설정 저장 실패:', err);
     }

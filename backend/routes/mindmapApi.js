@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/authHandler');
+const syncService = require('../services/syncService');
 
 /**
  * 사용자별 마인드맵 데이터 조회
@@ -37,6 +38,10 @@ router.post('/', authenticateToken, async (req, res) => {
                 [req.user.id, data]
             );
         }
+
+        // 실시간 동기화 알림 (마인드맵 데이터 변경)
+        syncService.notifyChange(req.user.id, 0, 'mindmap_update');
+
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, message: '서버 오류' });

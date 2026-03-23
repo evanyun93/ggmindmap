@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/authHandler');
+const syncService = require('../services/syncService');
 
 /**
  * 사용자별 To-Do 목록 조회 (widget별 필터링 가능)
@@ -50,6 +51,12 @@ router.post('/', authenticateToken, async (req, res) => {
             'INSERT INTO tba_todos (user_id, widget_id, task, color, alarm_time) VALUES ($1, $2, $3, $4, $5) RETURNING id',
             [req.user.id, widget_id || null, task, color || '#8B5CF6', alarmTime || null]
         );
+
+        // 실시간 동기화 알림 (범용 아키텍처)
+        if (widget_id) {
+            syncService.notifyChange(req.user.id, widget_id, 'todo_data_update');
+        }
+
         res.status(201).json({ success: true, id: result.rows[0].id });
     } catch (error) {
         console.error('To-Do 추가 에러:', error);
@@ -98,9 +105,16 @@ router.patch('/:id', authenticateToken, async (req, res) => {
             UPDATE tba_todos 
             SET ${updateFields.join(', ')} 
             WHERE id = $${idIndex} AND user_id = $${userIdIndex}
+            RETURNING widget_id
         `;
 
-        await pool.query(query, params);
+        const result = await pool.query(query, params);
+        
+        // 실시간 동기화 알림
+        if (result.rows[0]?.widget_id) {
+            syncService.notifyChange(req.user.id, result.rows[0].widget_id, 'todo_data_update');
+        }
+
         res.json({ success: true });
     } catch (error) {
         console.error('To-Do 변경 에러:', error);
@@ -114,7 +128,16 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 router.delete('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        await pool.query('DELETE FROM tba_todos WHERE id = $1 AND user_id = $2', [id, req.user.id]);
+        const result = await pool.query(
+            'DELETE FROM tba_todos WHERE id = $1 AND user_id = $2 RETURNING widget_id', 
+            [id, req.user.id]
+        );
+
+        // 실시간 동기화 알림
+        if (result.rows[0]?.widget_id) {
+            syncService.notifyChange(req.user.id, result.rows[0].widget_id, 'todo_data_update');
+        }
+
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false, message: '서버 오류' });

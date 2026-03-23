@@ -19,14 +19,17 @@ export const SYNC_DATA_TYPES = {
     TODO_COLOR: 'todo_color',
     TODO_TITLE: 'todo_title',
     TODO_AUTO_DELETE: 'todo_auto_delete',
+    TODO_DATA_UPDATE: 'todo_data_update',
     MILESTONE_COLLAPSED: 'milestone_collapsed',
     MILESTONE_TITLE: 'milestone_title',
     MILESTONE_SETTINGS: 'milestone_settings',
+    MILESTONE_DATA_UPDATE: 'milestone_data_update',
     DDAY_TARGET: 'dday_target',
     FAB_POS: 'fab_pos',
     SPREADSHEET_DATA: 'spreadsheet_data',
      SPREADSHEET_HEADERS: 'spreadsheet_headers',
-     RECIPE_TITLE: 'recipe_title'
+     RECIPE_TITLE: 'recipe_title',
+     MINDMAP_UPDATE: 'mindmap_update'
 };
 
 /**
@@ -673,6 +676,42 @@ class SyncService {
      */
     addListener(event, callback) {
         this.on(event, callback);
+    }
+
+    /**
+     * removeListener 에일리어스 (off와 동일)
+     */
+    removeListener(event, callback) {
+        this.off(event, callback);
+    }
+
+    /**
+     * 특정 위젯의 모든 데이터 변경 신호를 감지하여 콜백 실행 (범용 아키텍처)
+     * @param {string|number} widgetId 위젯 ID
+     * @param {function} callback 변경 시 실행할 함수
+     * @returns {function} 리스너 제거용 함수
+     */
+    watchWidget(widgetId, callback) {
+        if (!widgetId) return () => {};
+        
+        const types = [
+            SYNC_DATA_TYPES.TODO_DATA_UPDATE,
+            SYNC_DATA_TYPES.MILESTONE_DATA_UPDATE,
+            'data_update'
+        ];
+
+        const listener = (updatedWidgetId, newValue) => {
+            if (String(updatedWidgetId) === String(widgetId)) {
+                callback(newValue);
+            }
+        };
+
+        types.forEach(type => this.addListener(type, listener));
+        
+        // 구독 해제용 함수 반환
+        return () => {
+            types.forEach(type => this.removeListener(type, listener));
+        };
     }
 
     /**

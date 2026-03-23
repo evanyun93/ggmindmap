@@ -47,6 +47,13 @@ export async function initMindmap() {
     // 마인드맵 컨테이너에 맞게 컨텍스트 메뉴 초기화
     contextMenu.init();
     contextMenu.bindGlobalListeners('#mindmapCanvasContainer');
+
+    // 실시간 동기화 리스너 (범용 아키텍처 적용 - 전역 마인드맵은 ID 0 사용)
+    syncService.watchWidget(0, async () => {
+        console.log('[Mindmap] 실시간 데이터 업데이트 감지 - 데이터 재로드');
+        await loadMindmapData();
+        renderMindmap();
+    });
 }
 
 // ── 편집기 이벤트 ─────────────────────────────────────────────

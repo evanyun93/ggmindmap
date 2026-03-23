@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/authHandler');
+const syncService = require('../services/syncService');
 
 /**
  * 위젯 목록 및 레이아웃 조회
@@ -78,6 +79,11 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 
         const result = await pool.query(query, values);
         if (result.rowCount === 0) return res.status(404).json({ success: false, message: '위젯을 찾을 수 없습니다.' });
+
+        // 실시간 동기화 알림 (설정이나 제목이 변경된 경우)
+        if (title !== undefined || settings !== undefined) {
+            syncService.notifyChange(req.user.id, id, 'data_update');
+        }
 
         res.json({ success: true, widget: result.rows[0] });
     } catch (error) {

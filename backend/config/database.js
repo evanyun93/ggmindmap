@@ -283,10 +283,43 @@ async function initDatabase() {
         console.error('⚠️ 마이그레이션 실패:', e.message);
       }
 
-      // tba_user_widgets title 컬럼 추가 마이그레이션
+      // tba_user_widgets title 컬럼 추가 및 데이터 통합 마이그레이션
       try {
+        // 1. 컬럼 추가 (이미 있으면 무시)
         await client.query('ALTER TABLE tba_user_widgets ADD COLUMN IF NOT EXISTS title VARCHAR(100)');
-        console.log('✅ tba_user_widgets.title 컬럼 마이그레이션 완료');
+        
+        // 2. tba_widget_settings 테이블에서 제목 데이터 가져오기
+        await client.query(`
+          UPDATE tba_user_widgets w
+          SET title = s.setting_value
+          FROM tba_widget_settings s
+          WHERE w.id = s.widget_id 
+          AND s.setting_key IN ('todo_title', 'milestone_title') 
+          AND (w.title IS NULL OR w.title = '')
+        `);
+        
+        // 3. settings JSONB 필드에서 제목 데이터 가져오기
+        await client.query(`
+          UPDATE tba_user_widgets
+          SET title = settings->>'title'
+          WHERE settings ? 'title' 
+          AND (title IS NULL OR title = '')
+        `);
+        
+        // 4. tba_widget_settings에서 중복된 제목 데이터 삭제
+        await client.query(`
+          DELETE FROM tba_widget_settings 
+          WHERE setting_key IN ('todo_title', 'milestone_title')
+        `);
+        
+        // 5. settings JSONB 필드에서 중복된 title 키 삭제
+        await client.query(`
+          UPDATE tba_user_widgets 
+          SET settings = settings - 'title' 
+          WHERE settings ? 'title'
+        `);
+
+        console.log('✅ tba_user_widgets.title 컬럼 통합 및 중복 데이터 정리 완료');
       } catch (e) {
         console.error('⚠️ tba_user_widgets.title 마이그레이션 실패:', e.message);
       }

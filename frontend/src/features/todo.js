@@ -135,15 +135,21 @@ export async function initTodo(el, widgetData) {
         };
 
         // 다른 기기에서 설정이 변경되었을 때 실시간으로 체크박스 상태 업데이트
+        // (todo_auto_delete는 유저 전역 설정이므로 모든 위젯이 함께 업데이트됨)
         syncService.addListener(SYNC_DATA_TYPES.TODO_AUTO_DELETE, (updatedWidgetId, newValue) => {
-            if (String(updatedWidgetId) === String(widgetId)) {
-                const newChecked = newValue === true || newValue === 'true';
-                if (autoDeleteCheck.checked !== newChecked) {
-                    autoDeleteCheck.checked = newChecked;
-                    if (window.currentUser) window.currentUser.todoAutoDelete = newChecked;
-                    loadTodoList(el);
-                }
+            const newChecked = newValue === true || newValue === 'true';
+            if (autoDeleteCheck.checked !== newChecked) {
+                autoDeleteCheck.checked = newChecked;
+                if (window.currentUser) window.currentUser.todoAutoDelete = newChecked;
+                // UI 즉각 반영 (리스트 다시 불러오기)
+                loadTodoList(el);
             }
+        });
+
+        // 다른 기기/탭에서 데이터가 변경되었을 때 즉시 전파 (범용 아키텍처 적용)
+        syncService.watchWidget(widgetId, () => {
+            console.log('[Todo] 실시간 데이터 업데이트 감지 - 리스트 갱신');
+            loadTodoList(el, true);
         });
     }
 
@@ -304,18 +310,20 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
                 
                 // 위젯 자체 설정(settings.title)에도 저장하여 다음 로드 시 즉시 반영되도록 함
                 try {
-                    const currentSettings = el._widgetData?.settings || {};
+                    // 1. 위젯 전용 title 컬럼 업데이트 (최적화된 방식)
                     await apiFetch(`/api/widgets/${widgetId}`, {
                         method: 'PATCH',
-                        body: JSON.stringify({ 
-                            title: newTitle,
-                            settings: { ...currentSettings, title: newTitle } 
-                        })
+                        body: JSON.stringify({ title: newTitle })
                     });
-                    // 로컬 데이터도 최신화
+                    
+                    // 2. 실시간 동기화를 위한 브로드캐스트 (백엔드에서는 더 이상 tba_widget_settings에 중복 저장하지 않음)
+                    await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
+
+                    // 3. 로컬 데이터 최신화
                     if (el._widgetData) {
                         el._widgetData.title = newTitle;
-                        el._widgetData.settings = { ...currentSettings, title: newTitle };
+                        // 하위 호환성을 위해 메모리 내 settings.title도 업데이트할 수 있으나 DB에는 저장 안 함
+                        if (el._widgetData.settings) el._widgetData.settings.title = newTitle;
                     }
                 } catch (err) {
                     console.error('[Todo] 제목 설정 저장 실패:', err);
@@ -345,8 +353,7 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
             titleEl.textContent = newTitle;
             if (el._widgetData) {
                 el._widgetData.title = newTitle;
-                if (!el._widgetData.settings) el._widgetData.settings = {};
-                el._widgetData.settings.title = newTitle;
+                if (el._widgetData.settings) el._widgetData.settings.title = newTitle;
             }
         }
     });
@@ -449,6 +456,9 @@ async function addTodo(el) {
 
                 // 새 이벤트 리스너 바인딩
                 bindTodoEventsToElement(el, tempEl, newId, color);
+                
+                // 4. 실시간 동기화 전파 (다른 기기/탭)
+                syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
             } else {
                 // 어떤 이유로 임시 노드를 못 찾은 경우에만 폴백으로 전체 새로고침
                 loadTodoList(el, true);
@@ -480,6 +490,7 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                     method: 'PATCH',
                     body: JSON.stringify({ isCompleted })
                 });
+
                 document.querySelectorAll('.widget-todo').forEach(w => {
                     const target = w.querySelector(`.todo-check[data-id="${id}"]`);
                     if (target) {
@@ -488,6 +499,10 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                         target.style.backgroundColor = isCompleted ? color : 'transparent';
                     }
                 });
+
+                // 실시간 동기화 전파 (다른 기기/탭)
+                const widgetId = widgetEl.dataset.id;
+                syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
             } catch (err) { e.target.checked = !isCompleted; }
         };
     }
@@ -501,6 +516,10 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                     const targetEl = w.querySelector(`.todo-item[data-id="${id}"]`);
                     if (targetEl) targetEl.remove();
                 });
+
+                // 실시간 동기화 전파
+                const widgetId = widgetEl.dataset.id;
+                syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
             } catch (err) {}
         };
     }
@@ -579,6 +598,10 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                         textEl._lastAlarm = newAlarmTime;
                         setTimeout(() => loadTodoList(widgetEl, true), 500);
                     }
+
+                    // 실시간 동기화 전파
+                    const widgetId = widgetEl.dataset.id;
+                    syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
                 } catch (err) {
                     console.error('Todo 수정 에러:', err);
                 }
