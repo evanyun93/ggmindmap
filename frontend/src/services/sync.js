@@ -25,7 +25,8 @@ export const SYNC_DATA_TYPES = {
     DDAY_TARGET: 'dday_target',
     FAB_POS: 'fab_pos',
     SPREADSHEET_DATA: 'spreadsheet_data',
-    SPREADSHEET_HEADERS: 'spreadsheet_headers'
+     SPREADSHEET_HEADERS: 'spreadsheet_headers',
+     RECIPE_TITLE: 'recipe_title'
 };
 
 /**

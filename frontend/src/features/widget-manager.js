@@ -211,7 +211,7 @@ export class WidgetManager {
                 <div class="widget-header clickable-header todo-header">
                   <div class="header-main">
                     <div class="card-icon">✅</div>
-                    <h3 class="todo-widget-title">오늘의 할 일</h3>
+                    <h3 class="todo-widget-title">${data.title || data.settings?.title || '오늘의 할 일'}</h3>
                     <button class="btn-edit-title edit-todo-title-btn" title="제목 수정">
                       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     </button>
@@ -265,7 +265,7 @@ export class WidgetManager {
                 <div class="widget-header clickable-header milestone-header">
                   <div class="header-main">
                     <div class="card-icon">📅</div>
-                    <h3 class="milestone-widget-title">${settings.title || '나의 마일스톤'}</h3>
+                    <h3 class="milestone-widget-title">${data.title || data.settings?.title || '나의 마일스톤'}</h3>
                     <button class="btn-edit-title edit-milestone-title-btn" title="제목 수정">
                       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
                     </button>
@@ -380,7 +380,7 @@ export class WidgetManager {
                   <button class="icon-chip" title="저녁">🌙</button>
                 </div>
               </div>
-              <h3 class="recipe-widget-title">${data.settings?.title || '나만의 레시피 북'}</h3>
+              <h3 class="recipe-widget-title">${data.title || data.settings?.title || '나만의 레시피 북'}</h3>
               <button class="btn-edit-title edit-recipe-title-btn" title="제목 수정">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
               </button>
@@ -402,7 +402,7 @@ export class WidgetManager {
   initWidgetLogic(el, data) {
     if (data.widget_type === 'todo') {
       import('./todo.js').then(m => {
-        if (m.initTodo) m.initTodo(el);
+        if (m.initTodo) m.initTodo(el, data);
       });
     }
     if (data.widget_type === 'milestone') {

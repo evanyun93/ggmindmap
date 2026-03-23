@@ -8,7 +8,7 @@ const { authenticateToken } = require('../middleware/authHandler');
  * GET /api/widgets
  */
 router.get('/', authenticateToken, async (req, res) => {
-    console.log(`[API] 위젯 로드 요청: 사용자 ID ${req.user.id}`);
+    // console.log(`[API] 위젯 로드 요청: 사용자 ID ${req.user.id}`);
     try {
         const result = await pool.query(
             'SELECT * FROM tba_user_widgets WHERE user_id = $1 ORDER BY z_index ASC, id ASC',
@@ -27,7 +27,7 @@ router.get('/', authenticateToken, async (req, res) => {
  */
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { widgetType, x, y, width, height, zIndex, settings } = req.body;
+        const { widgetType, x, y, width, height, zIndex, title, settings } = req.body;
 
         // 정수형 변환 (PostgreSQL Integer 타입 대응)
         const safeX = Math.round(Number(x) || 0);
@@ -38,10 +38,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
         const result = await pool.query(
             `INSERT INTO tba_user_widgets 
-            (user_id, widget_type, x, y, width, height, z_index, settings) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+            (user_id, widget_type, x, y, width, height, z_index, title, settings) 
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
             RETURNING *`,
-            [req.user.id, widgetType, safeX, safeY, safeW, safeH, safeZ, settings || {}]
+            [req.user.id, widgetType, safeX, safeY, safeW, safeH, safeZ, title || null, settings || {}]
         );
         res.status(201).json({ success: true, widget: result.rows[0] });
     } catch (error) {
@@ -57,7 +57,7 @@ router.post('/', authenticateToken, async (req, res) => {
 router.patch('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { x, y, width, height, zIndex, settings } = req.body;
+        const { x, y, width, height, zIndex, title, settings } = req.body;
 
         // 필드 동적 생성
         let query = 'UPDATE tba_user_widgets SET ';
@@ -69,6 +69,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         if (width !== undefined) { values.push(Math.round(Number(width))); updates.push(`width = $${values.length}`); }
         if (height !== undefined) { values.push(Math.round(Number(height))); updates.push(`height = $${values.length}`); }
         if (zIndex !== undefined) { values.push(Math.round(Number(zIndex))); updates.push(`z_index = $${values.length}`); }
+        if (title !== undefined) { values.push(title); updates.push(`title = $${values.length}`); }
         if (settings !== undefined) { values.push(settings); updates.push(`settings = $${values.length}`); }
 
         if (updates.length === 0) return res.status(400).json({ success: false, message: '업데이트할 내용이 없습니다.' });

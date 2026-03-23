@@ -45,7 +45,7 @@ export function initDashboardGrid() {
                 .theme-toggle, .theme-toggle *
             `;
             if (e.target.closest(allowedSelectors)) {
-                return; 
+                return;
             }
 
             // [추가] 만약 실제 입력 필드가 DOM에 없다면 강제로 편집 상태 해제 (안전장치)
@@ -365,7 +365,7 @@ export function initDashboardGrid() {
 export function bringToFront(widget) {
     maxZIndex++;
     widget.style.zIndex = maxZIndex;
-    console.log(`[DashboardGrid] 위젯 앞으로 가져오기: ID ${widget.dataset.id}, Z-Index ${maxZIndex}`);
+    // console.log(`[DashboardGrid] 위젯 앞으로 가져오기: ID ${widget.dataset.id}, Z-Index ${maxZIndex}`);
 
     // 조작 중임을 나타내는 스타일 초기화 (다른 위젯들의 zIndex가 무한히 커지는 것을 방지하기 위해 가끔 정리할 수도 있음)
     if (maxZIndex > 10000) {
@@ -448,7 +448,7 @@ export function showEditWarning(widget) {
         btn.classList.remove('shake-animation');
         void btn.offsetWidth; // 리플로우 강제 (애니메이션 재시작)
         btn.classList.add('shake-animation');
-        
+
         // 애니메이션(0.4s)이 끝나면 즉시 클래스를 지워서 빨간색 점유 해제
         btn.addEventListener('animationend', () => {
             btn.classList.remove('shake-animation');
@@ -457,16 +457,16 @@ export function showEditWarning(widget) {
 
     let warningMsg = widget.querySelector('.edit-warning-msg');
     if (warningMsg) warningMsg.remove();
-    
+
     warningMsg = document.createElement('div');
     warningMsg.className = 'edit-warning-msg';
     warningMsg.textContent = '먼저 수정을 완료해주세요!';
-    
+
     // 할 일(Todo) 아이템인 경우 relative 포지셔닝 보장
     if (widget.classList.contains('todo-item')) {
         widget.style.position = 'relative';
     }
-    
+
     widget.appendChild(warningMsg);
 }
 
@@ -1170,7 +1170,7 @@ function initScrollBounceEffect(container, grid) {
 export function adjustGridHeight() {
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
-    
+
     // 모바일에서는 자동 높이를 사용하므로 처리 불필요
     if (window.innerWidth <= 768) {
         grid.style.minHeight = '';

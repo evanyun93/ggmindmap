@@ -14,7 +14,7 @@ const DEFAULT_CHECKBOX_COLOR = '#8B5CF6';
  * To-Do 기능 초기화
  * @param {HTMLElement} el 위젯 루트 엘리먼트
  */
-export async function initTodo(el) {
+export async function initTodo(el, widgetData) {
     if (!el) return;
 
     const listContainer = el.querySelector('.todo-list-container');
@@ -29,6 +29,9 @@ export async function initTodo(el) {
 
     if (el._isInitialized) return;
     el._isInitialized = true;
+
+    // 위젯 데이터 저장 (추후 설정 업데이트용)
+    el._widgetData = widgetData;
 
     const widgetId = el.dataset.id;
 
@@ -102,7 +105,7 @@ export async function initTodo(el) {
     const titleEl = el.querySelector('.todo-widget-title');
     const editBtn = el.querySelector('.edit-todo-title-btn');
     if (titleEl && editBtn) {
-        setupTitleEdit(el, titleEl, editBtn);
+        setupTitleEdit(el, titleEl, editBtn, widgetData);
     }
 
     // 자동 삭제
@@ -231,7 +234,7 @@ async function applyCheckboxColor(el, color) {
     if (colorBtn) colorBtn.style.color = color;
 }
 
-async function setupTitleEdit(el, titleEl, editBtn) {
+async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
     const widgetId = el.dataset.id;
     syncService.getData(SYNC_DATA_TYPES.TODO_TITLE, widgetId).then(savedTitle => {
         if (savedTitle) titleEl.textContent = savedTitle;
@@ -298,6 +301,26 @@ async function setupTitleEdit(el, titleEl, editBtn) {
             if (input) {
                 const newTitle = input.value.trim() || '나의 To-Do';
                 await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
+                
+                // 위젯 자체 설정(settings.title)에도 저장하여 다음 로드 시 즉시 반영되도록 함
+                try {
+                    const currentSettings = el._widgetData?.settings || {};
+                    await apiFetch(`/api/widgets/${widgetId}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ 
+                            title: newTitle,
+                            settings: { ...currentSettings, title: newTitle } 
+                        })
+                    });
+                    // 로컬 데이터도 최신화
+                    if (el._widgetData) {
+                        el._widgetData.title = newTitle;
+                        el._widgetData.settings = { ...currentSettings, title: newTitle };
+                    }
+                } catch (err) {
+                    console.error('[Todo] 제목 설정 저장 실패:', err);
+                }
+
                 exitEditMode(newTitle);
             }
         }
@@ -320,6 +343,11 @@ async function setupTitleEdit(el, titleEl, editBtn) {
     syncService.addListener(SYNC_DATA_TYPES.TODO_TITLE, (updatedWidgetId, newTitle) => {
         if (updatedWidgetId == widgetId && !el.classList.contains('is-editing')) {
             titleEl.textContent = newTitle;
+            if (el._widgetData) {
+                el._widgetData.title = newTitle;
+                if (!el._widgetData.settings) el._widgetData.settings = {};
+                el._widgetData.settings.title = newTitle;
+            }
         }
     });
 }

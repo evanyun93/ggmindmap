@@ -75,6 +75,7 @@ async function initDatabase() {
           width INTEGER DEFAULT 400,
           height INTEGER DEFAULT 300,
           z_index INTEGER DEFAULT 100,
+          title VARCHAR(100),
           settings JSONB DEFAULT '{}',
           created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
@@ -280,6 +281,14 @@ async function initDatabase() {
         console.log('✅ 전역 TIMESTAMP -> TIMESTAMPTZ 마이그레이션 완료');
       } catch (e) {
         console.error('⚠️ 마이그레이션 실패:', e.message);
+      }
+
+      // tba_user_widgets title 컬럼 추가 마이그레이션
+      try {
+        await client.query('ALTER TABLE tba_user_widgets ADD COLUMN IF NOT EXISTS title VARCHAR(100)');
+        console.log('✅ tba_user_widgets.title 컬럼 마이그레이션 완료');
+      } catch (e) {
+        console.error('⚠️ tba_user_widgets.title 마이그레이션 실패:', e.message);
       }
 
       console.log('✅ PostgreSQL 데이터베이스 초기화 완료');

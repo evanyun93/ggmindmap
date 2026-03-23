@@ -207,6 +207,23 @@ async function setupTitleEdit(el, titleEl, editBtn, settings) {
             if (input) {
                 const newTitle = input.value.trim() || '나의 마일스톤';
                 await syncService.setData(SYNC_DATA_TYPES.MILESTONE_TITLE, widgetId, newTitle);
+
+                // 위젯 자체 설정(settings.title)에도 저장하여 다음 로드 시 즉시 반영되도록 함
+                try {
+                    const currentSettings = settings || {};
+                    await apiFetch(`/api/widgets/${widgetId}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ 
+                            title: newTitle,
+                            settings: { ...currentSettings, title: newTitle } 
+                        })
+                    });
+                    // 로컬 데이터도 최신화
+                    if (settings) settings.title = newTitle;
+                } catch (err) {
+                    console.error('[Milestone] 제목 설정 저장 실패:', err);
+                }
+
                 exitEditMode(newTitle);
             }
         }
