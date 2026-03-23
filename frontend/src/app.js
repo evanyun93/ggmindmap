@@ -80,7 +80,7 @@ function initAuthView() {
  * 대시보드 화면으로 전환 및 초기화
  * @param {object} user 
  */
-function showDashboardView(user) {
+async function showDashboardView(user) {
     console.log('[Dashboard] 로그인 유저 정보:', user);
     window.currentUser = user; // 전역 유저 정보 저장 (삭제 버튼 노출용)
     const appRoot = document.getElementById('app-root');
@@ -92,7 +92,7 @@ function showDashboardView(user) {
     }
 
     // 대시보드 기능 초기화 실행
-    initDashboardFeatures(user);
+    await initDashboardFeatures(user);
 
     // 대시보드 내 소셜 연동 버튼을 위해 다시 초기화 (이미 이벤트 리스너가 중복 등록되지 않도록 social-auth.js에서 처리됨)
     initSocialAuth();

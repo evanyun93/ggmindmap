@@ -11,13 +11,17 @@ import { initMemo } from './memo.js';
 import { initFeedback } from './feedback.js';
 import { initMilestone } from './milestone.js';
 import { initAdmin } from '../admin.js';
+import { syncService } from '../services/sync.js';
 
 /**
  * 대시보드의 모든 동적 기능(메모, 피드백, 그리드 등)을 초기화합니다.
  * @param {object} user
  */
-export function initDashboardFeatures(user) {
+export async function initDashboardFeatures(user) {
     console.log('[Init] 대시보드 피처 초기화 시작...');
+
+    // 0. 동기화 서비스 초기화 및 데이터 로딩 대기
+    await syncService.init();
 
     // 1. UI 및 시각 효과 레이어 초기화
     initVisualEffects();

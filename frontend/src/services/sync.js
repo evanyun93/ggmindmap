@@ -62,6 +62,8 @@ class SyncService {
         this.lastSyncTime = localStorage.getItem(LAST_SYNC_KEY) || '1970-01-01T00:00:00.000Z';
         this.isSyncing = false;
         this.listeners = new Map();
+        this.isInitialized = false;
+        this.initPromise = null;
     }
 
     /**
@@ -69,25 +71,31 @@ class SyncService {
      * 마이그레이션이 필요한지 확인하고 수행
      */
     async init() {
-        console.log('[Sync] 초기화 시작');
-        
-        // 마이그레이션 상태 확인
-        const needsMigration = await this.checkMigrationNeeded();
-        
-        if (needsMigration) {
-            console.log('[Sync] 마이그레이션 필요 - 실행 중...');
-            await this.migrateLocalStorage();
-        } else {
-            console.log('[Sync] 마이그레이션 불필요');
-        }
-        
-        // 캐시 로드
-        this.loadCache();
-        
-        // 폴링 시작
-        this.startSync();
-        
-        console.log('[Sync] 초기화 완료');
+        if (this.initPromise) return this.initPromise;
+
+        this.initPromise = (async () => {
+            console.log('[Sync] 초기화 시작');
+            
+            // 마이그레이션 상태 확인
+            const needsMigration = await this.checkMigrationNeeded();
+            
+            if (needsMigration) {
+                console.log('[Sync] 마이그레이션 필요 - 실행 중...');
+                await this.migrateLocalStorage();
+            }
+            
+            // 캐시 로드
+            this.loadCache();
+            
+            // 폴링 시작 및 첫 번째 동기화 완료 대기 (중요: 초기 데이터 확보)
+            await this.startSync();
+            
+            this.isInitialized = true;
+            console.log('[Sync] 초기화 완료');
+            return true;
+        })();
+
+        return this.initPromise;
     }
 
     /**
@@ -258,6 +266,11 @@ class SyncService {
      * @returns {Promise<any>}
      */
     async getData(type, widgetId = null) {
+        // 초기화가 진행 중이면 완료될 때까지 대기 (최신 데이터 확보 보장)
+        if (!this.isInitialized && this.initPromise) {
+            await this.initPromise;
+        }
+
         const cacheKey = widgetId ? `${type}_${widgetId}` : type;
         
         // 1. 로컬 캐시에서 먼저 확인
@@ -524,13 +537,16 @@ class SyncService {
     /**
      * 폴링 시작
      */
-    startSync() {
+    async startSync() {
         if (this.syncInterval) {
             console.log('[Sync] 폴링이 이미 실행 중입니다.');
             return;
         }
         
-        console.log('[Sync] 폴링 시작 (5초 간격)');
+        console.log('[Sync] 폴링 시작 (즉시 실행 후 5초 간격)');
+        
+        // 첫 번째 동기화 즉시 실행 (await 하여 초기 로딩 시 데이터 보장)
+        await this.pollForUpdates();
         
         this.syncInterval = setInterval(async () => {
             await this.pollForUpdates();

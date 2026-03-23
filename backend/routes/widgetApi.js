@@ -44,7 +44,12 @@ router.post('/', authenticateToken, async (req, res) => {
             RETURNING *`,
             [req.user.id, widgetType, safeX, safeY, safeW, safeH, safeZ, title || null, settings || {}]
         );
-        res.status(201).json({ success: true, widget: result.rows[0] });
+        const widget = result.rows[0];
+        
+        // 실시간 동기화 알림 (새 위젯 추가)
+        syncService.notifyChange(req.user.id, 0, syncService.SYNC_TYPES.DASHBOARD_UPDATE);
+        
+        res.status(201).json({ success: true, widget });
     } catch (error) {
         console.error('위젯 추가 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류' });
@@ -82,7 +87,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 
         // 실시간 동기화 알림 (설정이나 제목이 변경된 경우)
         if (title !== undefined || settings !== undefined) {
-            syncService.notifyChange(req.user.id, id, 'data_update');
+            syncService.notifyChange(req.user.id, id, syncService.SYNC_TYPES.DATA_UPDATE);
         }
 
         res.json({ success: true, widget: result.rows[0] });
@@ -99,6 +104,10 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 router.delete('/all', authenticateToken, async (req, res) => {
     try {
         await pool.query('DELETE FROM tba_user_widgets WHERE user_id = $1', [req.user.id]);
+        
+        // 실시간 동기화 알림 (전체 초기화)
+        syncService.notifyChange(req.user.id, 0, syncService.SYNC_TYPES.DASHBOARD_UPDATE);
+        
         res.json({ success: true, message: '모든 위젯이 삭제되었습니다.' });
     } catch (error) {
         console.error('위젯 일괄 삭제 에러:', error);
@@ -118,6 +127,10 @@ router.delete('/:id', authenticateToken, async (req, res) => {
             [id, req.user.id]
         );
         if (result.rowCount === 0) return res.status(404).json({ success: false, message: '위젯을 찾을 수 없습니다.' });
+        
+        // 실시간 동기화 알림 (위젯 삭제)
+        syncService.notifyChange(req.user.id, 0, syncService.SYNC_TYPES.DASHBOARD_UPDATE);
+        
         res.json({ success: true, message: '위젯이 삭제되었습니다.' });
     } catch (error) {
         console.error('위젯 삭제 에러:', error);

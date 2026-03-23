@@ -60,7 +60,7 @@ router.post('/', authenticateToken, async (req, res) => {
 
         // 실시간 동기화 알림 (범용 아키텍처)
         if (widget_id) {
-            syncService.notifyChange(req.user.id, widget_id, 'todo_data_update');
+            syncService.notifyChange(req.user.id, widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
         }
 
         res.status(201).json({ success: true, id: result.rows[0].id });
@@ -118,7 +118,7 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         
         // 실시간 동기화 알림
         if (result.rows[0]?.widget_id) {
-            syncService.notifyChange(req.user.id, result.rows[0].widget_id, 'todo_data_update');
+            syncService.notifyChange(req.user.id, result.rows[0].widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
         }
 
         res.json({ success: true });
@@ -141,7 +141,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
 
         // 실시간 동기화 알림
         if (result.rows[0]?.widget_id) {
-            syncService.notifyChange(req.user.id, result.rows[0].widget_id, 'todo_data_update');
+            syncService.notifyChange(req.user.id, result.rows[0].widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
         }
 
         res.json({ success: true });

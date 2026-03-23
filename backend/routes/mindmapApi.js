@@ -40,7 +40,7 @@ router.post('/', authenticateToken, async (req, res) => {
         }
 
         // 실시간 동기화 알림 (마인드맵 데이터 변경)
-        syncService.notifyChange(req.user.id, 0, 'mindmap_update');
+        syncService.notifyChange(req.user.id, 0, syncService.SYNC_TYPES.MINDMAP_UPDATE);
 
         res.json({ success: true });
     } catch (error) {

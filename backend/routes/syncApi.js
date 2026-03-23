@@ -1,24 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../config/database');
-const { authenticateToken } = require('../middleware/authHandler');
+const syncService = require('../services/syncService');
+const DATA_TYPES = syncService.SYNC_TYPES;
 
-/**
- * 데이터 타입 상수
- */
-const DATA_TYPES = {
-    TODO_COLLAPSED: 'todo_collapsed',
-    TODO_COLOR: 'todo_color',
-    TODO_TITLE: 'todo_title',
-    MILESTONE_COLLAPSED: 'milestone_collapsed',
-    MILESTONE_TITLE: 'milestone_title',
-    MILESTONE_SETTINGS: 'milestone_settings',
-    DDAY_TARGET: 'dday_target',
-    FAB_POS: 'fab_pos',
-    SPREADSHEET_DATA: 'spreadsheet_data',
-    SPREADSHEET_HEADERS: 'spreadsheet_headers',
-    TODO_AUTO_DELETE: 'todo_auto_delete'
-};
 
 /**
  * GET /api/sync/data - 모든 동기화 데이터 조회 (폴링용)
