@@ -195,6 +195,9 @@ export function getDashboardHTML(user) {
             <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 16px;">📢</span> 고객의 소리함 (Q&A)
             </button>
+            <button id="modalInstallApp" style="display: none; width: 100%; padding: 12px; background: #8B5CF6; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 12px; font-weight: 600; align-items: center; justify-content: center; gap: 8px; transition: background 0.2s;">
+                <span>📱 MindMap 앱 설치</span>
+            </button>
             <button id="modalLogoutBtn" class="btn-logout-modal mobile-only-btn" style="width: 100%; padding: 12px; background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; cursor: pointer; margin-top: 12px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
                 로그아웃

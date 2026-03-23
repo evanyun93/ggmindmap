@@ -129,6 +129,54 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 });
 
 /**
+ * To-Do 알람 액션 처리 (해제 / 5분 연장)
+ */
+router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { action } = req.body; // 'dismiss' 또는 'snooze'
+
+        let query = '';
+        let params = [id, req.user.id];
+
+        if (action === 'dismiss') {
+            // 해제: 발송 완료 시각 기록하여 더 이상 알람이 울리지 않게 함
+            query = `
+                UPDATE tba_todos 
+                SET push_sent_at = NOW() 
+                WHERE id = $1 AND user_id = $2 
+                RETURNING widget_id
+            `;
+        } else if (action === 'snooze') {
+            // 5분 연장: 알람 시각을 5분 뒤로 늦추고 발송 이력 초기화
+            query = `
+                UPDATE tba_todos 
+                SET alarm_time = NOW() + INTERVAL '5 minutes',
+                    push_sent_at = NULL 
+                WHERE id = $1 AND user_id = $2 
+                RETURNING widget_id
+            `;
+        } else {
+            return res.status(400).json({ success: false, message: '유효하지 않은 액션입니다.' });
+        }
+
+        const result = await pool.query(query, params);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
+        }
+
+        // 실시간 동기화 알림 (다른 기기에서도 알람 예약이 갱신됨)
+        syncService.notifyChange(req.user.id, result.rows[0].widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
+
+        res.json({ success: true, action });
+    } catch (error) {
+        console.error('To-Do 알람 액션 처리 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류' });
+    }
+});
+
+/**
  * To-Do 삭제
  */
 router.delete('/:id', authenticateToken, async (req, res) => {

@@ -159,3 +159,39 @@ function clearAuthMessages() {
     hideMessage(registerError);
     hideMessage(registerSuccess);
 }
+
+// ────────────────────────────────────────────────
+// PWA 커스텀 설치 유도 로직
+// ────────────────────────────────────────────────
+window.deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+    // 브라우저 기본 배너가 뜨지 않게 방지
+    e.preventDefault();
+    // 이벤트를 변수에 저장해두었다가 나중에 트리거
+    window.deferredPrompt = e;
+    
+    // 푸터에 있는 설치 버튼 표시
+    const installBtn = document.getElementById('modalInstallApp');
+    if (installBtn) {
+        installBtn.style.display = 'flex';
+        installBtn.onclick = async () => {
+            const promptEvent = window.deferredPrompt;
+            if (!promptEvent) return;
+            // 설치 프롬프트 띄우기
+            promptEvent.prompt();
+            // 사용자의 선택 결과 대기
+            const { outcome } = await promptEvent.userChoice;
+            console.log(`[PWA] 사용자의 설치 응답: ${outcome}`);
+            window.deferredPrompt = null;
+            installBtn.style.display = 'none';
+        };
+    }
+});
+
+// 앱이 설치되었을 때의 처리
+window.addEventListener('appinstalled', () => {
+    console.log('[PWA] 앱이 성공적으로 설치되었습니다.');
+    window.deferredPrompt = null;
+    const installBtn = document.getElementById('modalInstallApp');
+    if (installBtn) installBtn.style.display = 'none';
+});

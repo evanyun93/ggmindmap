@@ -181,45 +181,39 @@ self.addEventListener('push', (event) => {
 // ── 알림 클릭 / 액션 버튼 처리 ─────────────────────
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
+    const todoId = event.notification.data?.id;
 
-    // '해제' 버튼 또는 알림 본체 클릭: 앱 탭 열기
-    if (event.action === 'dismiss' || event.action === '') {
-        if (event.action === '') {
-            // 알림 본체를 클릭한 경우 → 앱 탭 포커스
-            event.waitUntil(
-                self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-                    for (const client of clientList) {
-                        if (client.url && 'focus' in client) return client.focus();
-                    }
-                    if (self.clients.openWindow) return self.clients.openWindow('/');
-                })
-            );
-        }
-        // '해제' 버튼은 그냥 닫기만 (위에서 close() 이미 호출)
+    // 본체 클릭 시 앱 열기 (액션 버튼 클릭 시에는 실행 안 함)
+    if (!event.action) {
+        event.waitUntil(
+            self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+                for (const client of clientList) {
+                    if (client.url && 'focus' in client) return client.focus();
+                }
+                if (self.clients.openWindow) return self.clients.openWindow('/');
+            })
+        );
         return;
     }
 
-    // '5분 뒤 다시 알림' 버튼
-    if (event.action === 'snooze') {
-        const body = event.notification.data?.body || event.notification.body;
-        const tag  = event.notification.tag;
+    // '해제' 또는 '5분 연장' 액션 처리
+    if (event.action === 'dismiss' || event.action === 'snooze') {
+        if (!todoId) return;
 
         event.waitUntil(
-            new Promise((resolve) => {
-                setTimeout(async () => {
-                    await self.registration.showNotification('GGMIND-알리미 (다시 알림)', {
-                        body,
-                        icon: '/assets/advanced-icon.png',
-                        badge: '/assets/advanced-icon.png',
-                        tag: tag + '-snooze',
-                        renotify: true,
-                        vibrate: [200, 100, 200],
-                        requireInteraction: true,
-                        actions: ALARM_ACTIONS,
-                        data: { body }
-                    });
-                    resolve();
-                }, 5 * 60 * 1000); // 5분
+            fetch(`/api/todos/${todoId}/alarm-action`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: event.action })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log(`[SW] 알람 액션(${event.action}) 처리 완료:`, data);
+                // 연장(snooze)인 경우, 서버에서 SYNC_TYPES.TODO_DATA_UPDATE를 브로드캐스트하므로
+                // 메인 탭이 살아있다면 즉시 동기화가 이루어짐
+            })
+            .catch(err => {
+                console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
             })
         );
     }
