@@ -192,8 +192,38 @@ class TodoAlarmSystem {
         await this._requestPermission();
         await registerServiceWorker();
         await this._refreshAndSchedule();
+        
         // 5분마다 서버에서 새로 추가된 알람도 스케줄에 반영
         this._refreshTimer = setInterval(() => this._refreshAndSchedule(), this.REFRESH_INTERVAL);
+
+        // 실시간 동기화 감지: 다른 기기에서 투두 상태가 바뀌면 알람 목록 즉시 갱신
+        // (체크 완료된 항목의 알람을 즉시 제거하기 위함)
+        import('../services/sync.js').then(({ syncService, SYNC_DATA_TYPES }) => {
+            syncService.addListener(SYNC_DATA_TYPES.TODO_DATA_UPDATE, () => {
+                console.log('[TodoAlarm] 실시간 데이터 변경 감지: 알람 스케줄 재구성');
+                this._refreshAndSchedule();
+            });
+        });
+    }
+
+    /** 특정 알람 즉시 취소 (로컬 타이머 + SW DB) */
+    async cancelAlarm(todoId) {
+        const id = String(todoId);
+        // 1. 로컬 타이머 제거
+        if (this._timers.has(id)) {
+            clearTimeout(this._timers.get(id));
+            this._timers.delete(id);
+            console.log(`[TodoAlarm] 로컬 알람 취소됨: ID ${id}`);
+        }
+        
+        // 2. SW IndexedDB에서 제거 요청
+        const sw = swRegistration?.active ?? (await navigator.serviceWorker?.ready.then(r => r.active).catch(() => null));
+        if (sw) {
+            sw.postMessage({ type: 'CANCEL_ALARM', id });
+        }
+        
+        // 3. 로컬 발송 이력에 기록 (혹시 모를 재발송 방지)
+        markAlarmSent(id);
     }
 
     /** 알람 시스템 중지 */

@@ -494,6 +494,11 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                     body: JSON.stringify({ isCompleted })
                 });
 
+                if (isCompleted) {
+                    const { todoAlarmSystem } = await import('./todo-alarm.js');
+                    todoAlarmSystem.cancelAlarm(id);
+                }
+
                 document.querySelectorAll('.widget-todo').forEach(w => {
                     const target = w.querySelector(`.todo-check[data-id="${id}"]`);
                     if (target) {

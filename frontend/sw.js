@@ -139,6 +139,14 @@ self.addEventListener('message', (event) => {
             })
         );
     }
+
+    if (event.data.type === 'CANCEL_ALARM') {
+        event.waitUntil(
+            deleteAlarm(event.data.id).then(() => {
+                console.log(`[SW] 알람 취소 완료: ID ${event.data.id}`);
+            })
+        );
+    }
 });
 
 // ── Periodic Background Sync (Chrome/Edge 전용) ───────────────
