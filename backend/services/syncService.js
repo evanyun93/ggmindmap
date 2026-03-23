@@ -1,4 +1,4 @@
-const pool = require('../config/database');
+const db = require('../config/database');
 
 /**
  * 데이터 변경 시 다른 클라이언트에 알림을 보내는 공통 서비스
@@ -17,7 +17,7 @@ const syncService = {
         }
 
         try {
-            await pool.query(
+            await db.pool.query(
                 `INSERT INTO tba_widget_settings (user_id, widget_id, setting_key, setting_value, updated_at)
                 VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
                 ON CONFLICT (user_id, widget_id, setting_key) 

@@ -11,15 +11,21 @@ router.get('/', authenticateToken, async (req, res) => {
     try {
         const { widget_id } = req.query;
 
-        // 1. 유저의 자동 삭제 설정 확인
-        const userResult = await pool.query('SELECT todo_auto_delete FROM tba_users WHERE id = $1', [req.user.id]);
-        const autoDelete = userResult.rows[0]?.todo_auto_delete;
-
-        if (autoDelete) {
-            await pool.query(
-                'DELETE FROM tba_todos WHERE user_id = $1 AND created_at < CURRENT_DATE',
-                [req.user.id]
+        // 1. 위젯별 자동 삭제 설정 확인
+        if (widget_id) {
+            const settingResult = await pool.query(
+                `SELECT setting_value FROM tba_widget_settings 
+                 WHERE user_id = $1 AND widget_id = $2 AND setting_key = 'todo_auto_delete'`,
+                [req.user.id, widget_id]
             );
+            const autoDelete = settingResult.rows[0]?.setting_value === 'true';
+
+            if (autoDelete) {
+                await pool.query(
+                    'DELETE FROM tba_todos WHERE user_id = $1 AND widget_id = $2 AND created_at < CURRENT_DATE',
+                    [req.user.id, widget_id]
+                );
+            }
         }
 
         // 2. 목록 조회 (widget_id로 필터링)

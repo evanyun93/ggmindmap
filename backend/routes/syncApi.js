@@ -145,7 +145,7 @@ router.post('/data', authenticateToken, async (req, res) => {
                     break;
 
                 case DATA_TYPES.TODO_AUTO_DELETE:
-                    // 위젯별 설정으로 저장
+                    // 위젯별 설정으로 저장 (개별 동작을 위해 widgetId 필수)
                     if (!widgetId) {
                         return res.status(400).json({ success: false, message: 'widgetId가 필요합니다.' });
                     }
@@ -155,11 +155,6 @@ router.post('/data', authenticateToken, async (req, res) => {
                         ON CONFLICT (user_id, widget_id, setting_key) 
                         DO UPDATE SET setting_value = $4, updated_at = CURRENT_TIMESTAMP`,
                         [userId, widgetId, type, String(data)]
-                    );
-                    // todoApi.js의 삭제 로직이 사용하는 tba_users 테이블도 함께 업데이트
-                    await client.query(
-                        `UPDATE tba_users SET todo_auto_delete = $1 WHERE id = $2`,
-                        [data === true || data === 'true', userId]
                     );
                     break;
                     

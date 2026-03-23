@@ -111,11 +111,12 @@ export async function initTodo(el, widgetData) {
     // 자동 삭제
     const autoDeleteCheck = el.querySelector('.todo-auto-delete-check');
     if (autoDeleteCheck) {
-        // 초기 상태 동기화 서비스에서 로드 (비동기)
+        // 초기 상태 동기화 서비스에서 로드 (비동기, 위젯별 설정)
         syncService.getData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId).then(savedAutoDelete => {
             if (savedAutoDelete !== null) {
                 autoDeleteCheck.checked = savedAutoDelete === true || savedAutoDelete === 'true';
-            } else if (window.currentUser && window.currentUser.todoAutoDelete) {
+            } else if (window.currentUser && window.currentUser.todoAutoDelete !== undefined) {
+                // 개별 위젯 설정이 없을 때만 유저 기본값 사용 (하지만 이제는 개별 위젯 설정이 우선)
                 autoDeleteCheck.checked = window.currentUser.todoAutoDelete;
             }
         });
@@ -123,7 +124,7 @@ export async function initTodo(el, widgetData) {
         autoDeleteCheck.onchange = async () => {
             const active = autoDeleteCheck.checked;
             try {
-                // 동기화 서비스에 저장 (사용자 설정)
+                // 동기화 서비스에 저장 (위젯별 설정으로 저장)
                 await syncService.setData(SYNC_DATA_TYPES.TODO_AUTO_DELETE, widgetId, active);
                 // 현재 사용자 객체도 즉시 업데이트
                 if (window.currentUser) window.currentUser.todoAutoDelete = active;
