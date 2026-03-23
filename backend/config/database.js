@@ -86,7 +86,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS tba_todos (
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id) NOT NULL,
-          widget_id INTEGER REFERENCES tba_user_widgets(id),
+          widget_id INTEGER REFERENCES tba_user_widgets(id) ON DELETE CASCADE,
           task TEXT NOT NULL,
           is_completed BOOLEAN DEFAULT FALSE,
           color VARCHAR(20) DEFAULT '#8B5CF6',
@@ -152,7 +152,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS tba_widget_settings (
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id) NOT NULL,
-          widget_id INTEGER REFERENCES tba_user_widgets(id),
+          widget_id INTEGER REFERENCES tba_user_widgets(id) ON DELETE CASCADE,
           setting_key VARCHAR(100) NOT NULL,
           setting_value TEXT,
           updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -166,7 +166,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS tba_spreadsheets (
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id) NOT NULL,
-          widget_id INTEGER REFERENCES tba_user_widgets(id),
+          widget_id INTEGER REFERENCES tba_user_widgets(id) ON DELETE CASCADE,
           data JSONB DEFAULT '{}',
           headers JSONB DEFAULT '{}',
           created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -180,7 +180,7 @@ async function initDatabase() {
         CREATE TABLE IF NOT EXISTS tba_milestones (
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id) NOT NULL,
-          widget_id INTEGER REFERENCES tba_user_widgets(id),
+          widget_id INTEGER REFERENCES tba_user_widgets(id) ON DELETE CASCADE,
           title VARCHAR(100) DEFAULT '나의 마일스톤',
           collapsed BOOLEAN DEFAULT FALSE,
           settings JSONB DEFAULT '{}',
@@ -318,25 +318,73 @@ async function initDatabase() {
           SET settings = settings - 'title' 
           WHERE settings ? 'title'
         `);
-
         console.log('✅ tba_user_widgets.title 컬럼 통합 및 중복 데이터 정리 완료');
       } catch (e) {
         console.error('⚠️ tba_user_widgets.title 마이그레이션 실패:', e.message);
+      }
+
+      // 6. 기존 외래 키 제약 조건에 ON DELETE CASCADE 적용 (PostgreSQL 마이그레이션)
+      try {
+        await client.query(`
+          DO $$ 
+          DECLARE
+            r RECORD;
+          BEGIN
+            -- widget_id 컬럼을 사용하는 테이블들에 대해 기존 제약 조건을 찾아서 CASCADE로 재설정
+            FOR r IN (
+              SELECT tc.table_name, tc.constraint_name
+              FROM information_schema.table_constraints AS tc 
+              JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+              WHERE tc.constraint_type = 'FOREIGN KEY' 
+                AND tc.table_name IN ('tba_todos', 'tba_widget_settings', 'tba_spreadsheets', 'tba_milestones')
+                AND kcu.column_name = 'widget_id'
+            ) LOOP
+              EXECUTE 'ALTER TABLE ' || r.table_name || ' DROP CONSTRAINT ' || r.constraint_name;
+              EXECUTE 'ALTER TABLE ' || r.table_name || ' ADD CONSTRAINT ' || r.constraint_name || 
+                      ' FOREIGN KEY (widget_id) REFERENCES tba_user_widgets(id) ON DELETE CASCADE';
+            END LOOP;
+          END $$;
+        `);
+        console.log('✅ 모든 위젯 종속 테이블에 ON DELETE CASCADE 제약 조건 적용 완료');
+      } catch (e) {
+        console.error('⚠️ CASCADE 제약 조건 마이그레이션 실패:', e.message);
       }
 
       console.log('✅ PostgreSQL 데이터베이스 초기화 완료');
 
       setInterval(async () => {
         try {
+          // 1. 오래된 알람 완료 투두 삭제 (7일 기준)
           const cleanupResult = await pool.query(`
             DELETE FROM tba_todos 
             WHERE alarm_time < NOW() - INTERVAL '7 days'
           `);
           if (cleanupResult.rowCount > 0) {
-            console.log(`🧹 [스케줄러] 7일 이상 지난 오래된 알람 완료 투두 ${cleanupResult.rowCount}개 자동 삭제 완료`);
+            console.log(`Clarify 🧹 [스케줄러] 7일 이상 지난 오래된 알람 완료 투두 ${cleanupResult.rowCount}개 자동 삭제 완료`);
           }
+
+          // 2. 오래된 동기화 신호 데이터 삭제 (24시간 기준)
+          const syncCleanupResult = await pool.query(`
+            DELETE FROM tba_widget_settings 
+            WHERE setting_key IN ('todo_data_update', 'milestone_data_update', 'mindmap_update', 'data_update')
+            AND updated_at < NOW() - INTERVAL '1 day'
+          `);
+          if (syncCleanupResult.rowCount > 0) {
+            console.log(`🧹 [스케줄러] 24시간 이상 지난 동기화 신호 ${syncCleanupResult.rowCount}개 자동 삭제 완료`);
+          }
+
+          // 3. 고립된(Orphaned) 설정 데이터 정리 (주인 위젯이 삭제된 경우 대비)
+          const orphanCleanupResult = await pool.query(`
+            DELETE FROM tba_widget_settings 
+            WHERE widget_id IS NOT NULL 
+            AND NOT EXISTS (SELECT 1 FROM tba_user_widgets WHERE id = tba_widget_settings.widget_id)
+          `);
+          if (orphanCleanupResult.rowCount > 0) {
+            console.log(`🧹 [스케줄러] 고립된 위젯 설정 ${orphanCleanupResult.rowCount}개 정리 완료`);
+          }
+
         } catch (e) {
-          console.error('⚠️ [스케줄러] 알람 정리 스케줄 오류:', e.message);
+          console.error('⚠️ [스케줄러] DB 최적화 정리 스케줄 오류:', e.message);
         }
       }, 1000 * 60 * 60);
 

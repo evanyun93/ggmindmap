@@ -136,12 +136,14 @@ export async function initTodo(el, widgetData) {
         };
 
         // 다른 기기에서 설정이 변경되었을 때 실시간으로 체크박스 상태 업데이트
-        // (todo_auto_delete는 유저 전역 설정이므로 모든 위젯이 함께 업데이트됨)
+        // (각 위젯별로 독립적으로 필터링하여 자신의 데이터만 반영)
         syncService.addListener(SYNC_DATA_TYPES.TODO_AUTO_DELETE, (updatedWidgetId, newValue) => {
+            // 다른 위젯의 알림이면 무시 (문자열/숫자 타입 일치를 위해 String 변환)
+            if (updatedWidgetId && String(updatedWidgetId) !== String(widgetId)) return;
+
             const newChecked = newValue === true || newValue === 'true';
             if (autoDeleteCheck.checked !== newChecked) {
                 autoDeleteCheck.checked = newChecked;
-                if (window.currentUser) window.currentUser.todoAutoDelete = newChecked;
                 // UI 즉각 반영 (리스트 다시 불러오기)
                 loadTodoList(el);
             }
