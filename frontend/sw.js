@@ -101,7 +101,10 @@ self.addEventListener('activate', (event) => {
     event.waitUntil(self.clients.claim());
 });
 
-// ── 메인 스레드 메시지 수신 ──────────────────────────────────
+// PWA 설치 가능 조건을 충족하기 위한 fetch 이벤트 (현재는 통과만 시킴)
+self.addEventListener('fetch', (event) => {
+    // 필요한 경우 여기에서 캐싱 전략을 추가할 수 있습니다.
+});
 /**
  * 메시지 형식 1: { type: 'SHOW_ALARM', title, body, tag }  → 즉시 알림
  * 메시지 형식 2: { type: 'SYNC_ALARMS', alarms: [{id, alarmTime, body},...] }  → IndexedDB에 저장
