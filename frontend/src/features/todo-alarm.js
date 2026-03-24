@@ -10,6 +10,21 @@
 
 import { apiFetch } from '../services/api.js';
 
+// Firebase SDK (FCM 연동)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
+import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js";
+import { firebaseConfig, FCM_VAPID_KEY } from '../firebase-config.js';
+
+let firebaseApp = null;
+let messaging = null;
+
+try {
+    firebaseApp = initializeApp(firebaseConfig);
+    messaging = getMessaging(firebaseApp);
+} catch (error) {
+    console.warn('[Firebase] 초기화 안됨 (키 누락 가능성):', error);
+}
+
 // ────────────────────────────────────────────────
 // localStorage 키
 // ────────────────────────────────────────────────
@@ -95,62 +110,56 @@ async function registerServiceWorker() {
 }
 
 /**
- * Web Push 구독을 생성하고 서버에 저장합니다.
+ * FCM 푸시 구독을 생성하고 서버에 토큰을 저장합니다.
  */
 async function subscribeWebPush(reg) {
-    // VAPID 공개키: 서버의 환경변수와 일치해야 합니다
-    const VAPID_PUBLIC_KEY = 'BIwtlPfd2BiN_LHF5pNrjMAlrkwN1zuh5KBw6G4oc_feLh7UNBizYsh46ATjTipGE0B2y8hT-IktQKNbUHQnlDs';
+    if (!firebaseApp || !messaging) {
+        console.warn('[TodoAlarm] Firebase 초기화 정보가 없어 푸시를 활성화할 수 없습니다.');
+        return;
+    }
 
     try {
-        // PushManager 지원 확인 (iOS 등 일부 브라우저 대응)
-        if (!reg.pushManager) {
-            console.warn('[TodoAlarm] 이 브라우저는 PushManager를 지원하지 않습니다 (Web Push 비활성화).');
+        if (!reg) {
+            console.warn('[TodoAlarm] Service Worker 등록 객체가 없습니다.');
             return;
         }
 
         // 알림 권한 확인
         if (Notification.permission === 'denied') {
-            console.warn('[TodoAlarm] 알림 권한이 거부되어 Web Push를 활성화할 수 없습니다.');
+            console.warn('[TodoAlarm] 알림 권한이 거부되어 FCM을 활성화할 수 없습니다.');
             return;
         }
 
-        // 이미 구독되어 있으면 재사용
-        let subscription = await reg.pushManager.getSubscription();
-        if (!subscription) {
-            subscription = await reg.pushManager.subscribe({
-                userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-            });
-        }
-
-        // 서버에 구독 정보 저장
-        const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-                      sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
-        if (!token) {
-            console.log('[TodoAlarm] 로그인이 되어있지 않아 Push 구독 정보를 서버에 저장하지 않습니다.');
-            return;
-        }
-
-        await apiFetch('/api/push/subscribe', {
-            method: 'POST',
-            body: JSON.stringify({ subscription })
+        // FCM 토큰 발급
+        const currentToken = await getToken(messaging, {
+            vapidKey: FCM_VAPID_KEY,
+            serviceWorkerRegistration: reg
         });
-        console.log('[TodoAlarm] Web Push 구독 서버 저장 완료 → 완전한 백그라운드 알람 활성화');
+
+        if (currentToken) {
+            // 서버에 토큰 저장
+            const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
+                          sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+            if (!token) {
+                console.log('[TodoAlarm] 로그인이 되어있지 않아 FCM 구독 정보를 서버에 저장하지 않습니다.');
+                return;
+            }
+
+            await apiFetch('/api/push/subscribe', {
+                method: 'POST',
+                body: JSON.stringify({ token: currentToken })
+            });
+            console.log('[TodoAlarm] FCM 푸시 구독 서버 저장 완료 → 완전한 백그라운드 알람 활성화');
+        } else {
+            console.warn('[TodoAlarm] FCM 토큰을 가져올 수 없습니다. 알림 권한을 요청해야 합니다.');
+        }
     } catch (err) {
         if (Notification.permission === 'denied') {
-            console.warn('[TodoAlarm] Web Push 구독 실패: 사용자가 알림 권한을 거부했습니다.');
+            console.warn('[TodoAlarm] FCM 구독 실패: 사용자가 알림 권한을 거부했습니다.');
         } else {
-            console.error('[TodoAlarm] Web Push 구독 중 오류 발생:', err);
+            console.error('[TodoAlarm] FCM 구독 중 오류 발생:', err);
         }
     }
-}
-
-/** VAPID 공개키를 Uint8Array로 변환 */
-function urlBase64ToUint8Array(base64String) {
-    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
-    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-    const rawData = atob(base64);
-    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
 }
 
 /**

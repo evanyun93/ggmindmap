@@ -320,9 +320,9 @@ window.checkNotificationPermissionAndWarn = () => {
     if (isStandalone) {
         guideHtml = `
             <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                <b style="color: #ef4444;">[앱 보안 정책 안내]</b><br>
-                웹 브라우저의 전 세계적인 보안 규정 때문에, 현재 설치된 앱 내에서는 <b>설정 화면으로 보내주는 버튼 기능이 차단</b>된 상태입니다.<br><br>
-                번거로우시겠지만 잠시 앱을 내리시고, 스마트폰의 <b>[설정 ➔ 애플리케이션(앱) ➔ MindMap ➔ 알림]</b> 메뉴를 직접 찾아 <b>[허용]</b>으로 변경해 주셔야만 오류 없이 알람이 울립니다.
+                <b style="color: #ef4444;">[앱 알림 차단 해제 방법]</b><br>
+                현재 기기에서 MindMap 앱의 알림이 완전히 차단되어 있습니다.<br><br>
+                홈 화면에서 <b>MindMap 앱 아이콘을 길게 누른 뒤, [ⓘ (앱 정보)] 메뉴</b>로 들어가 <b>[알림]</b>을 허용해 주세요.
             </p>
         `;
         buttonsHtml = `

@@ -169,9 +169,11 @@ self.addEventListener('push', (event) => {
 
     try {
         if (event.data) {
-            const pushData = event.data.json();
+            const parsed = event.data.json();
+            // FCM Admin SDK로 data-only 페이로드를 보내면, 파싱된 객체 안에 한 번 더 'data' 프로퍼티로 감싸져서 옵니다.
+            const pushData = parsed.data || parsed;
             data = { ...data, ...pushData };
-            console.log('[SW] Push 데이터 파싱 완료:', data);
+            console.log('[SW] Push 데이터 파싱 완료 (FCM 지원):', data);
         }
     } catch (e) { 
         console.warn('[SW] Push 데이터 파싱 실패 (일반 텍스트로 보임):', e);

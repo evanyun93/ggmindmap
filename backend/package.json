@@ -15,11 +15,11 @@
     "cors": "^2.8.5",
     "dotenv": "^17.3.1",
     "express": "^4.18.2",
+    "firebase-admin": "^13.7.0",
     "jsonwebtoken": "^9.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.10.1",
     "pg": "^8.18.0",
-    "web-push": "^3.6.7",
     "youtube-captions-scraper": "^2.0.3"
   }
 }

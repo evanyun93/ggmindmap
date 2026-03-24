@@ -16,3 +16,6 @@ yarn-error.log*
 
 # 백엔드 파일 DB (Postgres 전환 후 불필요)
 backend/users.json
+
+# FCM conf
+backend/config/firebase-service-account.json
