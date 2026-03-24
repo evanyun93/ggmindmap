@@ -61,7 +61,15 @@ async function checkAndSendAlarms() {
                 try {
                     await admin.messaging().send({
                         token: fcmToken,
-                        data: messageData
+                        data: messageData,
+                        android: {
+                            priority: 'high'
+                        },
+                        webpush: {
+                            headers: {
+                                Urgency: 'high'
+                            }
+                        }
                     });
                     console.log(`[PushScheduler] FCM 발송 성공: "${todo.task}" (ID: ${todo.id}) → 유저 ${todo.user_id}`);
                 } catch (err) {
