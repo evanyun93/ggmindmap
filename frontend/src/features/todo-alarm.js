@@ -156,7 +156,13 @@ async function sendNotification(todo, alarmDate) {
     // Service Worker 경유 (PC/모바일 네이티브 알람 발송)
     const sw = swRegistration?.active ?? (await navigator.serviceWorker?.ready.then(r => r.active).catch(() => null));
     if (sw) {
-        sw.postMessage({ type: 'SHOW_ALARM', title: notifTitle, body: notifBody, tag: notifTag });
+        sw.postMessage({ 
+            type: 'SHOW_ALARM', 
+            id: todo.id, 
+            title: notifTitle, 
+            body: notifBody, 
+            tag: notifTag 
+        });
         console.warn(`[TodoAlarm] SW 알람 발송: ${todo.task}`);
         return;
     }

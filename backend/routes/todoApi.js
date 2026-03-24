@@ -140,10 +140,11 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
         let params = [id, req.user.id];
 
         if (action === 'dismiss') {
-            // 해제: 발송 완료 시각 기록하여 더 이상 알람이 울리지 않게 함
+            // 해제: 발송 완료 시각 기록 + 할 일 완료 처리
             query = `
                 UPDATE tba_todos 
-                SET push_sent_at = NOW() 
+                SET push_sent_at = NOW(),
+                    is_completed = true
                 WHERE id = $1 AND user_id = $2 
                 RETURNING widget_id
             `;

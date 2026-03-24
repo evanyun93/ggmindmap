@@ -113,7 +113,7 @@ self.addEventListener('message', (event) => {
     if (!event.data) return;
 
     if (event.data.type === 'SHOW_ALARM') {
-        const { title, body, tag } = event.data;
+        const { id, title, body, tag } = event.data;
         event.waitUntil(
             self.registration.showNotification(title, {
                 body,
@@ -124,7 +124,7 @@ self.addEventListener('message', (event) => {
                 vibrate: [200, 100, 200],
                 requireInteraction: true,
                 actions: ALARM_ACTIONS,
-                data: { body }
+                data: { body, id }
             })
         );
         return;
