@@ -361,11 +361,19 @@ window.checkNotificationPermissionAndWarn = () => {
         const isIOS = /iphone|ipad|ipod/.test(ua);
 
         if (isAndroid) {
-            // 안드로이드: APP_NOTIFICATION_SETTINGS는 안드로이드 크롬 인텐트 필터에서 차단됨(무반응).
-            // 정상 작동이 보장되는 APPLICATION_DETAILS_SETTINGS로 롤백.
+            // 안드로이드: APP_NOTIFICATION_SETTINGS 차단 및 무반응 문제 해결을 위해
+            // 크롬의 표준 Intent URI 문법 준용하여 앱 정보(APPLICATION_DETAILS_SETTINGS)로 딥링크.
             const a = document.createElement('a');
-            a.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:com.android.chrome;end;';
+            // Intent data parameter(package:...)는 해시(#Intent) 이전에 위치해야 합니다.
+            a.href = 'intent:package:com.android.chrome#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;end;';
+            a.style.display = 'none';
+            document.body.appendChild(a); // DOM에 붙여야 확실하게 클릭 동작
             a.click();
+            
+            // 즉시 제거
+            setTimeout(() => {
+                if(a.parentNode) a.parentNode.removeChild(a);
+            }, 100);
         } else if (isIOS) {
             // iOS: 앱 설정으로 이동
             location.href = 'app-settings:';
