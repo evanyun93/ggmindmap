@@ -304,3 +304,51 @@ window.updateNotifStatusUI = () => {
         }
     }
 };
+
+/**
+ * 알림 권한이 차단된 경우 사용자에게 설정 변경을 유도하는 경고 팝업
+ */
+window.checkNotificationPermissionAndWarn = () => {
+    // 권한이 차단(denied)된 경우에만 실행
+    if (Notification.permission !== 'denied') return;
+
+    // 이미 오늘 경고를 봤다면 내일 다시 띄움 (너무 자주 뜨면 불편하므로)
+    const lastWarn = localStorage.getItem('last_notif_warn');
+    const today = new Date().toDateString();
+    if (lastWarn === today) return;
+
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+    
+    // 모바일/PWA 환경에 맞춘 안내 메시지
+    let guideMsg = '';
+    if (isStandalone) {
+        guideMsg = '스마트폰 **[설정 > 알림 > Mindmap]** 메뉴에서 "알림 허용"을 켜주셔야 알람을 받으실 수 있습니다.';
+    } else {
+        guideMsg = '브라우저 주소창 왼쪽의 **[설정 아이콘]**을 누르고 "알림 권한"을 **허용**으로 직접 변경해 주세요.';
+    }
+
+    const modalHtml = `
+        <div id="notifWarnModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
+            <div style="background: white; border-radius: 16px; width: 100%; max-width: 320px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 40px; margin-bottom: 12px;">🚫</div>
+                    <h3 style="margin: 0; color: #1e293b; font-size: 18px;">알림 권한이 차단됨</h3>
+                </div>
+                <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px 0; text-align: center;">
+                    현재 서비스의 알림 권한이 꺼져 있어 알람을 받을 수 없습니다.<br><br>
+                    ${guideMsg}
+                </p>
+                <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: #8B5CF6; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                    확인했습니다
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    localStorage.setItem('last_notif_warn', today);
+
+    document.getElementById('closeNotifWarn').onclick = () => {
+        document.getElementById('notifWarnModal').remove();
+    };
+};

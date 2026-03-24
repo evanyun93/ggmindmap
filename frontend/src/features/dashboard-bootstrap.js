@@ -20,6 +20,11 @@ import { syncService } from '../services/sync.js';
 export async function initDashboardFeatures(user) {
     console.log('[Init] 대시보드 피처 초기화 시작...');
 
+    // 알림 권한 차단 여부 체크 및 경고 (비차단)
+    if (window.checkNotificationPermissionAndWarn) {
+        window.checkNotificationPermissionAndWarn();
+    }
+
     // 0. 동기화 서비스 초기화 및 데이터 로딩 대기
     await syncService.init();
 
