@@ -334,22 +334,17 @@ window.checkNotificationPermissionAndWarn = () => {
                 
                 <div style="background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 24px;">
                     <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                        <b>방법 1. 가장 빠른 방법 (강력 추천)</b><br>
-                        주소창 왼쪽의 <b>[설정 아이콘(또는 자물쇠)]</b>을 누르고 <b>[사이트 설정]</b>에서 알림을 허용해 주세요.
-                    </p>
-                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
-                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                        <b>방법 2. 시스템 설정 이용</b><br>
-                        아래 버튼 클릭 시 나타나는 화면에서 <b>[알림]</b> 또는 <b>[사이트 설정]</b>을 찾아 허용해 주세요.
+                        웹 브라우저 보안 정책상 '사이트 설정' 화면으로의 자동 이동이 불가능합니다.<br><br>
+                        아래 버튼을 눌러 기기의 <b>[앱 알림 설정]</b>으로 진입한 뒤, 알림을 강제로 <b>[허용]</b>해 주시거나 주소창의 자물쇠 아이콘을 확인해 주세요.
                     </p>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 10px;">
                     <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
-                        설정으로 이동하기
+                        안드로이드 알림 설정 열기
                     </button>
                     <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
-                        나중에 설정할게요
+                        직접 자물쇠 아이콘 누를게요
                     </button>
                 </div>
             </div>
@@ -365,13 +360,14 @@ window.checkNotificationPermissionAndWarn = () => {
         const isIOS = /iphone|ipad|ipod/.test(ua);
 
         if (isAndroid) {
-            // 안드로이드: 시스템 설정 내 크롬 앱 정보로 이동
-            location.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:com.android.chrome;end;';
+            // 안드로이드: 시스템 설정 -> 앱 알림 설정 메뉴로 "최대한 깊숙히 들어감"
+            // APP_NOTIFICATION_SETTINGS는 앱 정보 화면의 한 단계 더 안쪽(알림 토글 화면)입니다.
+            location.href = 'intent:#Intent;action=android.settings.APP_NOTIFICATION_SETTINGS;S.android.provider.extra.APP_PACKAGE=com.android.chrome;end;';
         } else if (isIOS) {
             // iOS: 앱 설정으로 이동
             location.href = 'app-settings:';
         } else {
-            window.appAlert('브라우저 설정에서 알림 권한을 허용해 주세요.');
+            window.appAlert('브라우저 주소창 설정에서 알림 권한을 허용해 주세요.');
         }
     };
 
