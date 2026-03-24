@@ -323,28 +323,35 @@ window.checkNotificationPermissionAndWarn = () => {
     }
 
     const modalHtml = `
-        <div id="notifWarnModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(4px);">
-            <div style="background: white; border-radius: 16px; width: 100%; max-width: 320px; padding: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div id="notifWarnModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px);">
+            <div style="background: white; border-radius: 24px; width: 100%; max-width: 340px; padding: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.2);">
                 <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="font-size: 40px; margin-bottom: 12px;">🚫</div>
-                    <h3 style="margin: 0; color: #1e293b; font-size: 18px;">알림 권한이 차단됨</h3>
+                    <div style="width: 64px; height: 64px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px;">
+                        <span style="font-size: 32px;">🔔</span>
+                    </div>
+                    <h3 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800;">알림이 차단되어 있습니다</h3>
                 </div>
-                <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 24px 0; text-align: center;">
-                    현재 서비스의 알림 권한이 꺼져 있어 알람을 받을 수 없습니다.<br><br>
-                    설정으로 이동하여 <b>알림 허용</b>을 켜주세요.
-                </p>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <button id="goToNotifSettings" style="width: 100%; padding: 14px; background: #8B5CF6; color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 6px -1px rgba(139, 92, 246, 0.3);">
+                
+                <div style="background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 24px;">
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b>방법 1. 가장 빠른 방법 (강력 추천)</b><br>
+                        주소창 왼쪽의 <b>[설정 아이콘(또는 자물쇠)]</b>을 누르고 <b>[사이트 설정]</b>에서 알림을 허용해 주세요.
+                    </p>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b>방법 2. 시스템 설정 이용</b><br>
+                        아래 버튼 클릭 시 나타나는 화면에서 <b>[알림]</b> 또는 <b>[사이트 설정]</b>을 찾아 허용해 주세요.
+                    </p>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 10px;">
+                    <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
                         설정으로 이동하기
                     </button>
-                    <button id="closeNotifWarn" style="width: 100%; padding: 10px; background: #f1f5f9; color: #64748b; border: none; border-radius: 10px; font-weight: 500; cursor: pointer;">
-                        나중에 하기
+                    <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                        나중에 설정할게요
                     </button>
                 </div>
-                <p id="notifManualGuide" style="display: none; font-size: 12px; color: #94a3b8; margin-top: 16px; text-align: center; line-height: 1.4;">
-                    자동 이동이 안 될 경우:<br>
-                    스마트폰 <b>[설정 > 애플리케이션 > Chrome (또는 MindMap)]</b> 에서 알림을 허용해 주세요.
-                </p>
             </div>
         </div>
     `;
@@ -357,16 +364,13 @@ window.checkNotificationPermissionAndWarn = () => {
         const isAndroid = /android/.test(ua);
         const isIOS = /iphone|ipad|ipod/.test(ua);
 
-        document.getElementById('notifManualGuide').style.display = 'block';
-
         if (isAndroid) {
-            // 안드로이드: 크롬 앱 정보로 이동 (가장 확실한 방법)
+            // 안드로이드: 시스템 설정 내 크롬 앱 정보로 이동
             location.href = 'intent:#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;data=package:com.android.chrome;end;';
         } else if (isIOS) {
             // iOS: 앱 설정으로 이동
             location.href = 'app-settings:';
         } else {
-            // 데스크톱 등
             window.appAlert('브라우저 설정에서 알림 권한을 허용해 주세요.');
         }
     };
