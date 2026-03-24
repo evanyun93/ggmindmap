@@ -173,7 +173,7 @@ self.addEventListener('push', (event) => {
             vibrate: [200, 100, 200],
             requireInteraction: true,
             actions: ALARM_ACTIONS,
-            data: { body: data.body }
+            data: { body: data.body, id: data.id }
         })
     );
 });
@@ -198,19 +198,24 @@ self.addEventListener('notificationclick', (event) => {
 
     // '해제' 또는 '5분 연장' 액션 처리
     if (event.action === 'dismiss' || event.action === 'snooze') {
-        if (!todoId) return;
+        if (!todoId) {
+            console.error('[SW] 알람 ID가 없어 액션을 처리할 수 없습니다.');
+            return;
+        }
 
         event.waitUntil(
             fetch(`/api/todos/${todoId}/alarm-action`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ action: event.action })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
+            })
             .then(data => {
                 console.log(`[SW] 알람 액션(${event.action}) 처리 완료:`, data);
-                // 연장(snooze)인 경우, 서버에서 SYNC_TYPES.TODO_DATA_UPDATE를 브로드캐스트하므로
-                // 메인 탭이 살아있다면 즉시 동기화가 이루어짐
             })
             .catch(err => {
                 console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
