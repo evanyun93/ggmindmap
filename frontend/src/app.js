@@ -312,11 +312,6 @@ window.checkNotificationPermissionAndWarn = () => {
     // 권한이 차단(denied)된 경우에만 실행
     if (Notification.permission !== 'denied') return;
 
-    // 이미 오늘 경고를 봤다면 내일 다시 띄움 (너무 자주 뜨면 불편하므로)
-    const lastWarn = localStorage.getItem('last_notif_warn');
-    const today = new Date().toDateString();
-    if (lastWarn === today) return;
-
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     
     // 모바일/PWA 환경에 맞춘 안내 메시지
@@ -355,7 +350,6 @@ window.checkNotificationPermissionAndWarn = () => {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
-    localStorage.setItem('last_notif_warn', today);
 
     // 설정 페이지로 이동 시도
     document.getElementById('goToNotifSettings').onclick = () => {
