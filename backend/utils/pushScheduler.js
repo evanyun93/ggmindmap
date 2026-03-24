@@ -62,12 +62,27 @@ async function checkAndSendAlarms() {
                     await admin.messaging().send({
                         token: fcmToken,
                         data: messageData,
+                        notification: {
+                            title: messageData.title,
+                            body: messageData.body
+                        },
                         android: {
-                            priority: 'high'
+                            priority: 'high',
+                            notification: {
+                                channelId: 'alarm'
+                            }
                         },
                         webpush: {
-                            headers: {
-                                Urgency: 'high'
+                            headers: { Urgency: 'high' },
+                            notification: {
+                                icon: messageData.icon,
+                                badge: messageData.badge,
+                                requireInteraction: true,
+                                data: messageData,
+                                actions: [
+                                    { action: 'dismiss', title: '✅ 해제' },
+                                    { action: 'snooze',  title: '⏰ 5분 뒤 다시 알림' }
+                                ]
                             }
                         }
                     });

@@ -6,19 +6,41 @@
 
 const CACHE_NAME = 'ggmind-sw-v2';
 const DB_NAME = 'ggmind-alarms';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'alarms';
+const TOKEN_STORE = 'auth'; // JWT 토큰 저장용
 
 // ── IndexedDB 헬퍼 ─────────────────────────────────────────────
 function openAlarmDB() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
-            e.target.result.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(TOKEN_STORE)) {
+                db.createObjectStore(TOKEN_STORE, { keyPath: 'key' });
+            }
         };
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => reject(req.error);
     });
+}
+
+/** SW에서 저장된 JWT 토큰을 가져옵니다 */
+async function getAuthToken() {
+    try {
+        const db = await openAlarmDB();
+        return new Promise((resolve) => {
+            const tx = db.transaction(TOKEN_STORE, 'readonly');
+            const req = tx.objectStore(TOKEN_STORE).get('jwt');
+            req.onsuccess = () => resolve(req.result?.value || null);
+            req.onerror = () => resolve(null);
+        });
+    } catch {
+        return null;
+    }
 }
 
 async function saveAlarms(alarms) {
@@ -147,6 +169,18 @@ self.addEventListener('message', (event) => {
             })
         );
     }
+
+    if (event.data.type === 'SAVE_TOKEN') {
+        const jwtValue = event.data.token;
+        event.waitUntil(
+            openAlarmDB().then(db => new Promise((resolve, reject) => {
+                const tx = db.transaction(TOKEN_STORE, 'readwrite');
+                tx.objectStore(TOKEN_STORE).put({ key: 'jwt', value: jwtValue });
+                tx.oncomplete = () => { console.log('[SW] JWT 토큰 IDB 저장 완료'); resolve(); };
+                tx.onerror = () => reject(tx.error);
+            }))
+        );
+    }
 });
 
 // ── Periodic Background Sync (Chrome/Edge 전용) ───────────────
@@ -199,7 +233,9 @@ self.addEventListener('push', (event) => {
 // ── 알림 클릭 / 액션 버튼 처리 ─────────────────────
 self.addEventListener('notificationclick', (event) => {
     event.notification.close();
-    const todoId = event.notification.data?.id;
+    const notifData = event.notification.data;
+    const todoId = notifData?.id;
+    console.log('[SW] notificationclick - data:', JSON.stringify(notifData), '| todoId:', todoId, '| action:', event.action);
 
     // 본체 클릭 시 앱 열기 (액션 버튼 클릭 시에는 실행 안 함)
     if (!event.action) {
@@ -222,11 +258,15 @@ self.addEventListener('notificationclick', (event) => {
         }
 
         event.waitUntil(
-            fetch(`/api/todos/${todoId}/alarm-action`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ action: event.action })
+            getAuthToken().then(jwtToken => {
+                const headers = { 'Content-Type': 'application/json' };
+                if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
+                return fetch(`/api/todos/${todoId}/alarm-action`, {
+                    method: 'PATCH',
+                    headers,
+                    credentials: 'include',
+                    body: JSON.stringify({ action: event.action })
+                });
             })
             .then(response => {
                 if (!response.ok) {

@@ -117,8 +117,15 @@ async function registerServiceWorker() {
         const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
         await navigator.serviceWorker.ready;
         swRegistration = reg;
-        console.log('[TodoAlarm] Service Worker 등록 완료');
         console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
+
+        // JWT 토큰을 SW의 IndexedDB에 저장 (SW에서 알람 액션 인증에 사용)
+        const jwtToken = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
+                         sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+        if (jwtToken && reg.active) {
+            reg.active.postMessage({ type: 'SAVE_TOKEN', token: jwtToken });
+            console.log('[TodoAlarm] JWT 토큰을 SW에 전달 완료');
+        }
         
         // Periodic Background Sync 등록 (Chrome/Edge 전용)
         if ('periodicSync' in reg) {
