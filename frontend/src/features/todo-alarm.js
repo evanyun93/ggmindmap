@@ -12,15 +12,49 @@ import { apiFetch } from '../services/api.js';
 
 // Firebase SDK (FCM 연동)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
-import { getMessaging, getToken } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js";
+import { getMessaging, getToken, onMessage } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-messaging.js";
 import { firebaseConfig, FCM_VAPID_KEY } from '../firebase-config.js';
 
 let firebaseApp = null;
 let messaging = null;
+let swRegistration = null; // 상단으로 호이스팅하여 onMessage에서 참조 가능하게 함
 
 try {
     firebaseApp = initializeApp(firebaseConfig);
     messaging = getMessaging(firebaseApp);
+
+    // [중요] 앱이 열려있는 상태(Foreground)에서는 SW 대신 메인 스레드로 FCM 푸시가 가로채어집니다.
+    // 여기서 직접 알림을 띄워주어야 앱 사용 중에도 알람이 보입니다.
+    onMessage(messaging, (payload) => {
+        console.log('[TodoAlarm] 앱 화면 열림 상태에서 FCM 메시지 수신:', payload);
+        if (Notification.permission === 'granted') {
+            const data = payload.data || payload;
+            const notifTitle = data.title || 'GGMIND-알리미';
+            const notifOptions = {
+                body: data.body,
+                icon: data.icon || '/assets/advanced-icon.png',
+                badge: data.badge || '/assets/advanced-icon.png',
+                tag: data.tag,
+                requireInteraction: true,
+                vibrate: [200, 100, 200],
+                data: { body: data.body, id: data.id }
+            };
+
+            if (swRegistration) {
+                // SW를 통해 띄워야 액션 버튼(해제, 연장)을 넣을 수 있음
+                swRegistration.showNotification(notifTitle, {
+                    ...notifOptions,
+                    actions: [
+                        { action: 'dismiss', title: '✅ 해제' },
+                        { action: 'snooze',  title: '⏰ 5분 뒤 다시 알림' }
+                    ]
+                });
+            } else {
+                new Notification(notifTitle, notifOptions);
+            }
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
+    });
 } catch (error) {
     console.warn('[Firebase] 초기화 안됨 (키 누락 가능성):', error);
 }
@@ -76,7 +110,6 @@ function isAlarmSent(id) {
 // ────────────────────────────────────────────────
 // Service Worker 등록 (모바일/백그라운드 알림용)
 // ────────────────────────────────────────────────
-let swRegistration = null;
 
 async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
