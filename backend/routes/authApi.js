@@ -96,6 +96,13 @@ router.post('/social-register', async (req, res) => {
 
             await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: true, // SameSite: None requires Secure
+                sameSite: 'None',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+            });
+
             return res.json({
                 success: true,
                 message: `${provider} 계정이 연동되었습니다!`,
@@ -137,6 +144,13 @@ router.post('/social-register', async (req, res) => {
             );
 
             await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
+
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: true, // SameSite: None requires Secure
+                sameSite: 'None',
+                maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+            });
 
             return res.json({
                 success: true,
@@ -251,6 +265,14 @@ router.post('/social-login', async (req, res) => {
 
         await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
+        // 쿠키 설정 (Service Worker 인증용)
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+            sameSite: 'Lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+        });
+
         res.json({
             success: true,
             message: `${provider} 로그인 성공!`,
@@ -319,6 +341,14 @@ router.post('/login', async (req, res) => {
                 );
                 await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [updatedUser.id]);
                 
+                // 쿠키 설정 (Service Worker 인증용)
+                res.cookie('token', token, {
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+                    sameSite: 'Lax',
+                    maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+                });
+
                 return res.json({
                     success: true,
                     message: '카카오 계정을 일반 로그인으로 전환했습니다!',
@@ -356,6 +386,14 @@ router.post('/login', async (req, res) => {
 
         await pool.query('UPDATE tba_users SET last_login_at = CURRENT_TIMESTAMP WHERE id = $1', [user.id]);
 
+        // 쿠키 설정 (Service Worker 인증용)
+        res.cookie('token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+            sameSite: 'Lax',
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
+        });
+
         res.json({
             success: true,
             message: '로그인 성공!',
@@ -375,6 +413,19 @@ router.post('/login', async (req, res) => {
         console.error('로그인 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
+});
+
+/**
+ * 로그아웃 API
+ * - 클라이언트의 토큰 삭제 외에, 서비스 워커가 사용하는 쿠키를 서버에서 제거합니다.
+ */
+router.post('/logout', (req, res) => {
+    res.clearCookie('token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'None'
+    });
+    res.json({ success: true, message: '로그아웃 되었습니다.' });
 });
 
 /**

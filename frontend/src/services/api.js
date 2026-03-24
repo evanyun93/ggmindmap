@@ -30,7 +30,8 @@ export async function apiFetch(endpoint, options = {}) {
 
     const response = await fetch(fullUrl, {
         ...options,
-        headers
+        headers,
+        credentials: 'include'
     });
 
     return response;

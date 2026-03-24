@@ -76,7 +76,12 @@ export async function register(userData) {
 /**
  * 로그아웃 처리를 합니다.
  */
-export function logout() {
+export async function logout() {
+    try {
+        await apiFetch('/api/auth/logout', { method: 'POST' });
+    } catch (err) {
+        console.warn('[Auth] 서버 로그아웃 요청 실패 (무시하고 로컬 정리 진행):', err);
+    }
     clearTokens();
     location.reload();
 }

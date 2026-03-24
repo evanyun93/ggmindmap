@@ -2,6 +2,7 @@ const express = require('express');
 require('dotenv').config();
 const cors = require('cors');
 const path = require('path');
+const cookieParser = require('cookie-parser');
 const { initDatabase } = require('./config/database');
 
 const app = express();
@@ -20,6 +21,7 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 
 // 헬스체크 API
