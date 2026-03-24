@@ -315,29 +315,41 @@ window.checkNotificationPermissionAndWarn = () => {
     
     // PWA(설치앱) 환경과 브라우저 환경 안내 분리
     let guideHtml = '';
-    let laterBtnText = '나중에 설정할게요';
+    let buttonsHtml = '';
     
     if (isStandalone) {
         guideHtml = `
             <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                설치된 앱에서는 주소창(자물쇠 아이콘)이 보이지 않습니다.<br><br>
-                스마트폰의 <b>[설정 ➔ 애플리케이션 ➔ MindMap(또는 Chrome) ➔ 알림]</b> 메뉴를 직접 찾아 <b>[허용]</b>으로 변경해 주셔야 합니다.
+                <b style="color: #ef4444;">[앱 보안 정책 안내]</b><br>
+                웹 브라우저의 전 세계적인 보안 규정 때문에, 현재 설치된 앱 내에서는 <b>설정 화면으로 보내주는 버튼 기능이 차단</b>된 상태입니다.<br><br>
+                번거로우시겠지만 잠시 앱을 내리시고, 스마트폰의 <b>[설정 ➔ 애플리케이션(앱) ➔ MindMap ➔ 알림]</b> 메뉴를 직접 찾아 <b>[허용]</b>으로 변경해 주셔야만 오류 없이 알람이 울립니다.
             </p>
         `;
-        laterBtnText = '닫기 (직접 설정에서 바꿀게요)';
+        buttonsHtml = `
+            <button id="closeNotifWarn" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
+                알겠습니다 (직접 설정할게요)
+            </button>
+        `;
     } else {
         guideHtml = `
             <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
                 <b>방법 1. 가장 빠른 방법 (강력 추천)</b><br>
-                주소창 왼쪽의 <b>[설정 아이콘(또는 자물쇠)]</b>을 누르고 <b>[사이트 설정]</b>에서 알림을 허용해 주세요.
+                화면 상단 주소창 왼쪽의 <b>[자물쇠 아이콘]</b>을 누르고 <b>[사이트 설정]</b>에서 알림을 허용해 주세요.
             </p>
             <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
             <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                <b>방법 2. 시스템 설정 이용</b><br>
-                아래 버튼 클릭 시 나타나는 화면에서 <b>[알림]</b> 또는 <b>[사이트 설정]</b>을 찾아 허용해 주세요.
+                <b>방법 2. 시스템 앱 정보 이용</b><br>
+                아래 버튼 클릭 시 나타나는 화면 상단에서 <b>[알림]</b>을 찾아 허용해 주세요.
             </p>
         `;
-        laterBtnText = '직접 자물쇠 아이콘 누를게요';
+        buttonsHtml = `
+            <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
+                안드로이드 설정 열기 ➔ [알림] 켜기
+            </button>
+            <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                직접 자물쇠 아이콘 누를게요
+            </button>
+        `;
     }
 
     const modalHtml = `
@@ -350,23 +362,12 @@ window.checkNotificationPermissionAndWarn = () => {
                     <h3 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800;">알림 권한 차단됨</h3>
                 </div>
                 
-                <div style="background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 16px; flex-shrink: 0;">
+                <div style="background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 24px; flex-shrink: 0;">
                     ${guideHtml}
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
-                    <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
-                        안드로이드 설정 열기 시도
-                    </button>
-                    <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
-                        ${laterBtnText}
-                    </button>
-                </div>
-                
-                <!-- 디버깅용 영역 -->
-                <div style="margin-top: 16px; flex-grow: 1; display: flex; flex-direction: column; min-height: 80px;">
-                    <span style="font-size: 11px; color: #94a3b8; margin-bottom: 4px;">디버깅 로그 (문제가 생기면 복사해 주세요)</span>
-                    <textarea id="notifDebugLog" readonly style="width: 100%; flex-grow: 1; padding: 8px; font-size: 10px; font-family: monospace; background: #1e293b; color: #34d399; border: none; border-radius: 8px; resize: none;"></textarea>
+                    ${buttonsHtml}
                 </div>
             </div>
         </div>
@@ -374,60 +375,28 @@ window.checkNotificationPermissionAndWarn = () => {
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 
-    const logEl = document.getElementById('notifDebugLog');
-    const log = (msg) => {
-        const time = new Date().toLocaleTimeString();
-        logEl.value += `[${time}] ${msg}\n`;
-        logEl.scrollTop = logEl.scrollHeight;
-    };
-
-    log(`isStandalone: ${isStandalone}`);
-    log(`userAgent: ${navigator.userAgent.substring(0, 50)}...`);
-
-    // 설정 페이지로 이동 시도
-    document.getElementById('goToNotifSettings').onclick = () => {
-        log('Button clicked.');
-        try {
+    const goBtn = document.getElementById('goToNotifSettings');
+    if (goBtn) {
+        goBtn.onclick = () => {
             const ua = navigator.userAgent.toLowerCase();
             const isAndroid = /android/.test(ua);
             const isIOS = /iphone|ipad|ipod/.test(ua);
 
-            log(`isAndroid: ${isAndroid}, isIOS: ${isIOS}`);
-
             if (isAndroid) {
                 const intentUrl = 'intent:package:com.android.chrome#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;end;';
-                log(`Attempting a.click() with URL:\n${intentUrl}`);
-                
                 const a = document.createElement('a');
                 a.href = intentUrl;
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
-                
-                log('a.click() executed.');
-                
-                setTimeout(() => {
-                    if(a.parentNode) a.parentNode.removeChild(a);
-                    log('a element removed.');
-                }, 100);
-                
-                // fallback 시도 2 (location.href)
-                setTimeout(() => {
-                    log('Attempt 2: location.href = intent...');
-                    location.href = intentUrl;
-                }, 500);
+                setTimeout(() => { if(a.parentNode) a.parentNode.removeChild(a); }, 100);
             } else if (isIOS) {
                 location.href = 'app-settings:';
-                log('location.href = app-settings:');
             } else {
                 window.appAlert('브라우저 주소창 설정에서 알림 권한을 허용해 주세요.');
-                log('Desktop fallback Alert executed.');
             }
-        } catch (err) {
-            log(`ERROR: ${err.message}`);
-            log(err.stack);
-        }
-    };
+        };
+    }
 
     document.getElementById('closeNotifWarn').onclick = () => {
         document.getElementById('notifWarnModal').remove();
