@@ -170,28 +170,35 @@ window.addEventListener('beforeinstallprompt', (e) => {
     // 이벤트를 변수에 저장해두었다가 나중에 트리거
     window.deferredPrompt = e;
     
-    // 푸터에 있는 설치 버튼 표시
-    const installBtn = document.getElementById('modalInstallApp');
-    if (installBtn) {
-        installBtn.style.display = 'flex';
-        installBtn.onclick = async () => {
-            const promptEvent = window.deferredPrompt;
-            if (!promptEvent) return;
-            // 설치 프롬프트 띄우기
-            promptEvent.prompt();
-            // 사용자의 선택 결과 대기
-            const { outcome } = await promptEvent.userChoice;
-            console.log(`[PWA] 사용자의 설치 응답: ${outcome}`);
-            window.deferredPrompt = null;
-            installBtn.style.display = 'none';
-        };
-    }
+    // 설치 버튼 표시 (로그인 화면 & 대시보드 설정 메뉴)
+    const installBtns = [
+        document.getElementById('modalInstallApp'),
+        document.getElementById('authInstallApp')
+    ];
+
+    installBtns.forEach(btn => {
+        if (btn) {
+            btn.style.display = 'flex';
+            btn.onclick = async () => {
+                const promptEvent = window.deferredPrompt;
+                if (!promptEvent) return;
+                promptEvent.prompt();
+                const { outcome } = await promptEvent.userChoice;
+                console.log(`[PWA] 사용자의 설치 응답: ${outcome}`);
+                window.deferredPrompt = null;
+                installBtns.forEach(b => { if (b) b.style.display = 'none'; });
+            };
+        }
+    });
 });
 
 // 앱이 설치되었을 때의 처리
 window.addEventListener('appinstalled', () => {
     console.log('[PWA] 앱이 성공적으로 설치되었습니다.');
     window.deferredPrompt = null;
-    const installBtn = document.getElementById('modalInstallApp');
-    if (installBtn) installBtn.style.display = 'none';
+    const installBtns = [
+        document.getElementById('modalInstallApp'),
+        document.getElementById('authInstallApp')
+    ];
+    installBtns.forEach(b => { if (b) b.style.display = 'none'; });
 });
