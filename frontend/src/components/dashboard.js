@@ -190,6 +190,21 @@ export function getDashboardHTML(user) {
             <h3 style="margin-top: 0; color: #333; margin-bottom: 16px; border-bottom: 1px solid #eee; padding-bottom: 12px; padding-right: 30px;">내 정보 / 설정</h3>
             ${warningsCards}
             ${socialIntegrationSection}
+            
+            <!-- 알림 권한 설정 섹션 추가 -->
+            <div id="notifStatusSection" style="background: #fdf2f2; border: 1px solid #feb2b2; border-radius: 8px; padding: 12px; margin-bottom: 16px; display: none;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span id="notifStatusIcon" style="font-size: 18px;">⚠️</span>
+                    <strong id="notifStatusTitle" style="font-size: 14px; color: #c53030;">알림 권한이 필요합니다</strong>
+                </div>
+                <p id="notifStatusDesc" style="font-size: 12px; color: #742a2a; margin: 0 0 10px 0; line-height: 1.4;">
+                    정확한 시간에 알람을 받으려면 알림 권한을 허용해 주세요.
+                </p>
+                <button id="modalRequestNotif" style="width: 100%; padding: 8px; background: #c53030; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                    알림 권한 허용하기
+                </button>
+            </div>
+
             ${securitySection}
             ${displaySection}
             <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;">

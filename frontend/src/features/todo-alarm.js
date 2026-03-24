@@ -92,6 +92,18 @@ async function subscribeWebPush(reg) {
     const VAPID_PUBLIC_KEY = 'BIwtlPfd2BiN_LHF5pNrjMAlrkwN1zuh5KBw6G4oc_feLh7UNBizYsh46ATjTipGE0B2y8hT-IktQKNbUHQnlDs';
 
     try {
+        // PushManager 지원 확인 (iOS 등 일부 브라우저 대응)
+        if (!reg.pushManager) {
+            console.warn('[TodoAlarm] 이 브라우저는 PushManager를 지원하지 않습니다 (Web Push 비활성화).');
+            return;
+        }
+
+        // 알림 권한 확인
+        if (Notification.permission === 'denied') {
+            console.warn('[TodoAlarm] 알림 권한이 거부되어 Web Push를 활성화할 수 없습니다.');
+            return;
+        }
+
         // 이미 구독되어 있으면 재사용
         let subscription = await reg.pushManager.getSubscription();
         if (!subscription) {
@@ -102,8 +114,12 @@ async function subscribeWebPush(reg) {
         }
 
         // 서버에 구독 정보 저장
-        const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
-        if (!token) return;
+        const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
+                      sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+        if (!token) {
+            console.log('[TodoAlarm] 로그인이 되어있지 않아 Push 구독 정보를 서버에 저장하지 않습니다.');
+            return;
+        }
 
         await apiFetch('/api/push/subscribe', {
             method: 'POST',
@@ -111,7 +127,11 @@ async function subscribeWebPush(reg) {
         });
         console.log('[TodoAlarm] Web Push 구독 서버 저장 완료 → 완전한 백그라운드 알람 활성화');
     } catch (err) {
-        console.warn('[TodoAlarm] Web Push 구독 실패 (권한 거부 또는 미지원):', err.message);
+        if (Notification.permission === 'denied') {
+            console.warn('[TodoAlarm] Web Push 구독 실패: 사용자가 알림 권한을 거부했습니다.');
+        } else {
+            console.error('[TodoAlarm] Web Push 구독 중 오류 발생:', err);
+        }
     }
 }
 

@@ -23,27 +23,30 @@ async function checkAndSendAlarms() {
     }
 
     try {
-        // 알람 시각이 [지금-30초, 지금+30초] 범위이고 아직 발송 안 된 것
+        // 알람 시각이 [지금-5분, 지금] 범위이고 아직 발송 안 된 것
         const result = await pool.query(`
             SELECT t.id, t.user_id, t.task, t.alarm_time
             FROM tba_todos t
             WHERE t.alarm_time IS NOT NULL
               AND t.is_completed = false
               AND t.push_sent_at IS NULL
-              AND t.alarm_time BETWEEN NOW() - INTERVAL '30 seconds' AND NOW() + INTERVAL '30 seconds'
+              AND t.alarm_time <= NOW()
+              AND t.alarm_time > NOW() - INTERVAL '5 minutes'
         `);
 
-        if (result.rows.length === 0) return;
+        if (result.rows.length > 0) {
+            console.log(`[PushScheduler] 발송 대상 알람 ${result.rows.length}개 발견.`);
+        }
 
         for (const todo of result.rows) {
             // 해당 유저의 push subscription 조회
             const subResult = await pool.query(
-                'SELECT subscription FROM tba_push_subscriptions WHERE user_id = $1',
+                'SELECT endpoint, subscription FROM tba_push_subscriptions WHERE user_id = $1',
                 [todo.user_id]
             );
 
             if (subResult.rows.length === 0) {
-                console.log(`[PushScheduler] 유저 ${todo.user_id}의 push 구독 없음`);
+                console.log(`[PushScheduler] 유저 ${todo.user_id}의 push 구독 없음 (ID: ${todo.id})`);
                 continue;
             }
 
@@ -55,6 +58,7 @@ async function checkAndSendAlarms() {
             }).format(new Date(todo.alarm_time));
 
             const payload = JSON.stringify({
+                id: todo.id, // ID 누락 수정: 이 정보가 있어야 SW에서 액션 처리 가능
                 title: 'GGMIND-알리미',
                 body: `⏰ [${timeStr}] ${todo.task}`,
                 tag: `todo-alarm-${todo.id}`,
@@ -73,7 +77,7 @@ async function checkAndSendAlarms() {
 
                 try {
                     await webpush.sendNotification(sub, payload);
-                    console.log(`[PushScheduler] 알람 발송 성공: "${todo.task}" → 유저 ${todo.user_id}`);
+                    console.log(`[PushScheduler] 알람 발송 성공: "${todo.task}" (ID: ${todo.id}) → 유저 ${todo.user_id}`);
                 } catch (err) {
                     // 구독이 만료된 경우 DB에서 삭제
                     if (err.statusCode === 410 || err.statusCode === 404) {

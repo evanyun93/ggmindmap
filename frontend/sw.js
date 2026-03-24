@@ -158,10 +158,24 @@ self.addEventListener('periodicsync', (event) => {
 
 // ── 서버에서 발송된 Web Push 수신 ─────────────────────────────
 self.addEventListener('push', (event) => {
-    let data = { title: 'GGMIND-알리미', body: '새 알람이 있습니다.', tag: 'ggmind-push', icon: '/assets/advanced-icon.png' };
+    console.log('[SW] Push 메시지 수신됨:', event.data ? event.data.text() : '빈 데이터');
+    
+    let data = { 
+        title: 'GGMIND-알리미', 
+        body: '새 알람이 있습니다.', 
+        tag: 'ggmind-push', 
+        icon: '/assets/advanced-icon.png' 
+    };
+
     try {
-        if (event.data) data = { ...data, ...event.data.json() };
-    } catch (e) { /* ignore parse error */ }
+        if (event.data) {
+            const pushData = event.data.json();
+            data = { ...data, ...pushData };
+            console.log('[SW] Push 데이터 파싱 완료:', data);
+        }
+    } catch (e) { 
+        console.warn('[SW] Push 데이터 파싱 실패 (일반 텍스트로 보임):', e);
+    }
 
     event.waitUntil(
         self.registration.showNotification(data.title, {
@@ -175,6 +189,8 @@ self.addEventListener('push', (event) => {
             actions: ALARM_ACTIONS,
             data: { body: data.body, id: data.id }
         })
+        .then(() => console.log('[SW] 알림 표시 성공:', data.body))
+        .catch(err => console.error('[SW] 알림 표시 실패:', err))
     );
 });
 

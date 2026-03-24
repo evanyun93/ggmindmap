@@ -131,6 +131,34 @@ function initUtilities() {
         };
     }
 
+    // 설정 모달 관련 추가 로직 (알림 권한 등)
+    const setupBtn = document.getElementById('setupBtn');
+    if (setupBtn) {
+        const originalOnClick = setupBtn.onclick;
+        setupBtn.onclick = (e) => {
+            if (originalOnClick) originalOnClick(e);
+            // 모달 열릴 때 알림 상태 업데이트
+            if (window.updateNotifStatusUI) window.updateNotifStatusUI();
+        };
+    }
+
+    const modalRequestNotif = document.getElementById('modalRequestNotif');
+    if (modalRequestNotif) {
+        modalRequestNotif.onclick = async () => {
+            if (!('Notification' in window)) {
+                window.appAlert('이 브라우저는 알림 기능을 지원하지 않습니다.');
+                return;
+            }
+            const permission = await Notification.requestPermission();
+            if (permission === 'granted') {
+                window.appAlert('알림 권한이 허용되었습니다! 이제 실시간 알람을 받으실 수 있습니다.');
+                // 서비스 워커에 구독 갱신 요청 (import 동적으로 수행)
+                import('./features/todo-alarm.js').then(m => m.todoAlarmSystem.start());
+            }
+            if (window.updateNotifStatusUI) window.updateNotifStatusUI();
+        };
+    }
+
     // 이메일 추가 버튼
     const addEmailBtn = document.getElementById('addEmailBtn');
     if (addEmailBtn) {

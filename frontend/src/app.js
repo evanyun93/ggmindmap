@@ -202,3 +202,80 @@ window.addEventListener('appinstalled', () => {
     ];
     installBtns.forEach(b => { if (b) b.style.display = 'none'; });
 });
+
+/**
+ * 알림 권한 상태 UI 업데이트 (설정 모달용)
+ */
+window.updateNotifStatusUI = () => {
+    const section = document.getElementById('notifStatusSection');
+    const icon = document.getElementById('notifStatusIcon');
+    const title = document.getElementById('notifStatusTitle');
+    const desc = document.getElementById('notifStatusDesc');
+    const btn = document.getElementById('modalRequestNotif');
+    const installBtn = document.getElementById('modalInstallApp');
+
+    if (!section) return;
+
+    const permission = Notification.permission;
+    // 앱으로 실행 중인지 확인 (Standalone 모드)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+
+    // 1. 앱 설치 버튼을 '알림 설정 안내' 버튼으로 활용 (이미 설치된 경우)
+    if (isStandalone && installBtn) {
+        installBtn.style.display = 'flex';
+        installBtn.innerHTML = '<span>🔔 알림 최적화 가이드</span>';
+        installBtn.style.background = '#4B5563';
+        installBtn.onclick = () => {
+            window.appAlert('이미 앱이 설치되어 있습니다. 알람이 오지 않는다면 스마트폰 설정에서 "알림 허용"을 확인해 주세요.');
+        };
+    }
+
+    // 2. 권한 상태별 UI 구성
+    section.style.display = 'block';
+
+    if (permission === 'granted') {
+        section.style.background = '#f0fff4';
+        section.style.borderColor = '#c6f6d5';
+        if (icon) icon.textContent = '✅';
+        if (title) {
+            title.textContent = '알림 권한 허용됨';
+            title.style.color = '#2f855a';
+        }
+        if (desc) {
+            desc.textContent = '백그라운드에서 실시간 알람을 받을 수 있는 상태입니다.';
+            desc.style.color = '#276749';
+        }
+        if (btn) btn.style.display = 'none';
+    } else if (permission === 'denied') {
+        section.style.background = '#fff5f5';
+        section.style.borderColor = '#feb2b2';
+        if (icon) icon.textContent = '❌';
+        if (title) {
+            title.textContent = '알림 권한 차단됨';
+            title.style.color = '#c53030';
+        }
+        if (desc) {
+            desc.textContent = '브라우저 주소창 왼쪽의 설정 아이콘을 눌러 알림 권한을 "허용"으로 바꿔주셔야 알람이 울립니다.';
+            desc.style.color = '#742a2a';
+        }
+        if (btn) btn.style.display = 'none';
+    } else {
+        // default (대기)
+        section.style.background = '#ebf8ff';
+        section.style.borderColor = '#bee3f8';
+        if (icon) icon.textContent = '🔔';
+        if (title) {
+            title.textContent = '알림 권한 대기 중';
+            title.style.color = '#2b6cb0';
+        }
+        if (desc) {
+            desc.textContent = '알람을 받으시려면 아래 버튼을 눌러 알림 권한을 허용해 주세요.';
+            desc.style.color = '#2c5282';
+        }
+        if (btn) {
+            btn.style.display = 'block';
+            btn.textContent = '지금 알림 권한 허용하기';
+            btn.style.background = '#3182ce';
+        }
+    }
+};
