@@ -85,7 +85,8 @@ async function registerServiceWorker() {
         await navigator.serviceWorker.ready;
         swRegistration = reg;
         console.log('[TodoAlarm] Service Worker 등록 완료');
-
+        console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
+        
         // Periodic Background Sync 등록 (Chrome/Edge 전용)
         if ('periodicSync' in reg) {
             try {
@@ -99,9 +100,9 @@ async function registerServiceWorker() {
             }
         }
 
-        // Web Push 구독 등록 (서버에서 직접 발송하는 진짜 백그라운드 알람)
+        // FCM 토큰 갱신 및 구독
         await subscribeWebPush(reg);
-
+        
         return reg;
     } catch (err) {
         console.warn('[TodoAlarm] Service Worker 등록 실패 (일반 Notification으로 폴백):', err);
