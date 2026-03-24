@@ -164,15 +164,23 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
         const result = await pool.query(query, params);
 
         if (result.rows.length === 0) {
+            console.warn(`[AlarmAction] 해당 항목을 찾을 수 없음 (ID: ${id}, User: ${req.user.id})`);
             return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
         }
 
-        // 실시간 동기화 알림 (다른 기기에서도 알람 예약이 갱신됨)
+        // 실시간 동기화 알림
         syncService.notifyChange(req.user.id, result.rows[0].widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
+
+        console.log(`[AlarmAction] 처리 완료: "${action}" | ID: ${id} | User: ${req.user.id}`);
+        if (action === 'snooze') {
+            // DB에서 갱신된 시간 확인 (디버깅용)
+            const check = await pool.query('SELECT alarm_time FROM tba_todos WHERE id = $1', [id]);
+            console.log(`[AlarmAction] 새 알람 시각: ${check.rows[0].alarm_time}`);
+        }
 
         res.json({ success: true, action });
     } catch (error) {
-        console.error('To-Do 알람 액션 처리 에러:', error);
+        console.error('[AlarmAction] 처리 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류' });
     }
 });

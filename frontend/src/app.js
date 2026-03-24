@@ -220,14 +220,39 @@ window.updateNotifStatusUI = () => {
     // 앱으로 실행 중인지 확인 (Standalone 모드)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
-    // 1. 앱 설치 버튼을 '알림 설정 안내' 버튼으로 활용 (이미 설치된 경우)
-    if (isStandalone && installBtn) {
-        installBtn.style.display = 'flex';
-        installBtn.innerHTML = '<span>🔔 알림 최적화 가이드</span>';
-        installBtn.style.background = '#4B5563';
-        installBtn.onclick = () => {
-            window.appAlert('이미 앱이 설치되어 있습니다. 알람이 오지 않는다면 스마트폰 설정에서 "알림 허용"을 확인해 주세요.');
-        };
+    // 1. 앱 설치 버튼 처리 (브라우저 환경 vs 앱 환경)
+    if (installBtn) {
+        if (isStandalone) {
+            // 이미 앱으로 실행 중인 경우: 알림 권한 가이드로 전환
+            installBtn.style.display = 'flex';
+            installBtn.innerHTML = '<span>🔔 알림 최적화 가이드</span>';
+            installBtn.style.background = '#4B5563';
+            installBtn.onclick = () => {
+                window.appAlert('이미 앱이 설치되어 실행 중입니다. 알람이 오지 않는다면 스마트폰 "설정 > 알림 > MindMap"에서 알림 허용을 확인해 주세요.');
+            };
+        } else {
+            // 브라우저에서 실행 중인 경우: 설치 유도
+            installBtn.style.display = 'flex';
+            if (window.deferredPrompt) {
+                // 원클릭 설치 가능
+                installBtn.innerHTML = '<span>📱 MindMap 앱 설치하기</span>';
+                installBtn.style.background = '#8B5CF6';
+                installBtn.onclick = async () => {
+                    if (!window.deferredPrompt) return;
+                    window.deferredPrompt.prompt();
+                    const { outcome } = await window.deferredPrompt.userChoice;
+                    if (outcome === 'accepted') window.deferredPrompt = null;
+                    window.updateNotifStatusUI();
+                };
+            } else {
+                // 수동 설치 안내 (Chrome: 홈 화면에 추가)
+                installBtn.innerHTML = '<span>📱 앱 설치 방법 (안내)</span>';
+                installBtn.style.background = '#6B7280';
+                installBtn.onclick = () => {
+                    window.appAlert('브라우저 메뉴(점 3개 또는 공유 버튼)를 누르고 "홈 화면에 추가" 또는 "앱 설치"를 클릭하시면 앱으로 사용하실 수 있습니다.');
+                };
+            }
+        }
     }
 
     // 2. 권한 상태별 UI 구성

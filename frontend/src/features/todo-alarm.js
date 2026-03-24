@@ -43,6 +43,16 @@ function markAlarmSent(id) {
     }
 }
 
+/** 발송된 알람 ID를 localStorage에서 제거 (Snooze 대응) */
+function unmarkAlarmSent(id) {
+    let ids = loadSentAlarms();
+    const strId = String(id);
+    if (ids.includes(strId)) {
+        ids = ids.filter(i => i !== strId);
+        localStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(ids));
+    }
+}
+
 /** 이미 발송된 알람인지 확인 */
 function isAlarmSent(id) {
     return loadSentAlarms().includes(String(id));
@@ -285,14 +295,36 @@ class TodoAlarmSystem {
             const pendingAlarms = []; // SW IndexedDB에 동기화할 미래 알람 목록
 
             for (const todo of data.todos) {
-                if (!todo.alarm_time || todo.is_completed) continue;
-
                 const id = String(todo.id);
 
-                // 이미 단말기 로컬에서 발송했거나, 이미 백엔드 스케줄러가 발송완료(push_sent_at)한 알람이면 건너뜀
-                if (isAlarmSent(id) || todo.push_sent_at) {
-                    markAlarmSent(id); // 서버 처리를 로컬에도 동기화하여 향후 오발송 완전 차단
+                // 할 일이 완료되었거나 알람 시간이 없으면 기존 예약된 알람이 있을 경우 취소
+                if (!todo.alarm_time || todo.is_completed) {
+                    if (this._timers.has(id)) {
+                        console.log(`[TodoAlarm] 완료/삭제된 항목 알람 제거: ID ${id}`);
+                        this.cancelAlarm(id);
+                    }
                     continue;
+                }
+
+                // 이미 백엔드 스케줄러가 발송완료(push_sent_at)한 알람이면 로컬에서도 무조건 건너뜀
+                if (todo.push_sent_at) {
+                    markAlarmSent(id);
+                    continue;
+                }
+
+                // 로컬 발송 이력 확인 (Snooze 고려: 서버가 NULL인데 로컬에만 있다면 기록 삭제 후 재예약 허용)
+                if (isAlarmSent(id)) {
+                    const alarmTimeObj = new Date(todo.alarm_time);
+                    const alarmTimeVal = alarmTimeObj.getTime();
+                    
+                    // 과거 알람이거나 현재 울려야 하는 시간이 아니면 건너뜀
+                    if (alarmTimeVal <= now) {
+                        continue;
+                    } else {
+                        // 미래 알람인데 로컬에만 기록이 있다? -> Snooze 등으로 시각이 갱신된 경우이므로 기록 삭제
+                        console.log(`[TodoAlarm] 연장된 알람 감지: ID ${id} 기록 초기화 및 재예약`);
+                        unmarkAlarmSent(id);
+                    }
                 }
 
                 // 알람 시각 파싱

@@ -227,14 +227,29 @@ self.addEventListener('notificationclick', (event) => {
                 body: JSON.stringify({ action: event.action })
             })
             .then(response => {
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) {
+                    if (response.status === 401) throw new Error('인증 오류 (로그인이 필요합니다)');
+                    throw new Error(`HTTP 오류! 상태코드: ${response.status}`);
+                }
                 return response.json();
             })
             .then(data => {
                 console.log(`[SW] 알람 액션(${event.action}) 처리 완료:`, data);
+                // 3. 로컬 IndexedDB에서도 해당 알람 제거 (해제/연장 공통: 다시 스케줄될 때까지 로컬에선 삭제)
+                return deleteAlarm(todoId);
+            })
+            .then(() => {
+                console.log(`[SW] 로컬 IndexedDB 동기화 완료 (ID: ${todoId})`);
             })
             .catch(err => {
                 console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
+                // 모바일 환경에서 로그 확인이 어려우므로, 에러 정보를 다시 알림으로 띄워줌 (디버깅용)
+                self.registration.showNotification('알람 처리 실패 ⚠️', {
+                    body: `"${event.action === 'dismiss' ? '해제' : '연장'}" 처리에 실패했습니다. 앱을 다시 실행하거나 로그인해 주세요.\n(${err.message})`,
+                    icon: '/icon-192x192.png',
+                    tag: 'alarm-error',
+                    renotify: true
+                });
             })
         );
     }
