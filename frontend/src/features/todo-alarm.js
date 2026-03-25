@@ -114,18 +114,13 @@ function isAlarmSent(id) {
 async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     try {
-        const reg = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/' });
         await navigator.serviceWorker.ready;
         swRegistration = reg;
         console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
 
-        // JWT 토큰을 SW의 IndexedDB에 저장 (SW에서 알람 액션 인증에 사용)
-        const jwtToken = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-                         sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
-        if (jwtToken && reg.active) {
-            reg.active.postMessage({ type: 'SAVE_TOKEN', token: jwtToken });
-            console.log('[TodoAlarm] JWT 토큰을 SW에 전달 완료');
-        }
+        // JWT 토큰을 SW의 IndexedDB에 동기화
+        await syncTokenToSW(reg);
         
         // Periodic Background Sync 등록 (Chrome/Edge 전용)
         if ('periodicSync' in reg) {
@@ -147,6 +142,22 @@ async function registerServiceWorker() {
     } catch (err) {
         console.warn('[TodoAlarm] Service Worker 등록 실패 (일반 Notification으로 폴백):', err);
         return null;
+    }
+}
+
+/** JWT 토큰을 서비스 워커로 전달하여 IndexedDB에 저장되도록 함 */
+async function syncTokenToSW(reg) {
+    const sw = reg.active || reg.waiting || reg.installing;
+    if (!sw) return;
+
+    const jwtToken = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
+                     sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+    
+    if (jwtToken) {
+        sw.postMessage({ type: 'SAVE_TOKEN', token: jwtToken });
+        console.log('[TodoAlarm] JWT 토큰을 SW에 전달 요청완료');
+    } else {
+        console.warn('[TodoAlarm] SW에 전달할 JWT 토큰이 없습니다. (로그아웃 상태?)');
     }
 }
 
@@ -337,6 +348,9 @@ class TodoAlarmSystem {
     /** 서버에서 투두 목록을 가져와 알람 스케줄 재정의 */
     async _refreshAndSchedule() {
         try {
+            // SW에 최신 인증 토큰 주입 (세션 만료나 재로그인 시 대응)
+            if (swRegistration) await syncTokenToSW(swRegistration);
+
             const res = await apiFetch('/api/todos');
             const data = await res.json();
             if (!data.success || !data.todos) return;

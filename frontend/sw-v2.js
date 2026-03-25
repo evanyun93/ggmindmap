@@ -28,17 +28,32 @@ function openAlarmDB() {
     });
 }
 
+// ── Service Worker 라이프사이클 ────────────────────────────
+self.addEventListener('install', (event) => {
+    console.log('[SW] Installing...');
+    self.skipWaiting(); // 즉시 활성화
+});
+
+self.addEventListener('activate', (event) => {
+    console.log('[SW] Activating...');
+    event.waitUntil(self.clients.claim()); // 즉시 제어권 획득
+});
+
 /** SW에서 저장된 JWT 토큰을 가져옵니다 */
 async function getAuthToken() {
     try {
         const db = await openAlarmDB();
-        return new Promise((resolve) => {
+        const token = await new Promise((resolve) => {
             const tx = db.transaction(TOKEN_STORE, 'readonly');
             const req = tx.objectStore(TOKEN_STORE).get('jwt');
             req.onsuccess = () => resolve(req.result?.value || null);
             req.onerror = () => resolve(null);
         });
-    } catch {
+        if (!token) console.warn('[SW] IndexedDB에서 인증 토큰을 찾지 못했습니다.');
+        else console.log('[SW] 인증 토큰 획득 성공 (IDB)');
+        return token;
+    } catch (e) {
+        console.error('[SW] 토큰 읽기 중 DB 오류:', e);
         return null;
     }
 }
@@ -114,19 +129,6 @@ async function checkAndFireAlarms() {
     }
 }
 
-// ── Service Worker 생명주기 ──────────────────────────────────
-self.addEventListener('install', () => {
-    self.skipWaiting();
-});
-
-self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim());
-});
-
-// PWA 설치 가능 조건을 충족하기 위한 fetch 이벤트 (현재는 통과만 시킴)
-self.addEventListener('fetch', (event) => {
-    // 필요한 경우 여기에서 캐싱 전략을 추가할 수 있습니다.
-});
 /**
  * 메시지 형식 1: { type: 'SHOW_ALARM', title, body, tag }  → 즉시 알림
  * 메시지 형식 2: { type: 'SYNC_ALARMS', alarms: [{id, alarmTime, body},...] }  → IndexedDB에 저장
