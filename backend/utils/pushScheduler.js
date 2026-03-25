@@ -84,8 +84,8 @@ async function checkAndSendAlarms() {
                                 requireInteraction: true,
                                 data: messageData,
                                 actions: [
-                                    { action: 'action_dismiss', title: '✅ 해제' },
-                                    { action: 'action_snooze',  title: '⏰ 5분 뒤 다시 알림' }
+                                    { action: 'action_btn1_dismiss', title: '✅ 해제 (L)' },
+                                    { action: 'action_btn2_snooze',  title: '⏰ 5분 연장 (R)' }
                                 ]
                             }
                         }
