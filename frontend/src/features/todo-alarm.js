@@ -118,9 +118,6 @@ async function registerServiceWorker() {
         await navigator.serviceWorker.ready;
         swRegistration = reg;
         console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
-
-        // JWT 토큰을 SW의 IndexedDB에 동기화
-        await syncTokenToSW(reg);
         
         // Periodic Background Sync 등록 (Chrome/Edge 전용)
         if ('periodicSync' in reg) {
@@ -147,17 +144,21 @@ async function registerServiceWorker() {
 
 /** JWT 토큰을 서비스 워커로 전달하여 IndexedDB에 저장되도록 함 */
 async function syncTokenToSW(reg) {
+    if (!reg) return;
     const sw = reg.active || reg.waiting || reg.installing;
     if (!sw) return;
 
+    const tokenSource = localStorage.getItem('mindmap_token') ? 'localStorage' : 
+                        sessionStorage.getItem('mindmap_token') ? 'sessionStorage' : 'none';
     const jwtToken = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
                      sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
     
     if (jwtToken) {
+        console.log(`[TodoAlarm] JWT 토큰 발견 (출처: ${tokenSource}, 길이: ${jwtToken.length}) → SW로 전송 시도`);
         sw.postMessage({ type: 'SAVE_TOKEN', token: jwtToken });
         console.log('[TodoAlarm] JWT 토큰을 SW에 전달 요청완료');
     } else {
-        console.warn('[TodoAlarm] SW에 전달할 JWT 토큰이 없습니다. (로그아웃 상태?)');
+        console.warn('[TodoAlarm] SW에 전달할 JWT 토큰이 없습니다. (현재 비로그인 상태로 보임)');
     }
 }
 

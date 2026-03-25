@@ -29,7 +29,7 @@ async function checkAndSendAlarms() {
 
         for (const todo of result.rows) {
             const subResult = await pool.query(
-                'SELECT endpoint, subscription FROM tba_push_subscriptions WHERE user_id = $1',
+                'SELECT DISTINCT endpoint, subscription FROM tba_push_subscriptions WHERE user_id = $1',
                 [todo.user_id]
             );
 
@@ -37,6 +37,8 @@ async function checkAndSendAlarms() {
                 console.log(`[PushScheduler] 유저 ${todo.user_id}의 FCM 토큰 없음 (ID: ${todo.id})`);
                 continue;
             }
+
+            console.log(`[PushScheduler] 유저 ${todo.user_id}의 고유 FCM 토큰 ${subResult.rows.length}개 발견. (ID: ${todo.id})`);
 
             const timeStr = new Intl.DateTimeFormat('ko-KR', {
                 timeZone: 'Asia/Seoul',
@@ -55,6 +57,7 @@ async function checkAndSendAlarms() {
                 badge: '/assets/advanced-icon.png'
             };
 
+            let successCount = 0;
             for (const row of subResult.rows) {
                 const fcmToken = row.endpoint; // PushApi에서 token을 endpoint에 저장했음
 
@@ -86,7 +89,7 @@ async function checkAndSendAlarms() {
                             }
                         }
                     });
-                    console.log(`[PushScheduler] FCM 발송 성공: "${todo.task}" (ID: ${todo.id}) → 유저 ${todo.user_id}`);
+                    successCount++;
                 } catch (err) {
                     if (err.code === 'messaging/registration-token-not-registered' || err.code === 'messaging/invalid-registration-token') {
                         await pool.query(
@@ -98,6 +101,10 @@ async function checkAndSendAlarms() {
                         console.error('[PushScheduler] FCM 발송 실패:', err.message);
                     }
                 }
+            }
+
+            if (successCount > 0) {
+                console.log(`[PushScheduler] FCM 발송 성공: "${todo.task}" (ID: ${todo.id}) → ${successCount}개 토큰으로 전송됨`);
             }
 
             await pool.query(

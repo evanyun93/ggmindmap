@@ -9,18 +9,18 @@ const JWT_SECRET = process.env.JWT_SECRET || 'mindmap-secret-key-2026';
 const authenticateToken = async (req, res, next) => {
     let token = null;
 
-    // 1. Authorization Header 확인 (Bearer 방식)
-    const authHeader = req.headers.authorization;
+    // 1. Authorization Header 확인
+    const authHeader = req.headers['authorization'];
+    const cookieToken = req.cookies ? req.cookies.token : null;
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
         token = authHeader.split(' ')[1];
-    } 
-    // 2. Cookie 확인 (Service Worker 등에서 호출할 때)
-    else if (req.cookies && req.cookies.token) {
-        token = req.cookies.token;
+    } else if (cookieToken) {
+        token = cookieToken;
     }
 
     if (!token) {
-        return res.status(401).json({ success: false, message: '로그인이 필요합니다.' });
+        return res.status(401).json({ success: false, message: '인증 오류 (로그인이 필요합니다)' });
     }
     try {
         const decoded = jwt.verify(token, JWT_SECRET);

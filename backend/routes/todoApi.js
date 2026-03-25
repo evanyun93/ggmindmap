@@ -134,8 +134,13 @@ router.patch('/:id', authenticateToken, async (req, res) => {
 router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { action } = req.body; // 'dismiss' 또는 'snooze'
-
+        const { action } = req.body;
+        const userId = req.user.id;
+        
+        if (!action) {
+            return res.status(400).json({ success: false, message: '액션이 지정되지 않았습니다.' });
+        }
+        
         let query = '';
         let params = [id, req.user.id];
 

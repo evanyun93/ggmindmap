@@ -262,7 +262,12 @@ self.addEventListener('notificationclick', (event) => {
         event.waitUntil(
             getAuthToken().then(jwtToken => {
                 const headers = { 'Content-Type': 'application/json' };
-                if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
+                if (jwtToken) {
+                    headers['Authorization'] = `Bearer ${jwtToken}`;
+                    console.log('[SW] 인증 헤더(Authorization)를 사용하여 요청을 보냅니다.');
+                } else {
+                    console.log('[SW] IDB 토큰이 없으나, 브라우저 쿠키(Credentials)를 사용하여 인증을 시도합니다.');
+                }
                 return fetch(`/api/todos/${todoId}/alarm-action`, {
                     method: 'PATCH',
                     headers,
@@ -287,10 +292,14 @@ self.addEventListener('notificationclick', (event) => {
             })
             .catch(err => {
                 console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
-                // 모바일 환경에서 로그 확인이 어려우므로, 에러 정보를 다시 알림으로 띄워줌 (디버깅용)
-                self.registration.showNotification('알람 처리 실패 ⚠️', {
-                    body: `"${event.action === 'dismiss' ? '해제' : '연장'}" 처리에 실패했습니다. 앱을 다시 실행하거나 로그인해 주세요.\n(${err.message})`,
-                    icon: '/icon-192x192.png',
+                // 모바일 환경에서 로그 확인이 어려우므로, 에러 정보를 다시 알림으로 띄워줌
+                let errorType = '오류';
+                if (err.message.includes('401') || err.message.includes('인증')) errorType = '인증 오류';
+                else if (err.message.includes('404')) errorType = '데이터 없음(404)';
+                
+                self.registration.showNotification(`알람 처리 실패 (${errorType}) ⚠️`, {
+                    body: `상세: ${err.message}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중)`,
+                    icon: '/assets/advanced-icon.png',
                     tag: 'alarm-error',
                     renotify: true
                 });

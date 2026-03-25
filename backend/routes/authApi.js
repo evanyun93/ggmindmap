@@ -98,8 +98,8 @@ router.post('/social-register', async (req, res) => {
 
             res.cookie('token', token, {
                 httpOnly: true,
-                secure: true, // SameSite: None requires Secure
-                sameSite: 'None',
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
             });
 
@@ -147,8 +147,8 @@ router.post('/social-register', async (req, res) => {
 
             res.cookie('token', token, {
                 httpOnly: true,
-                secure: true, // SameSite: None requires Secure
-                sameSite: 'None',
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'Lax',
                 maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
             });
 
@@ -268,7 +268,7 @@ router.post('/social-login', async (req, res) => {
         // 쿠키 설정 (Service Worker 인증용)
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'Lax',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
         });
@@ -344,7 +344,7 @@ router.post('/login', async (req, res) => {
                 // 쿠키 설정 (Service Worker 인증용)
                 res.cookie('token', token, {
                     httpOnly: true,
-                    secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+                    secure: process.env.NODE_ENV === 'production',
                     sameSite: 'Lax',
                     maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
                 });
@@ -389,7 +389,7 @@ router.post('/login', async (req, res) => {
         // 쿠키 설정 (Service Worker 인증용)
         res.cookie('token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production' || req.secure || req.headers['x-forwarded-proto'] === 'https',
+            secure: process.env.NODE_ENV === 'production',
             sameSite: 'Lax',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7일
         });
@@ -422,8 +422,8 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
     res.clearCookie('token', {
         httpOnly: true,
-        secure: true,
-        sameSite: 'None'
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'Lax'
     });
     res.json({ success: true, message: '로그아웃 되었습니다.' });
 });
