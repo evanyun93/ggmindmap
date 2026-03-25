@@ -101,7 +101,7 @@ async function deleteAlarm(id) {
 // ── 알람 체크 & 발송 ──────────────────────────────────────────
 const ALARM_ACTIONS = [
     { action: 'action_v46_dismiss', title: '✅ 해제 (A)' },
-    { action: 'action_v46_snooze',  title: '⏰ 5분 연장 (B)' }
+    { action: 'action_v46_snooze', title: '⏰ 5분 연장 (B)' }
 ];
 
 async function checkAndFireAlarms() {
@@ -200,12 +200,12 @@ self.addEventListener('periodicsync', (event) => {
 // ── 서버에서 발송된 Web Push 수신 ─────────────────────────────
 self.addEventListener('push', (event) => {
     console.log('[SW] Push 메시지 수신됨:', event.data ? event.data.text() : '빈 데이터');
-    
-    let data = { 
-        title: 'GGMIND-알리미', 
-        body: '새 알람이 있습니다.', 
-        tag: 'ggmind-push', 
-        icon: '/assets/advanced-icon.png' 
+
+    let data = {
+        title: 'GGMIND-알리미',
+        body: '새 알람이 있습니다.',
+        tag: 'ggmind-push',
+        icon: '/assets/advanced-icon.png'
     };
 
     try {
@@ -216,7 +216,7 @@ self.addEventListener('push', (event) => {
             data = { ...data, ...pushData };
             console.log('[SW] Push 데이터 파싱 완료 (FCM 지원):', data);
         }
-    } catch (e) { 
+    } catch (e) {
         console.warn('[SW] Push 데이터 파싱 실패 (일반 텍스트로 보임):', e);
     }
 
@@ -232,8 +232,8 @@ self.addEventListener('push', (event) => {
             actions: ALARM_ACTIONS,
             data: { body: data.body, id: data.id }
         })
-        .then(() => console.log('[SW] 알림 표시 성공:', data.body))
-        .catch(err => console.error('[SW] 알림 표시 실패:', err))
+            .then(() => console.log('[SW] 알림 표시 성공:', data.body))
+            .catch(err => console.error('[SW] 알림 표시 실패:', err))
     );
 });
 
@@ -274,54 +274,54 @@ self.addEventListener('notificationclick', (event) => {
 
                 const fetchUrl = `${API_BASE}/api/todos/${todoId}/alarm-action`;
                 console.log(`[SW] 요청 시도: ${fetchUrl}`);
-                
+
                 return fetch(fetchUrl, {
                     method: 'PATCH',
                     headers,
                     body: JSON.stringify({ action: event.action }),
                     credentials: 'include'
                 })
-                .then(async response => {
-                    const responseText = await response.text();
-                    let responseData = {};
-                    try {
-                        responseData = JSON.parse(responseText);
-                    } catch (e) {
-                        responseData = { message: responseText };
-                    }
+                    .then(async response => {
+                        const responseText = await response.text();
+                        let responseData = {};
+                        try {
+                            responseData = JSON.parse(responseText);
+                        } catch (e) {
+                            responseData = { message: responseText };
+                        }
 
-                    if (!response.ok) {
-                        throw new Error(responseData.message || `HTTP 오류 ${response.status}`);
-                    }
-                    return responseData;
-                })
-                .then(data => {
-                    const availableActions = (event.notification.actions || []).map(a => a.action).join(', ');
-                    console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
-                    console.log(`[SW] 알림 보유 액션 목록: [${availableActions}]`);
-                    
-                    // 성공 시에도 상세 진단 정보를 팝업으로 노출
-                    self.registration.showNotification(`처리 완료 ✅`, {
-                         body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.6]`,
-                         icon: '/assets/advanced-icon.png',
-                         tag: 'alarm-success',
-                         active: true
-                    });
+                        if (!response.ok) {
+                            throw new Error(responseData.message || `HTTP 오류 ${response.status}`);
+                        }
+                        return responseData;
+                    })
+                    .then(data => {
+                        const availableActions = (event.notification.actions || []).map(a => a.action).join(', ');
+                        console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
+                        console.log(`[SW] 알림 보유 액션 목록: [${availableActions}]`);
 
-                    // 3. 로컬 IndexedDB에서도 해당 알람 제거
-                    return deleteAlarm(todoId);
-                })
-                .catch(err => {
-                    console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
-                    const dataStr = JSON.stringify(event.notification.data || {});
-                    
-                    self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
-                        body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.6]`,
-                        icon: '/assets/advanced-icon.png',
-                        tag: 'alarm-error',
-                        renotify: true
+                        // 성공 시에도 상세 진단 정보를 팝업으로 노출
+                        self.registration.showNotification(`처리 완료 ✅`, {
+                            body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.6]`,
+                            icon: '/assets/advanced-icon.png',
+                            tag: 'alarm-success',
+                            active: true
+                        });
+
+                        // 3. 로컬 IndexedDB에서도 해당 알람 제거
+                        return deleteAlarm(todoId);
+                    })
+                    .catch(err => {
+                        console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
+                        const dataStr = JSON.stringify(event.notification.data || {});
+
+                        self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
+                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.6]`,
+                            icon: '/assets/advanced-icon.png',
+                            tag: 'alarm-error',
+                            renotify: true
+                        });
                     });
-                });
             })
         );
     }
