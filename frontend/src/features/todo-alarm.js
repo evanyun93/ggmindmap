@@ -45,8 +45,7 @@ try {
                 swRegistration.showNotification(notifTitle, {
                     ...notifOptions,
                     actions: [
-                        { action: 'action_v47_dismiss', title: '✅ 해제 (O)' },
-                        { action: 'action_v47_snooze',  title: '⏰ 5분 연장 (X)' }
+                        { action: 'action_v48_dismiss', title: '🔕 알림끄기' }
                     ]
                 });
             } else {

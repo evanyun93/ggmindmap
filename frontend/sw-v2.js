@@ -99,9 +99,10 @@ async function deleteAlarm(id) {
 }
 
 // ── 알람 체크 & 발송 ──────────────────────────────────────────
+// v4.8: 버튼 1개만 사용 (삼성 안드로이드의 event.action 버그 우회)
+// '해제' 버튼만 표시. '5분 연장'은 알림을 그냥 닫을 때(notificationclose) 처리.
 const ALARM_ACTIONS = [
-    { action: 'action_v47_dismiss', title: '✅ 해제 (O)' },
-    { action: 'action_v47_snooze',  title: '⏰ 5분 연장 (X)' }
+    { action: 'action_v48_dismiss', title: '🔕 알림끄기' }
 ];
 
 async function checkAndFireAlarms() {
@@ -222,7 +223,7 @@ self.addEventListener('push', (event) => {
 
     event.waitUntil(
         self.registration.showNotification(data.title, {
-            body: data.body,
+            body: `${data.body}\n밀어서 닫으면 5분 연장`,
             icon: data.icon || '/assets/advanced-icon.png',
             badge: data.badge || '/assets/advanced-icon.png',
             tag: data.tag,
@@ -302,7 +303,7 @@ self.addEventListener('notificationclick', (event) => {
 
                         // 성공 시에도 상세 진단 정보를 팝업으로 노출
                         self.registration.showNotification(`처리 완료 ✅`, {
-                            body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.7]`,
+                            body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.8]`,
                             icon: '/assets/advanced-icon.png',
                             tag: 'alarm-success',
                             active: true
@@ -316,7 +317,7 @@ self.addEventListener('notificationclick', (event) => {
                         const dataStr = JSON.stringify(event.notification.data || {});
 
                         self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
-                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.7]`,
+                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.8]`,
                             icon: '/assets/advanced-icon.png',
                             tag: 'alarm-error',
                             renotify: true
@@ -325,4 +326,31 @@ self.addEventListener('notificationclick', (event) => {
             })
         );
     }
+});
+
+// ── 알림 닫기 이벤트: 버튼 없이 닫으면 5분 연장으로 처리 ─────
+self.addEventListener('notificationclose', (event) => {
+    const notifData = event.notification.data;
+    const todoId = notifData?.id;
+    const tag = event.notification.tag || '';
+    // 성공/실패 진단 알림은 무시
+    if (tag === 'alarm-success' || tag === 'alarm-error' || !todoId) return;
+
+    console.log('[SW] 알림 닫힘 (연장 처리) | ID:', todoId);
+    event.waitUntil(
+        getAuthToken().then(jwtToken => {
+            const headers = {
+                'Content-Type': 'application/json',
+                'ngrok-skip-browser-warning': '1'
+            };
+            if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
+            return fetch(`${API_BASE}/api/todos/${todoId}/alarm-action`, {
+                method: 'PATCH',
+                headers,
+                body: JSON.stringify({ action: 'action_v48_snooze' }),
+                credentials: 'include'
+            }).then(r => console.log('[SW] 연장(닫기) 처리 완료:', r.status))
+              .catch(e => console.error('[SW] 연장(닫기) 처리 실패:', e));
+        })
+    );
 });

@@ -145,8 +145,9 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
         let query = '';
         let params = [id, req.user.id];
 
-        if (action === 'action_v47_dismiss' || action === 'action_v46_dismiss' || action === 'action_p45_dismiss' || action === '2' || action === 'CLICKED_ID_DISMISS' || action === 'action_final_dismiss' || action === 'action_btn1_dismiss' || action === 'action_dismiss' || action === 'dismiss') {
-            // 해제: 발송 완료 시각 기록 + 할 일 완료 처리
+        // v4.8: 버튼 1개(해제), 닫기=연장 방식으로 event.action 버그 우회
+        if (action === 'action_v48_dismiss' || action === 'action_v47_snooze' || action === 'action_v46_dismiss' || action === 'action_p45_dismiss' || action === '2' || action === 'CLICKED_ID_DISMISS' || action === 'action_final_dismiss' || action === 'action_btn1_dismiss' || action === 'action_dismiss' || action === 'dismiss') {
+            // 해제: is_completed = true
             query = `
                 UPDATE tba_todos 
                 SET push_sent_at = NOW(),
@@ -154,8 +155,8 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
                 WHERE id = $1 AND user_id = $2 
                 RETURNING widget_id, is_completed, task
             `;
-        } else if (action === 'action_v47_snooze' || action === 'action_v46_snooze' || action === 'action_p45_snooze' || action === '1' || action === 'CLICKED_ID_SNOOZE' || action === 'action_final_snooze' || action === 'action_btn2_snooze' || action === 'action_snooze' || action === 'snooze') {
-            // 5분 연장: 알람 시각을 5분 뒤로 늦추고 발송 이력 초기화
+        } else if (action === 'action_v48_snooze' || action === 'action_v47_dismiss' || action === 'action_v46_snooze' || action === 'action_p45_snooze' || action === '1' || action === 'CLICKED_ID_SNOOZE' || action === 'action_final_snooze' || action === 'action_btn2_snooze' || action === 'action_snooze' || action === 'snooze') {
+            // 5분 연장 (notificationclose 이벤트로 발생)
             query = `
                 UPDATE tba_todos 
                 SET alarm_time = NOW() + INTERVAL '5 minutes',
@@ -163,6 +164,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
                 WHERE id = $1 AND user_id = $2 
                 RETURNING widget_id, is_completed, task
             `;
+
         } else {
             console.error(`[AlarmAction] 잘못된 액션 수신: "${action}"`);
             return res.status(400).json({ success: false, message: `유효하지 않은 액션입니다. (수신된 값: ${action})` });
@@ -176,8 +178,9 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
         }
 
         const updatedRow = result.rows[0];
-        const isSnooze = action.includes('snooze') || action.includes('SNOOZE') || action === '1' || action === 'snooze';
-        const actionDisplay = isSnooze ? 'snooze' : 'dismiss';
+        // 삼성 보정: snooze 신호 = dismiss 처리, dismiss 신호 = snooze 처리
+        const isDismiss = action === 'action_v47_snooze' || action.includes('dismiss') || action === '2';
+        const actionDisplay = isDismiss ? 'dismiss' : 'snooze';
         console.log(`[AlarmAction] 처리 완료: "${actionDisplay}" | ID: ${id} | User: ${req.user.id} | 상태: ${updatedRow.is_completed} | 할일: ${updatedRow.task}`);
 
         // 실시간 동기화 알림
