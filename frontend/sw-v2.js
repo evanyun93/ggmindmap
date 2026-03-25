@@ -300,7 +300,7 @@ self.addEventListener('notificationclick', (event) => {
                     
                     // 성공 시에도 사용자에게 무엇이 처리되었는지 명시적으로 알림 (디버깅용)
                     self.registration.showNotification(`처리 완료 ✅`, {
-                         body: `서버가 확인한 액션: '${event.action}' [v3.6]`,
+                         body: `폰이 서버로 보낸 신호: '${event.action}' [v3.7]`,
                          icon: '/assets/advanced-icon.png',
                          tag: 'alarm-success',
                          active: true
@@ -313,8 +313,8 @@ self.addEventListener('notificationclick', (event) => {
                     console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
                     const dataStr = JSON.stringify(event.notification.data || {});
                     
-                    self.registration.showNotification(`알람 처리 실패 (최종 진단) ⚠️`, {
-                        body: `메시지: ${err.message}\n액션: ${event.action}\n호스트: ${API_BASE}\n데이터: ${dataStr}\n[v3.6]`,
+                    self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
+                        body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v3.7]`,
                         icon: '/assets/advanced-icon.png',
                         tag: 'alarm-error',
                         renotify: true
