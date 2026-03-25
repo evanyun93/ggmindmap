@@ -291,6 +291,7 @@ self.addEventListener('notificationclick', (event) => {
                 console.log(`[SW] 로컬 IndexedDB 동기화 완료 (ID: ${todoId})`);
             })
             .catch(err => {
+                const fetchUrl = `/api/todos/${todoId}/alarm-action`;
                 console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
                 const dataStr = JSON.stringify(event.notification.data || {});
                 
@@ -300,7 +301,7 @@ self.addEventListener('notificationclick', (event) => {
                 else if (err.message.includes('404')) errorType = '데이터 없음(404)';
                 
                 self.registration.showNotification(`알람 처리 실패 (${errorType}) ⚠️`, {
-                    body: `상세: ${err.message}\n데이터: ${dataStr}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중) [v3.1]`,
+                    body: `상세: ${err.message}\n경로: ${fetchUrl}\n데이터: ${dataStr}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중) [v3.2]`,
                     icon: '/assets/advanced-icon.png',
                     tag: 'alarm-error',
                     renotify: true
