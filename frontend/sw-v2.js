@@ -100,8 +100,8 @@ async function deleteAlarm(id) {
 
 // ── 알람 체크 & 발송 ──────────────────────────────────────────
 const ALARM_ACTIONS = [
-    { action: 'action_btn1_dismiss', title: '✅ 해제 (L)' },
-    { action: 'action_btn2_snooze',  title: '⏰ 5분 연장 (R)' }
+    { action: 'CLICKED_ID_SNOOZE',  title: '⏰ 5분 연장' },
+    { action: 'CLICKED_ID_DISMISS', title: '✅ 해제' }
 ];
 
 async function checkAndFireAlarms() {
@@ -296,11 +296,13 @@ self.addEventListener('notificationclick', (event) => {
                     return responseData;
                 })
                 .then(data => {
+                    const availableActions = (event.notification.actions || []).map(a => a.action).join(', ');
                     console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
+                    console.log(`[SW] 알림 보유 액션 목록: [${availableActions}]`);
                     
-                    // 성공 시에도 사용자에게 무엇이 처리되었는지 명시적으로 알림 (디버깅용)
+                    // 성공 시에도 상세 진단 정보를 팝업으로 노출
                     self.registration.showNotification(`처리 완료 ✅`, {
-                         body: `폰이 서버로 보낸 신호: '${event.action}' [v4.1]`,
+                         body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.3]`,
                          icon: '/assets/advanced-icon.png',
                          tag: 'alarm-success',
                          active: true
@@ -314,7 +316,7 @@ self.addEventListener('notificationclick', (event) => {
                     const dataStr = JSON.stringify(event.notification.data || {});
                     
                     self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
-                        body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.1]`,
+                        body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.3]`,
                         icon: '/assets/advanced-icon.png',
                         tag: 'alarm-error',
                         renotify: true
