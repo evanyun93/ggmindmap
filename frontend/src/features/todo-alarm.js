@@ -45,8 +45,8 @@ try {
                 swRegistration.showNotification(notifTitle, {
                     ...notifOptions,
                     actions: [
-                        { action: 'dismiss', title: '✅ 해제' },
-                        { action: 'snooze',  title: '⏰ 5분 뒤 다시 알림' }
+                        { action: 'action_dismiss', title: '✅ 해제' },
+                        { action: 'action_snooze',  title: '⏰ 5분 뒤 다시 알림' }
                     ]
                 });
             } else {

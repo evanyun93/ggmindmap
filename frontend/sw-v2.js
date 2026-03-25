@@ -100,8 +100,8 @@ async function deleteAlarm(id) {
 
 // ── 알람 체크 & 발송 ──────────────────────────────────────────
 const ALARM_ACTIONS = [
-    { action: 'dismiss', title: '✅ 해제' },
-    { action: 'snooze',  title: '⏰ 5분 뒤 다시 알림' }
+    { action: 'action_dismiss', title: '✅ 해제' },
+    { action: 'action_snooze',  title: '⏰ 5분 뒤 다시 알림' }
 ];
 
 async function checkAndFireAlarms() {
@@ -257,8 +257,8 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    // '해제' 또는 '5분 연장' 액션 처리
-    if (event.action === 'dismiss' || event.action === 'snooze') {
+    // '해제' 또는 '5분 연장' 등 버튼 액션 처리 (v3.8: 모든 유효 액션 허용)
+    if (event.action && event.action !== '') {
         if (!todoId) {
             console.error('[SW] 알람 ID가 없어 액션을 처리할 수 없습니다.');
             return;
