@@ -100,8 +100,8 @@ async function deleteAlarm(id) {
 
 // ── 알람 체크 & 발송 ──────────────────────────────────────────
 const ALARM_ACTIONS = [
-    { action: 'action_v46_dismiss', title: '✅ 해제 (A)' },
-    { action: 'action_v46_snooze', title: '⏰ 5분 연장 (B)' }
+    { action: 'action_v47_dismiss', title: '✅ 해제 (O)' },
+    { action: 'action_v47_snooze',  title: '⏰ 5분 연장 (X)' }
 ];
 
 async function checkAndFireAlarms() {
@@ -302,7 +302,7 @@ self.addEventListener('notificationclick', (event) => {
 
                         // 성공 시에도 상세 진단 정보를 팝업으로 노출
                         self.registration.showNotification(`처리 완료 ✅`, {
-                            body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.6]`,
+                            body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.7]`,
                             icon: '/assets/advanced-icon.png',
                             tag: 'alarm-success',
                             active: true
@@ -316,7 +316,7 @@ self.addEventListener('notificationclick', (event) => {
                         const dataStr = JSON.stringify(event.notification.data || {});
 
                         self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
-                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.6]`,
+                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.7]`,
                             icon: '/assets/advanced-icon.png',
                             tag: 'alarm-error',
                             renotify: true

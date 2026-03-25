@@ -67,23 +67,10 @@ async function checkAndSendAlarms() {
                         token: fcmToken,
                         data: messageData,
                         android: {
-                            priority: 'high',
-                            notification: {
-                                channelId: 'alarm'
-                            }
+                            priority: 'high'
                         },
                         webpush: {
-                            headers: { Urgency: 'high' },
-                            notification: {
-                                icon: messageData.icon,
-                                badge: messageData.badge,
-                                requireInteraction: true,
-                                data: messageData,
-                                actions: [
-                                    { action: 'action_p45_snooze',  title: '⏰ 5분 연장 (R)' },
-                                    { action: 'action_p45_dismiss', title: '✅ 해제 (L)' }
-                                ]
-                            }
+                            headers: { Urgency: 'high' }
                         }
                     });
                     successCount++;
