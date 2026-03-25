@@ -45,8 +45,8 @@ try {
                 swRegistration.showNotification(notifTitle, {
                     ...notifOptions,
                     actions: [
-                        { action: 'CLICKED_ID_SNOOZE',  title: '⏰ 5분 연장' },
-                        { action: 'CLICKED_ID_DISMISS', title: '✅ 해제' }
+                        { action: '1',  title: '⏰ 5분 연장' },
+                        { action: '2', title: '✅ 해제' }
                     ]
                 });
             } else {

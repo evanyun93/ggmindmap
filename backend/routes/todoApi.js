@@ -145,7 +145,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
         let query = '';
         let params = [id, req.user.id];
 
-        if (action === 'CLICKED_ID_DISMISS' || action === 'action_final_dismiss' || action === 'action_btn1_dismiss' || action === 'action_dismiss' || action === 'dismiss') {
+        if (action === '2' || action === 'CLICKED_ID_DISMISS' || action === 'action_final_dismiss' || action === 'action_btn1_dismiss' || action === 'action_dismiss' || action === 'dismiss') {
             // 해제: 발송 완료 시각 기록 + 할 일 완료 처리
             query = `
                 UPDATE tba_todos 
@@ -154,7 +154,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
                 WHERE id = $1 AND user_id = $2 
                 RETURNING widget_id, is_completed, task
             `;
-        } else if (action === 'CLICKED_ID_SNOOZE' || action === 'action_final_snooze' || action === 'action_btn2_snooze' || action === 'action_snooze' || action === 'snooze') {
+        } else if (action === '1' || action === 'CLICKED_ID_SNOOZE' || action === 'action_final_snooze' || action === 'action_btn2_snooze' || action === 'action_snooze' || action === 'snooze') {
             // 5분 연장: 알람 시각을 5분 뒤로 늦추고 발송 이력 초기화
             query = `
                 UPDATE tba_todos 
@@ -176,7 +176,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
         }
 
         const updatedRow = result.rows[0];
-        const isSnooze = action.includes('SNOOZE') || action.includes('snooze') || action === 'snooze';
+        const isSnooze = action === '1' || action.includes('SNOOZE') || action.includes('snooze') || action === 'snooze';
         const actionDisplay = isSnooze ? 'snooze' : 'dismiss';
         console.log(`[AlarmAction] 처리 완료: "${actionDisplay}" | ID: ${id} | User: ${req.user.id} | 상태: ${updatedRow.is_completed} | 할일: ${updatedRow.task}`);
 
