@@ -10,6 +10,11 @@ const DB_VERSION = 2;
 const STORE_NAME = 'alarms';
 const TOKEN_STORE = 'auth'; // JWT 토큰 저장용
 
+// ── API 베이스 주소 설정 (Vercel 환경 대응) ─────────────────────
+// 로컬이 아닐 경우(Vercel 등), 명시적인 오라클 백엔드(ngrok) 주소를 사용합니다.
+const isLocal = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
+const API_BASE = isLocal ? self.location.origin : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
+
 // ── IndexedDB 헬퍼 ─────────────────────────────────────────────
 function openAlarmDB() {
     return new Promise((resolve, reject) => {
@@ -261,29 +266,37 @@ self.addEventListener('notificationclick', (event) => {
 
         event.waitUntil(
             getAuthToken().then(jwtToken => {
-                const headers = { 'Content-Type': 'application/json' };
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': '1'
+                };
                 if (jwtToken) {
                     headers['Authorization'] = `Bearer ${jwtToken}`;
                     console.log('[SW] 인증 헤더(Authorization)를 사용하여 요청을 보냅니다.');
                 } else {
                     console.log('[SW] IDB 토큰이 없으나, 브라우저 쿠키(Credentials)를 사용하여 인증을 시도합니다.');
                 }
-                return fetch(`/api/todos/${todoId}/alarm-action`, {
+
+                const fetchUrl = `${API_BASE}/api/todos/${todoId}/alarm-action`;
+                return fetch(fetchUrl, {
                     method: 'PATCH',
                     headers,
                     credentials: 'include',
                     body: JSON.stringify({ action: event.action })
-                });
+                })
             })
             .then(response => {
                 if (!response.ok) {
-                    if (response.status === 401) throw new Error('인증 오류 (로그인이 필요합니다)');
-                    throw new Error(`HTTP 오류! 상태코드: ${response.status}`);
+                    return response.json().then(data => {
+                        throw new Error(data.message || `HTTP 오류! 상태코드 : ${response.status}`);
+                    }).catch(() => {
+                        throw new Error(`HTTP 오류! 상태코드 : ${response.status}`);
+                    });
                 }
                 return response.json();
             })
             .then(data => {
-                console.log(`[SW] 알람 액션(${event.action}) 처리 완료:`, data);
+                console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
                 // 3. 로컬 IndexedDB에서도 해당 알람 제거 (해제/연장 공통: 다시 스케줄될 때까지 로컬에선 삭제)
                 return deleteAlarm(todoId);
             })
