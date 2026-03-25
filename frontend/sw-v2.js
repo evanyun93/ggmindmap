@@ -117,10 +117,10 @@ async function checkAndFireAlarms() {
 
     for (const alarm of alarms) {
         if (alarm.alarmTime <= now) {
-            await self.registration.showNotification('GGMIND-알리미', {
-                body: alarm.body,
-                icon: '/assets/advanced-icon.png',
-                badge: '/assets/advanced-icon.png',
+            await self.registration.showNotification('GGMIND 알리미', {
+                body: `${alarm.body}\n밀어서 닫으면 5분 연장`,
+                icon: '/assets/mindmap-icon-128.png',
+                badge: '/assets/mindmap-icon-128.png',
                 tag: `todo-alarm-${alarm.id}`,
                 renotify: true,
                 vibrate: [200, 100, 200],
@@ -130,7 +130,7 @@ async function checkAndFireAlarms() {
             });
             // 발송 후 DB에서 제거
             await deleteAlarm(alarm.id);
-            console.log('[SW] 백그라운드 알람 발송:', alarm.body);
+            //             console.log('[SW] 백업 라운드 알람 발송:', alarm.body);
         }
     }
 }
@@ -146,9 +146,9 @@ self.addEventListener('message', (event) => {
         const { id, title, body, tag } = event.data;
         event.waitUntil(
             self.registration.showNotification(title, {
-                body,
-                icon: '/assets/advanced-icon.png',
-                badge: '/assets/advanced-icon.png',
+                body: `${body}\n(밀어서 닫으면 5분 연장)`,
+                icon: '/assets/mindmap-icon-128.png',
+                badge: '/assets/mindmap-icon-128.png',
                 tag,
                 renotify: true,
                 vibrate: [200, 100, 200],
@@ -163,7 +163,7 @@ self.addEventListener('message', (event) => {
     if (event.data.type === 'SYNC_ALARMS') {
         event.waitUntil(
             saveAlarms(event.data.alarms).then(() => {
-                console.log(`[SW] 알람 ${event.data.alarms.length}개 저장 완료`);
+                // console.log(`[SW] 알람 ${event.data.alarms.length}개 저장 완료`);
                 // 저장하자마자 이미 지난 알람도 처리
                 return checkAndFireAlarms();
             })
@@ -173,7 +173,7 @@ self.addEventListener('message', (event) => {
     if (event.data.type === 'CANCEL_ALARM') {
         event.waitUntil(
             deleteAlarm(event.data.id).then(() => {
-                console.log(`[SW] 알람 취소 완료: ID ${event.data.id}`);
+                // console.log(`[SW] 알람 취소 완료: ID ${event.data.id}`);
             })
         );
     }
@@ -200,11 +200,11 @@ self.addEventListener('periodicsync', (event) => {
 
 // ── 서버에서 발송된 Web Push 수신 ─────────────────────────────
 self.addEventListener('push', (event) => {
-    console.log('[SW] Push 메시지 수신됨:', event.data ? event.data.text() : '빈 데이터');
+    //     console.log('[SW] Push 메시지 수신됨:', event.data ? event.data.text() : '빈 데이터');
 
     let data = {
-        title: 'GGMIND-알리미',
-        body: '새 알람이 있습니다.',
+        title: 'GGMIND 알리미',
+        body: '새 알림이 있습니다.',
         tag: 'ggmind-push',
         icon: '/assets/advanced-icon.png'
     };
@@ -215,17 +215,17 @@ self.addEventListener('push', (event) => {
             // FCM Admin SDK로 data-only 페이로드를 보내면, 파싱된 객체 안에 한 번 더 'data' 프로퍼티로 감싸져서 옵니다.
             const pushData = parsed.data || parsed;
             data = { ...data, ...pushData };
-            console.log('[SW] Push 데이터 파싱 완료 (FCM 지원):', data);
+            //             console.log('[SW] Push 데이터 파싱 완료 (FCM 지원):', data);
         }
     } catch (e) {
-        console.warn('[SW] Push 데이터 파싱 실패 (일반 텍스트로 보임):', e);
+        //         console.warn('[SW] Push 데이터 파싱 실패 (일반 텍스트로 보임):', e);
     }
 
     event.waitUntil(
         self.registration.showNotification(data.title, {
-            body: `${data.body}\n밀어서 닫으면 5분 연장`,
-            icon: data.icon || '/assets/advanced-icon.png',
-            badge: data.badge || '/assets/advanced-icon.png',
+            body: `${data.body}\n(밀어서 닫으면 5분 연장)`,
+            icon: '/assets/mindmap-icon-128.png',
+            badge: '/assets/mindmap-icon-128.png',
             tag: data.tag,
             renotify: true,
             vibrate: [200, 100, 200],
@@ -233,8 +233,8 @@ self.addEventListener('push', (event) => {
             actions: ALARM_ACTIONS,
             data: { body: data.body, id: data.id }
         })
-            .then(() => console.log('[SW] 알림 표시 성공:', data.body))
-            .catch(err => console.error('[SW] 알림 표시 실패:', err))
+        //             .then(() => console.log('[SW] 알림 표시 성공:', data.body))
+        //             .catch(err => console.error('[SW] 알림 표시 실패:', err))
     );
 });
 
@@ -243,7 +243,7 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const notifData = event.notification.data;
     const todoId = notifData?.id;
-    console.log('[SW] notificationclick - data:', JSON.stringify(notifData), '| todoId:', todoId, '| action:', event.action);
+    //     console.log('[SW] notificationclick - data:', JSON.stringify(notifData), '| todoId:', todoId, '| action:', event.action);
 
     // 본체 클릭 시 앱 열기 (액션 버튼 클릭 시에는 실행 안 함)
     if (!event.action) {
@@ -274,7 +274,7 @@ self.addEventListener('notificationclick', (event) => {
                 if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
 
                 const fetchUrl = `${API_BASE}/api/todos/${todoId}/alarm-action`;
-                console.log(`[SW] 요청 시도: ${fetchUrl}`);
+                //                 console.log(`[SW] 요청 시도: ${fetchUrl}`);
 
                 return fetch(fetchUrl, {
                     method: 'PATCH',
@@ -297,17 +297,17 @@ self.addEventListener('notificationclick', (event) => {
                         return responseData;
                     })
                     .then(data => {
-                        const availableActions = (event.notification.actions || []).map(a => a.action).join(', ');
-                        console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
-                        console.log(`[SW] 알림 보유 액션 목록: [${availableActions}]`);
+                        //                         const availableActions = (event.notification.actions || []).map(a => a.action).join(', ');
+                        //                         console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
+                        //                         console.log(`[SW] 알림 보유 액션 목록: [${availableActions}]`);
 
-                        // 성공 시에도 상세 진단 정보를 팝업으로 노출
-                        self.registration.showNotification(`처리 완료 ✅`, {
-                            body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.8]`,
-                            icon: '/assets/advanced-icon.png',
-                            tag: 'alarm-success',
-                            active: true
-                        });
+                        // // 성공 시에도 상세 진단 정보를 팝업으로 노출
+                        // self.registration.showNotification(`처리 완료 ✅`, {
+                        //     body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.9]`,
+                        //     icon: '/assets/advanced-icon.png',
+                        //     tag: 'alarm-success',
+                        //     active: true
+                        // });
 
                         // 3. 로컬 IndexedDB에서도 해당 알람 제거
                         return deleteAlarm(todoId);
@@ -317,8 +317,8 @@ self.addEventListener('notificationclick', (event) => {
                         const dataStr = JSON.stringify(event.notification.data || {});
 
                         self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
-                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.8]`,
-                            icon: '/assets/advanced-icon.png',
+                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.9]`,
+                            icon: '/assets/mindmap-icon-128.png',
                             tag: 'alarm-error',
                             renotify: true
                         });
@@ -336,7 +336,7 @@ self.addEventListener('notificationclose', (event) => {
     // 성공/실패 진단 알림은 무시
     if (tag === 'alarm-success' || tag === 'alarm-error' || !todoId) return;
 
-    console.log('[SW] 알림 닫힘 (연장 처리) | ID:', todoId);
+    //     console.log('[SW] 알림 닫힘 (연장 처리) | ID:', todoId);
     event.waitUntil(
         getAuthToken().then(jwtToken => {
             const headers = {
@@ -349,8 +349,7 @@ self.addEventListener('notificationclose', (event) => {
                 headers,
                 body: JSON.stringify({ action: 'action_v48_snooze' }),
                 credentials: 'include'
-            }).then(r => console.log('[SW] 연장(닫기) 처리 완료:', r.status))
-              .catch(e => console.error('[SW] 연장(닫기) 처리 실패:', e));
+            });
         })
     );
 });

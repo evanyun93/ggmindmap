@@ -31,9 +31,9 @@ try {
             const data = payload.data || payload;
             const notifTitle = data.title || 'GGMIND-알리미';
             const notifOptions = {
-                body: data.body,
-                icon: data.icon || '/assets/advanced-icon.png',
-                badge: data.badge || '/assets/advanced-icon.png',
+                body: `${data.body}\n밀어서 닫으면 5분 연장`,
+                icon: '/assets/mindmap-icon-128.png',
+                badge: '/assets/mindmap-icon-128.png',
                 tag: data.tag,
                 requireInteraction: true,
                 vibrate: [200, 100, 200],
