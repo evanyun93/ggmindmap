@@ -66,10 +66,6 @@ async function checkAndSendAlarms() {
                     await admin.messaging().send({
                         token: fcmToken,
                         data: messageData,
-                        notification: {
-                            title: messageData.title,
-                            body: messageData.body
-                        },
                         android: {
                             priority: 'high',
                             notification: {

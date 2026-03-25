@@ -45,8 +45,8 @@ try {
                 swRegistration.showNotification(notifTitle, {
                     ...notifOptions,
                     actions: [
-                        { action: 'action_p45_snooze',  title: '⏰ 5분 연장 (R)' },
-                        { action: 'action_p45_dismiss', title: '✅ 해제 (L)' }
+                        { action: 'action_v46_dismiss', title: '✅ 해제 (A)' },
+                        { action: 'action_v46_snooze',  title: '⏰ 5분 연장 (B)' }
                     ]
                 });
             } else {
