@@ -383,8 +383,13 @@
 }
 
 @keyframes spin-once {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 
@@ -1476,12 +1481,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  opacity: 0;
-  transform: scale(0.8);
-}
-
-.todo-item:hover .todo-del-btn {
-  opacity: 0.4;
+  opacity: 0.7;
   transform: scale(1);
 }
 
@@ -1997,12 +1997,9 @@ input:checked+.switch-slider:before {
   z-index: 10001 !important;
 }
 
-transition: all 0.3s ease !important;
-padding: 0 !important;
-}
 
 .btn-del-widget:hover {
-  background: rgba(239, 68, 68, 0.2) !important;
+  background: rgba(239, 68, 68, 0.1) !important;
   color: #ef4444 !important;
   border-color: rgba(239, 68, 68, 0.4) !important;
   transform: rotate(90deg);
