@@ -292,13 +292,15 @@ self.addEventListener('notificationclick', (event) => {
             })
             .catch(err => {
                 console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
+                const dataStr = JSON.stringify(event.notification.data || {});
+                
                 // 모바일 환경에서 로그 확인이 어려우므로, 에러 정보를 다시 알림으로 띄워줌
                 let errorType = '오류';
                 if (err.message.includes('401') || err.message.includes('인증')) errorType = '인증 오류';
                 else if (err.message.includes('404')) errorType = '데이터 없음(404)';
                 
                 self.registration.showNotification(`알람 처리 실패 (${errorType}) ⚠️`, {
-                    body: `상세: ${err.message}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중)`,
+                    body: `상세: ${err.message}\n데이터: ${dataStr}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중) [v3.1]`,
                     icon: '/assets/advanced-icon.png',
                     tag: 'alarm-error',
                     renotify: true

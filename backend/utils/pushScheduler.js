@@ -50,6 +50,7 @@ async function checkAndSendAlarms() {
             // 클라이언트 SW에서 액션 버튼 제어를 위해 Data-only 페이로드 사용
             const messageData = {
                 id: String(todo.id),
+                todoId: String(todo.id), // 추가적 호환성을 위해 todoId 필드도 포함
                 title: 'GGMIND-알리미',
                 body: `⏰ [${timeStr}] ${todo.task}`,
                 tag: `todo-alarm-${todo.id}`,

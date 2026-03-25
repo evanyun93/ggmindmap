@@ -170,7 +170,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
 
         if (result.rows.length === 0) {
             console.warn(`[AlarmAction] 해당 항목을 찾을 수 없음 (ID: ${id}, User: ${req.user.id})`);
-            return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
+            return res.status(404).json({ success: false, message: `항목을 찾을 수 없습니다. (ID: ${id}, User: ${req.user.id})` });
         }
 
         // 실시간 동기화 알림
