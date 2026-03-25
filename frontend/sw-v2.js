@@ -270,54 +270,46 @@ self.addEventListener('notificationclick', (event) => {
                     'Content-Type': 'application/json',
                     'ngrok-skip-browser-warning': '1'
                 };
-                if (jwtToken) {
-                    headers['Authorization'] = `Bearer ${jwtToken}`;
-                    console.log('[SW] 인증 헤더(Authorization)를 사용하여 요청을 보냅니다.');
-                } else {
-                    console.log('[SW] IDB 토큰이 없으나, 브라우저 쿠키(Credentials)를 사용하여 인증을 시도합니다.');
-                }
+                if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
 
                 const fetchUrl = `${API_BASE}/api/todos/${todoId}/alarm-action`;
+                console.log(`[SW] 요청 시도: ${fetchUrl}`);
+                
                 return fetch(fetchUrl, {
                     method: 'PATCH',
                     headers,
-                    credentials: 'include',
-                    body: JSON.stringify({ action: event.action })
+                    body: JSON.stringify({ action: event.action }),
+                    credentials: 'include'
                 })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    return response.json().then(data => {
-                        throw new Error(data.message || `HTTP 오류! 상태코드 : ${response.status}`);
-                    }).catch(() => {
-                        throw new Error(`HTTP 오류! 상태코드 : ${response.status}`);
+                .then(async response => {
+                    const responseText = await response.text();
+                    let responseData = {};
+                    try {
+                        responseData = JSON.parse(responseText);
+                    } catch (e) {
+                        responseData = { message: responseText };
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(responseData.message || `HTTP 오류 ${response.status}`);
+                    }
+                    return responseData;
+                })
+                .then(data => {
+                    console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
+                    // 3. 로컬 IndexedDB에서도 해당 알람 제거
+                    return deleteAlarm(todoId);
+                })
+                .catch(err => {
+                    console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
+                    const dataStr = JSON.stringify(event.notification.data || {});
+                    
+                    self.registration.showNotification(`알람 처리 실패 (최종 진단) ⚠️`, {
+                        body: `메시지: ${err.message}\n호스트: ${API_BASE}\n데이터: ${dataStr}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중) [v3.4]`,
+                        icon: '/assets/advanced-icon.png',
+                        tag: 'alarm-error',
+                        renotify: true
                     });
-                }
-                return response.json();
-            })
-            .then(data => {
-                console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
-                // 3. 로컬 IndexedDB에서도 해당 알람 제거 (해제/연장 공통: 다시 스케줄될 때까지 로컬에선 삭제)
-                return deleteAlarm(todoId);
-            })
-            .then(() => {
-                console.log(`[SW] 로컬 IndexedDB 동기화 완료 (ID: ${todoId})`);
-            })
-            .catch(err => {
-                const fetchUrl = `/api/todos/${todoId}/alarm-action`;
-                console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
-                const dataStr = JSON.stringify(event.notification.data || {});
-                
-                // 모바일 환경에서 로그 확인이 어려우므로, 에러 정보를 다시 알림으로 띄워줌
-                let errorType = '오류';
-                if (err.message.includes('401') || err.message.includes('인증')) errorType = '인증 오류';
-                else if (err.message.includes('404')) errorType = '데이터 없음(404)';
-                
-                self.registration.showNotification(`알람 처리 실패 (${errorType}) ⚠️`, {
-                    body: `상세: ${err.message}\n경로: ${fetchUrl}\n데이터: ${dataStr}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중) [v3.2]`,
-                    icon: '/assets/advanced-icon.png',
-                    tag: 'alarm-error',
-                    renotify: true
                 });
             })
         );
