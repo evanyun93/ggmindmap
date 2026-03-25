@@ -135,6 +135,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
         const { action } = req.body;
+        console.log(`[AlarmAction] 요청 수신 | ID: ${id} | 액션: "${action}" | User: ${req.user.id}`);
         const userId = req.user.id;
         
         if (!action) {
@@ -151,7 +152,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
                 SET push_sent_at = NOW(),
                     is_completed = true
                 WHERE id = $1 AND user_id = $2 
-                RETURNING widget_id
+                RETURNING widget_id, is_completed, task
             `;
         } else if (action === 'snooze') {
             // 5분 연장: 알람 시각을 5분 뒤로 늦추고 발송 이력 초기화
@@ -160,7 +161,7 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
                 SET alarm_time = NOW() + INTERVAL '5 minutes',
                     push_sent_at = NULL 
                 WHERE id = $1 AND user_id = $2 
-                RETURNING widget_id
+                RETURNING widget_id, is_completed, task
             `;
         } else {
             return res.status(400).json({ success: false, message: '유효하지 않은 액션입니다.' });
@@ -168,15 +169,18 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
 
         const result = await pool.query(query, params);
 
-        if (result.rows.length === 0) {
-            console.warn(`[AlarmAction] 해당 항목을 찾을 수 없음 (ID: ${id}, User: ${req.user.id})`);
+        if (result.rowCount === 0) {
+            console.warn(`[AlarmAction] 항목을 찾을 수 없음 (ID: ${id}, User: ${req.user.id})`);
             return res.status(404).json({ success: false, message: `항목을 찾을 수 없습니다. (ID: ${id}, User: ${req.user.id})` });
         }
+
+        const updatedRow = result.rows[0];
+        const actionDisplay = action === 'snooze' ? 'snooze' : 'dismiss';
+        console.log(`[AlarmAction] 처리 완료: "${actionDisplay}" | ID: ${id} | User: ${req.user.id} | 상태: ${updatedRow.is_completed} | 할일: ${updatedRow.task}`);
 
         // 실시간 동기화 알림
         syncService.notifyChange(req.user.id, result.rows[0].widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
 
-        console.log(`[AlarmAction] 처리 완료: "${action}" | ID: ${id} | User: ${req.user.id}`);
         if (action === 'snooze') {
             // DB에서 갱신된 시간 확인 (디버깅용)
             const check = await pool.query('SELECT alarm_time FROM tba_todos WHERE id = $1', [id]);

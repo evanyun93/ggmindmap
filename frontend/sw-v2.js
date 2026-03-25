@@ -297,6 +297,15 @@ self.addEventListener('notificationclick', (event) => {
                 })
                 .then(data => {
                     console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
+                    
+                    // 성공 시에도 사용자에게 무엇이 처리되었는지 명시적으로 알림 (디버깅용)
+                    self.registration.showNotification(`처리 완료 ✅`, {
+                         body: `액션 '${event.action}' 처리가 오라클 서버에서 성공했습니다. [v3.5]`,
+                         icon: '/assets/advanced-icon.png',
+                         tag: 'alarm-success',
+                         active: true
+                    });
+
                     // 3. 로컬 IndexedDB에서도 해당 알람 제거
                     return deleteAlarm(todoId);
                 })
@@ -305,7 +314,7 @@ self.addEventListener('notificationclick', (event) => {
                     const dataStr = JSON.stringify(event.notification.data || {});
                     
                     self.registration.showNotification(`알람 처리 실패 (최종 진단) ⚠️`, {
-                        body: `메시지: ${err.message}\n호스트: ${API_BASE}\n데이터: ${dataStr}\n(${event.action === 'dismiss' ? '해제' : '연장'} 시도 중) [v3.4]`,
+                        body: `메시지: ${err.message}\n액션: ${event.action}\n호스트: ${API_BASE}\n데이터: ${dataStr}\n[v3.5]`,
                         icon: '/assets/advanced-icon.png',
                         tag: 'alarm-error',
                         renotify: true
