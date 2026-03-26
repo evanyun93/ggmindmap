@@ -397,6 +397,30 @@ export class WidgetManager {
           </div>
       `;
     }
+    if (data.widget_type === 'notepad') {
+      return `
+        <div class="widget-header clickable-header notepad-header">
+          <div class="header-main">
+            <div class="card-icon">💡</div>
+            <h3 class="notepad-widget-title">${data.title || data.settings?.title || '나의 메모장'}</h3>
+            <button class="btn-edit-title edit-title-btn" title="제목 수정">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </button>
+          </div>
+          <div class="header-actions">
+            <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+        </div>
+        <div class="notepad-content-wrapper">
+          <textarea class="notepad-textarea" placeholder="자유롭게 아이디어를 적어보세요...">${data.settings?.content || ''}</textarea>
+          <div class="notepad-status-bar">
+            <span class="notepad-save-status"></span>
+          </div>
+        </div>
+      `;
+    }
   }
 
   initWidgetLogic(el, data) {
@@ -418,6 +442,11 @@ export class WidgetManager {
     if (data.widget_type === 'mindmap') {
       import('./mindmap-cta.js').then(m => {
         if (m.initMindmapCTA) m.initMindmapCTA(el);
+      });
+    }
+    if (data.widget_type === 'notepad') {
+      import('./notepad.js').then(m => {
+        if (m.initNotepad) m.initNotepad(el, data);
       });
     }
   }

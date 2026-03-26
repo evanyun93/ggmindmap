@@ -161,6 +161,19 @@ export function initDashboardGrid() {
                     });
                 }
             },
+            {
+                label: '메모장 추가',
+                icon: '💡',
+                action: () => {
+                    console.log('[DashboardGrid] 메모장 추가 요청');
+                    import('./widget-manager.js').then(m => {
+                        const rect = grid.getBoundingClientRect();
+                        const x = Math.max(0, clientX - rect.left - 100);
+                        const y = Math.max(0, clientY - rect.top - 10);
+                        m.widgetManager.createWidget('notepad', x, y, 400, 450);
+                    });
+                }
+            },
             { type: 'separator' },
             {
                 label: '가지런히 정리',
