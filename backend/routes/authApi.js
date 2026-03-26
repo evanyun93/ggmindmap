@@ -665,4 +665,55 @@ router.get('/check-login-id', async (req, res) => {
     res.json({ available: result.rows.length === 0 });
 });
 
+/**
+ * [ADMIN] 전체 사용자 목록 및 통계 조회
+ */
+router.get('/admin/users', async (req, res) => {
+    try {
+        // 1. 모든 사용자 기본 정보 조회
+        const usersResult = await pool.query(`
+            SELECT 
+                u.id, u.login_id, u.display_name, u.provider, u.created_at, u.last_login_at,
+                COALESCE(usage.total_minutes, 0)::integer as monthly_usage_minutes
+            FROM tba_users u
+            LEFT JOIN (
+                SELECT user_id, SUM(duration_minutes) as total_minutes 
+                FROM tba_usage_logs 
+                WHERE login_at >= CURRENT_DATE - INTERVAL '30 days'
+                GROUP BY user_id
+            ) usage ON u.id = usage.user_id
+            ORDER BY u.created_at DESC
+        `);
+
+        // 2. 사용자별 데이터 용량 추산 (대략적인 바이트 합계)
+        // 위젯 설정, 할일 내역, 마인드맵, 스프레드시트 등의 문자열 길이를 합산
+        const sizeResult = await pool.query(`
+            SELECT 
+                u.id,
+                (
+                    COALESCE((SELECT SUM(octet_length(settings::text)) FROM tba_user_widgets WHERE user_id = u.id), 0) +
+                    COALESCE((SELECT SUM(octet_length(task)) FROM tba_todos WHERE user_id = u.id), 0) +
+                    COALESCE((SELECT SUM(octet_length(data::text)) FROM tba_mindmaps WHERE user_id = u.id), 0) +
+                    COALESCE((SELECT SUM(octet_length(data::text) + octet_length(headers::text)) FROM tba_spreadsheets WHERE user_id = u.id), 0) +
+                    COALESCE((SELECT SUM(octet_length(settings::text)) FROM tba_milestones WHERE user_id = u.id), 0)
+                ) as data_size_bytes
+            FROM tba_users u
+        `);
+
+        // 데이터 병합
+        const sizesMap = {};
+        sizeResult.rows.forEach(r => { sizesMap[r.id] = parseInt(r.data_size_bytes); });
+
+        const users = usersResult.rows.map(u => ({
+            ...u,
+            data_size_bytes: sizesMap[u.id] || 0
+        }));
+
+        res.json({ success: true, users });
+    } catch (error) {
+        console.error('관리자 사용자 목록 조회 에러:', error);
+        res.status(500).json({ success: false, message: '관리자 데이터를 불러오는 중 서버 오류가 발생했습니다.' });
+    }
+});
+
 module.exports = router;
