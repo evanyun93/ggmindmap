@@ -37,12 +37,54 @@ router.post('/', authenticateToken, async (req, res) => {
         const safeH = Math.round(Number(height) || (widgetType === 'todo' ? 500 : 350));
         const safeZ = Math.round(Number(zIndex) || 100);
 
+        let finalTitle = title;
+        // 메모장 위젯이고 제목이 없는 경우 자동 타이틀 부여 (메모장 A ~ Z)
+        if (widgetType === 'notepad' && !finalTitle) {
+            const existingNotepads = await pool.query(
+                "SELECT title FROM tba_user_widgets WHERE user_id = $1 AND widget_type = 'notepad' AND title LIKE '메모장 %'",
+                [req.user.id]
+            );
+            
+            const usedChars = new Set();
+            let maxChar = '';
+            
+            existingNotepads.rows.forEach(row => {
+                const match = row.title.match(/^메모장 ([A-Z])$/);
+                if (match) {
+                    const char = match[1];
+                    usedChars.add(char);
+                    if (!maxChar || char > maxChar) maxChar = char;
+                }
+            });
+
+            let nextChar = '';
+            if (maxChar && maxChar < 'Z') {
+                const candidate = String.fromCharCode(maxChar.charCodeAt(0) + 1);
+                if (!usedChars.has(candidate)) {
+                    nextChar = candidate;
+                }
+            }
+
+            // 위에서 못 찾았거나(Z 도달 등), 비어있는 자리가 있는 경우 A부터 찾기
+            if (!nextChar) {
+                for (let i = 0; i < 26; i++) {
+                    const candidate = String.fromCharCode(65 + i); // 65 = 'A'
+                    if (!usedChars.has(candidate)) {
+                        nextChar = candidate;
+                        break;
+                    }
+                }
+            }
+
+            finalTitle = nextChar ? `메모장 ${nextChar}` : '나의 메모장';
+        }
+
         const result = await pool.query(
             `INSERT INTO tba_user_widgets 
             (user_id, widget_type, x, y, width, height, z_index, title, settings) 
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) 
             RETURNING *`,
-            [req.user.id, widgetType, safeX, safeY, safeW, safeH, safeZ, title || null, settings || {}]
+            [req.user.id, widgetType, safeX, safeY, safeW, safeH, safeZ, finalTitle || null, settings || {}]
         );
         const widget = result.rows[0];
         
