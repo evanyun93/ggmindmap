@@ -84,7 +84,9 @@ export class WidgetManager {
     const defaults = [
       { type: 'milestone', x: 20, y: 20, w: 700, h: 340 },
       { type: 'todo', x: 740, y: 20, w: 400, h: 540 },
-      { type: 'mindmap', x: 20, y: 380, w: 700, h: 180 }
+      { type: 'mindmap', x: 20, y: 380, w: 700, h: 180 },
+      { type: 'notepad', x: 20, y: 580, w: 700, h: 450 },
+      { type: 'recipe', x: 740, y: 580, w: 400, h: 540 }
     ];
 
     for (const d of defaults) {
