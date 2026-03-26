@@ -51,7 +51,7 @@ async function checkAndSendAlarms() {
             const messageData = {
                 id: String(todo.id),
                 todoId: String(todo.id), // 추가적 호환성을 위해 todoId 필드도 포함
-                title: 'GGMIND-알리미',
+                title: 'GGMIND 알리미',
                 body: `⏰ [${timeStr}] ${todo.task}`,
                 tag: `todo-alarm-${todo.id}`,
                 icon: '/assets/advanced-icon.png',
