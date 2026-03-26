@@ -98,12 +98,33 @@ async function deleteAlarm(id) {
     });
 }
 
-// ── 알람 체크 & 발송 ──────────────────────────────────────────
-// v4.8: 버튼 1개만 사용 (삼성 안드로이드의 event.action 버그 우회)
-// '해제' 버튼만 표시. '5분 연장'은 알림을 그냥 닫을 때(notificationclose) 처리.
-const ALARM_ACTIONS = [
-    { action: 'action_v48_dismiss', title: '🔕 알림끄기' }
-];
+// ── 기기 판별 및 알람 액션 동적 구성 ─────────────────────────────
+// 모바일은 스와이프를 통한 5분 연장을 유지 (notificationclose 처리),
+// PC는 '5분 연장', '해제' 명시적 버튼 2개 제공
+function isMobileClient() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+
+function getAlarmActions() {
+    if (isMobileClient()) {
+        return [
+            { action: 'action_v48_dismiss', title: '🔕 알림끄기' }
+        ];
+    } else {
+        return [
+            { action: 'action_v48_snooze', title: '💤 5분 연장' },
+            { action: 'action_v48_dismiss', title: '🔕 해제' }
+        ];
+    }
+}
+
+function getAlarmBody(baseBody) {
+    if (isMobileClient()) {
+        return `${baseBody}\n(밀어서 닫으면 5분 연장)`;
+    } else {
+        return baseBody; // PC는 안내 없이 버튼 위주로 표시
+    }
+}
 
 async function checkAndFireAlarms() {
     const now = Date.now();
@@ -118,14 +139,14 @@ async function checkAndFireAlarms() {
     for (const alarm of alarms) {
         if (alarm.alarmTime <= now) {
             await self.registration.showNotification('GGMIND 알리미', {
-                body: `${alarm.body}\n밀어서 닫으면 5분 연장`,
+                body: getAlarmBody(alarm.body),
                 icon: '/assets/mindmap-icon-128.png',
                 badge: '/assets/mindmap-icon-128.png',
                 tag: `todo-alarm-${alarm.id}`,
                 renotify: true,
                 vibrate: [200, 100, 200],
                 requireInteraction: true,
-                actions: ALARM_ACTIONS,
+                actions: getAlarmActions(),
                 data: { body: alarm.body, id: alarm.id }
             });
             // 발송 후 DB에서 제거
@@ -146,14 +167,14 @@ self.addEventListener('message', (event) => {
         const { id, title, body, tag } = event.data;
         event.waitUntil(
             self.registration.showNotification(title, {
-                body: `${body}\n(밀어서 닫으면 5분 연장)`,
+                body: getAlarmBody(body),
                 icon: '/assets/mindmap-icon-128.png',
                 badge: '/assets/mindmap-icon-128.png',
                 tag,
                 renotify: true,
                 vibrate: [200, 100, 200],
                 requireInteraction: true,
-                actions: ALARM_ACTIONS,
+                actions: getAlarmActions(),
                 data: { body, id }
             })
         );
@@ -223,14 +244,14 @@ self.addEventListener('push', (event) => {
 
     event.waitUntil(
         self.registration.showNotification(data.title, {
-            body: `${data.body}\n(밀어서 닫으면 5분 연장)`,
+            body: getAlarmBody(data.body),
             icon: '/assets/mindmap-icon-128.png',
             badge: '/assets/mindmap-icon-128.png',
             tag: data.tag,
             renotify: true,
             vibrate: [200, 100, 200],
             requireInteraction: true,
-            actions: ALARM_ACTIONS,
+            actions: getAlarmActions(),
             data: { body: data.body, id: data.id }
         })
         //             .then(() => console.log('[SW] 알림 표시 성공:', data.body))

@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 5. 모바일 제스처 이탈 방지 (뒤로 가기 차단)
     if (window.innerWidth <= 768) {
         history.pushState(null, null, location.href);
-        window.onpopstate = function() {
+        window.onpopstate = function () {
             history.pushState(null, null, location.href);
             // 필요 시 사용자에게 알림을 줄 수 있음
             console.log('[App] 제스처에 의한 뒤로 가기가 차단되었습니다.');
@@ -169,7 +169,7 @@ window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     // 이벤트를 변수에 저장해두었다가 나중에 트리거
     window.deferredPrompt = e;
-    
+
     // 설치 버튼 표시 (로그인 화면 & 대시보드 설정 메뉴)
     const installBtns = [
         document.getElementById('modalInstallApp'),
@@ -306,67 +306,94 @@ window.updateNotifStatusUI = () => {
 };
 
 /**
- * 알림 권한이 차단된 경우 사용자에게 설정 변경을 유도하는 경고 팝업
+ * 알림 권한이 미허용/차단된 경우 사용자에게 설정 변경을 유도하는 팝업 (세션당 1회)
  */
 window.checkNotificationPermissionAndWarn = () => {
-    if (Notification.permission !== 'denied') return;
+    // 이미 허용된 경우 종료
+    if (Notification.permission === 'granted') return;
+
+    // 세션당 1회 노출 제한 (새로고침 시 다시 안 뜸)
+    if (sessionStorage.getItem('notif_prompt_shown') === 'true') return;
+    sessionStorage.setItem('notif_prompt_shown', 'true');
 
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    
-    // PWA(설치앱) 환경과 브라우저 환경 안내 분리
+    const isDenied = Notification.permission === 'denied';
+
+    // UI 분기: default(아직 안 물어봄) vs denied(거부됨)
     let guideHtml = '';
     let buttonsHtml = '';
-    
-    if (isStandalone) {
+
+    if (!isDenied) {
+        // [Default] 상태이므로 권한 요청 버튼 표시
         guideHtml = `
             <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                <b style="color: #ef4444;">[앱 알림 차단 해제 방법]</b><br>
-                현재 기기에서 MindMap 앱의 알림이 완전히 차단되어 있습니다.<br><br>
-                홈 화면에서 <b>MindMap 앱 아이콘을 길게 누른 뒤, [ⓘ (앱 정보)] 메뉴</b>로 들어가 <b>[알림]</b>을 허용해 주세요.
+                <b>🔔 알림 활성화 필요</b><br>
+                실시간 푸시 알람을 가장 확실하게 받아보시려면 알림 권한을 단 한 번 허용해 주세요. <br><br>
+                <span style="color: #64748b;">(알림 권한을 허용하지 않으면 기본적으로 알람이 무음 처리되거나 보이지 않을 수 있습니다.)</span>
             </p>
         `;
         buttonsHtml = `
-            <button id="closeNotifWarn" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
-                알겠습니다 (직접 설정할게요)
+            <button id="requestNotifBtn" style="width: 100%; padding: 16px; background: #3b82f6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; margin-bottom: 8px;">
+                지금 알림 권한 허용하기
+            </button>
+            <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                나중에 하기
             </button>
         `;
     } else {
-        guideHtml = `
-            <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                <b>방법 1. 가장 빠른 방법 (강력 추천)</b><br>
-                화면 상단 주소창 왼쪽의 <b>[자물쇠 아이콘]</b>을 누르고 <b>[사이트 설정]</b>에서 알림을 허용해 주세요.
-            </p>
-            <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
-            <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                <b>방법 2. 시스템 앱 정보 이용</b><br>
-                아래 버튼 클릭 시 나타나는 화면 상단에서 <b>[알림]</b>을 찾아 허용해 주세요.
-            </p>
-        `;
-        buttonsHtml = `
-            <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
-                안드로이드 설정 열기 ➔ [알림] 켜기
-            </button>
-            <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
-                직접 자물쇠 아이콘 누를게요
-            </button>
-        `;
+        // [Denied] 기존 로직 (PWA 환경과 브라우저 환경 안내 분리)
+        if (isStandalone) {
+            guideHtml = `
+                <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                    <b style="color: #ef4444;">[앱 알림 차단 해제 방법]</b><br>
+                    현재 기기에서 MindMap 앱의 알림이 완전히 차단되어 있습니다.<br><br>
+                    홈 화면에서 <b>MindMap 앱 아이콘을 길게 누른 뒤, [ⓘ (앱 정보)] 메뉴</b>로 들어가 <b>[알림]</b>을 허용해 주세요.
+                </p>
+            `;
+            buttonsHtml = `
+                <button id="closeNotifWarn" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
+                    알겠습니다 (직접 설정할게요)
+                </button>
+            `;
+        } else {
+            guideHtml = `
+                <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                    <b style="color: #ef4444;">[알림이 꺼져있습니다]</b><br>
+                    <b>방법 1. (강력 추천)</b><br>
+                    상단 주소창 왼쪽의 <b>[자물쇠 아이콘]</b>을 누르고 <b>[알림]</b> 설정을 '허용'으로 바꿔주세요.
+                </p>
+                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
+                <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                    <b>방법 2. 시스템 앱 정보 이용</b><br>
+                    아래 버튼 클릭 시 나타나는 설정에서 <b>[알림]</b>을 찾아 허용해 주세요.
+                </p>
+            `;
+            buttonsHtml = `
+                <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); margin-bottom: 8px;">
+                    설정 열기 ➔ [알림] 켜기
+                </button>
+                <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                    직접 자물쇠 아이콘 누를게요
+                </button>
+            `;
+        }
     }
 
     const modalHtml = `
         <div id="notifWarnModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px);">
             <div style="background: white; border-radius: 24px; width: 100%; max-width: 340px; padding: 28px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); border: 1px solid rgba(255,255,255,0.2); max-height: 90vh; display: flex; flex-direction: column;">
                 <div style="text-align: center; margin-bottom: 20px; flex-shrink: 0;">
-                    <div style="width: 56px; height: 56px; background: #fee2e2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
-                        <span style="font-size: 28px;">🚫</span>
+                    <div style="width: 56px; height: 56px; background: ${isDenied ? '#fee2e2' : '#ebf8ff'}; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+                        <span style="font-size: 28px;">${isDenied ? '🚫' : '🔔'}</span>
                     </div>
-                    <h3 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800;">알림 권한 차단됨</h3>
+                    <h3 style="margin: 0; color: #0f172a; font-size: 20px; font-weight: 800;">${isDenied ? '알림 권한 차단됨' : '알림이 꺼져있습니다'}</h3>
                 </div>
                 
                 <div style="background: #f8fafc; border-radius: 16px; padding: 16px; margin-bottom: 24px; flex-shrink: 0;">
                     ${guideHtml}
                 </div>
 
-                <div style="display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;">
+                <div style="display: flex; flex-direction: column; gap: 0px; flex-shrink: 0;">
                     ${buttonsHtml}
                 </div>
             </div>
@@ -374,6 +401,25 @@ window.checkNotificationPermissionAndWarn = () => {
     `;
 
     document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // 이벤트 리스너 바인딩
+    const reqBtn = document.getElementById('requestNotifBtn');
+    if (reqBtn) {
+        reqBtn.onclick = async () => {
+            reqBtn.textContent = '권한 요청 중...';
+            const perm = await Notification.requestPermission();
+
+            document.getElementById('notifWarnModal').remove();
+
+            if (perm === 'granted') {
+                if (window.appAlert) window.appAlert('✅ 알림이 성공적으로 허용되었습니다!');
+                // 권한 허용 후 todo-alarm.js가 이를 인식해서 푸시 구독을 시도하도록 이벤트 발송
+                document.dispatchEvent(new CustomEvent('notificationGranted'));
+            } else {
+                if (window.appAlert) window.appAlert('⚠️ 권한이 거부되었습니다. 주소창 좌측 자물쇠에서 직접 변경해주세요.');
+            }
+        };
+    }
 
     const goBtn = document.getElementById('goToNotifSettings');
     if (goBtn) {
@@ -389,16 +435,19 @@ window.checkNotificationPermissionAndWarn = () => {
                 a.style.display = 'none';
                 document.body.appendChild(a);
                 a.click();
-                setTimeout(() => { if(a.parentNode) a.parentNode.removeChild(a); }, 100);
+                setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
             } else if (isIOS) {
                 location.href = 'app-settings:';
             } else {
-                window.appAlert('브라우저 주소창 설정에서 알림 권한을 허용해 주세요.');
+                if (window.appAlert) window.appAlert('브라우저 주소창 자물쇠 모양 설정버튼에서 알림 권한을 직접 허용해 주세요.');
             }
         };
     }
 
-    document.getElementById('closeNotifWarn').onclick = () => {
-        document.getElementById('notifWarnModal').remove();
-    };
+    const closeBtn = document.getElementById('closeNotifWarn');
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            document.getElementById('notifWarnModal').remove();
+        };
+    }
 };
