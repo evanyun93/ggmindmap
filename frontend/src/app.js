@@ -474,13 +474,14 @@ window.checkNotificationPermissionAndWarn = () => {
             const isIOS = /iphone|ipad|ipod/.test(ua);
 
             if (isAndroid) {
-                const intentUrl = 'intent:package:com.android.chrome#Intent;action=android.settings.APPLICATION_DETAILS_SETTINGS;end;';
-                const a = document.createElement('a');
-                a.href = intentUrl;
-                a.style.display = 'none';
-                document.body.appendChild(a);
-                a.click();
-                setTimeout(() => { if (a.parentNode) a.parentNode.removeChild(a); }, 100);
+                // 범용 시스템 설정 앱 활성화 (패키지 종속성 제거)
+                const intentUrl = 'intent:#Intent;action=android.settings.SETTINGS;end;';
+                location.href = intentUrl;
+                
+                // 만약 Intent 호출이 무시될 경우를 대비
+                setTimeout(() => {
+                    if (window.appAlert) window.appAlert('자동 이동에 실패했습니다. 기기 "설정 > 애플리케이션" 메뉴에서 알림을 직접 켜주세요. ⚙️');
+                }, 2000);
             } else if (isIOS) {
                 location.href = 'app-settings:';
             } else {
