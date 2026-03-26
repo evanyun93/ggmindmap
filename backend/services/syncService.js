@@ -10,7 +10,7 @@ const SYNC_TYPES = {
     MILESTONE_DATA_UPDATE: 'milestone_data_update',
     MINDMAP_UPDATE: 'mindmap_update',
     DASHBOARD_UPDATE: 'dashboard_update', // 위젯 추가/삭제 등
-    
+
     // 개별 데이터 필드 (레거시 및 호환용)
     TODO_COLLAPSED: 'todo_collapsed',
     TODO_COLOR: 'todo_color',
@@ -30,7 +30,7 @@ const SYNC_TYPES = {
  */
 const syncService = {
     SYNC_TYPES,
-    
+
     /**
      * @param {number} userId 사용자 ID
      * @param {number|string} widgetId 위젯 ID (0은 전역/대시보드)
@@ -51,9 +51,9 @@ const syncService = {
                 DO UPDATE SET setting_value = $4, updated_at = CURRENT_TIMESTAMP`,
                 [userId, widgetId, type, String(payload)]
             );
-            console.log(`[SyncService] 전파 성공: ${type} (Widget: ${widgetId})`);
+            // console.log(`[SyncService] 전파 성공: ${type} (Widget: ${widgetId})`);
         } catch (err) {
-            console.error('[SyncService] 전파 실패:', err.message);
+            // console.error('[SyncService] 전파 실패:', err.message);
         }
     }
 };

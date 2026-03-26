@@ -11,6 +11,25 @@ import { showEditWarning } from './dashboard-grid.js';
 const DEFAULT_CHECKBOX_COLOR = '#8B5CF6';
 
 /**
+ * 광클 방지 유틸리티 (Click Guard)
+ * 첫 실행은 즉시 처리, 해당 실행 완료 후 delay(ms) 수일 어 추가 호출 무시.
+ * @param {Function} fn 실행할 async 함수
+ * @param {number} delay 쿨다운(ms), 기본 500ms
+ */
+function withClickGuard(fn, delay = 500) {
+    let isProcessing = false;
+    return async function (...args) {
+        if (isProcessing) return;
+        isProcessing = true;
+        try {
+            await fn.apply(this, args);
+        } finally {
+            setTimeout(() => { isProcessing = false; }, delay);
+        }
+    };
+}
+
+/**
  * To-Do 기능 초기화
  * @param {HTMLElement} el 위젯 루트 엘리먼트
  */
@@ -78,8 +97,8 @@ export async function initTodo(el, widgetData) {
         document.addEventListener('mouseup', onUp);
     });
 
-    // 할 일 추가
-    addBtn.onclick = () => addTodo(el);
+    // 할 일 추가 (광클 방지 적용)
+    addBtn.onclick = withClickGuard(() => addTodo(el));
     input.onkeypress = (e) => { if (e.key === 'Enter') addTodo(el); };
 
     // 컬러 팔레트
@@ -491,7 +510,8 @@ async function addTodo(el) {
 function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
     const chk = itemEl.querySelector('.todo-check');
     if (chk) {
-        chk.onchange = async (e) => {
+        // 코스트 변데키 (checked) 상태를 정확히 잘라야 하므로 이벤트객체 'e'는 내부에서 생성
+        const guardedOnChange = withClickGuard(async (e) => {
             const isCompleted = e.target.checked;
             try {
                 await apiFetch(`/api/todos/${id}`, {
@@ -517,12 +537,13 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 const widgetId = widgetEl.dataset.id;
                 syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
             } catch (err) { e.target.checked = !isCompleted; }
-        };
+        });
+        chk.onchange = (e) => guardedOnChange(e);
     }
 
     const delBtn = itemEl.querySelector('.todo-del-btn');
     if (delBtn) {
-        delBtn.onclick = async (e) => {
+        delBtn.onclick = withClickGuard(async () => {
             try {
                 await apiFetch(`/api/todos/${id}`, { method: 'DELETE' });
                 document.querySelectorAll('.widget-todo').forEach(w => {
@@ -534,7 +555,7 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 const widgetId = widgetEl.dataset.id;
                 syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
             } catch (err) {}
-        };
+        });
     }
 
     const editBtn = itemEl.querySelector('.todo-edit-btn');
