@@ -342,40 +342,85 @@ window.checkNotificationPermissionAndWarn = () => {
         `;
     } else {
         // [Denied] 기존 로직 (PWA 환경과 브라우저 환경 안내 분리)
+        const ua = navigator.userAgent.toLowerCase();
+        const isMobile = /android|iphone|ipad|ipod/.test(ua);
+
         if (isStandalone) {
-            guideHtml = `
-                <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                    <b style="color: #ef4444;">[앱 알림 차단 해제 방법]</b><br>
-                    현재 기기에서 MindMap 앱의 알림이 완전히 차단되어 있습니다.<br><br>
-                    홈 화면에서 <b>MindMap 앱 아이콘을 길게 누른 뒤, [ⓘ (앱 정보)] 메뉴</b>로 들어가 <b>[알림]</b>을 허용해 주세요.
-                </p>
-            `;
-            buttonsHtml = `
-                <button id="closeNotifWarn" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
-                    알겠습니다 (직접 설정할게요)
-                </button>
-            `;
+            if (isMobile) {
+                // 모바일 설치앱 (안드로이드 WebAPK / iOS PWA)
+                guideHtml = `
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b style="color: #ef4444;">[앱 알림 차단 해제 방법]</b><br>
+                        현재 기기에서 MindMap 앱의 알림이 완전히 차단되어 있습니다.<br><br>
+                        아래 버튼을 눌러 기기 설정으로 이동한 뒤, <b>[알림]</b>을 '허용'으로 변경해 주세요.
+                    </p>
+                `;
+                buttonsHtml = `
+                    <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); margin-bottom: 8px;">
+                        설정 앱 열기 ➔ [알림] 켜기
+                    </button>
+                    <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                        나중에 직접 할게요
+                    </button>
+                `;
+            } else {
+                // PC 설치앱
+                guideHtml = `
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b style="color: #ef4444;">[앱 알림 차단 해제 방법]</b><br>
+                        현재 기기에서 MindMap 앱의 알림이 완전히 차단되어 있습니다.<br><br>
+                        상단 타이틀 바의 <b>[ⓘ (앱 정보)] 또는 설정 메뉴</b>로 들어가 <b>[알림]</b>을 허용해 주세요.
+                    </p>
+                `;
+                buttonsHtml = `
+                    <button id="closeNotifWarn" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
+                        알겠습니다 (직접 설정할게요)
+                    </button>
+                `;
+            }
         } else {
-            guideHtml = `
-                <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                    <b style="color: #ef4444;">[알림이 꺼져있습니다]</b><br>
-                    <b>방법 1. (강력 추천)</b><br>
-                    상단 주소창 왼쪽의 <b>[자물쇠 아이콘]</b>을 누르고 <b>[알림]</b> 설정을 '허용'으로 바꿔주세요.
-                </p>
-                <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
-                <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
-                    <b>방법 2. 시스템 앱 정보 이용</b><br>
-                    아래 버튼 클릭 시 나타나는 설정에서 <b>[알림]</b>을 찾아 허용해 주세요.
-                </p>
-            `;
-            buttonsHtml = `
-                <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); margin-bottom: 8px;">
-                    설정 열기 ➔ [알림] 켜기
-                </button>
-                <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
-                    직접 자물쇠 아이콘 누를게요
-                </button>
-            `;
+            if (isMobile) {
+                // 모바일 브라우저
+                guideHtml = `
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b style="color: #ef4444;">[알림이 꺼져있습니다]</b><br>
+                        <b>방법 1. (강력 추천)</b><br>
+                        아래 버튼 클릭 시 나타나는 시스템 설정창에서 <b>[알림]</b>을 찾아 켜주세요.
+                    </p>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b>방법 2. 브라우저 직접 제어</b><br>
+                        상단 주소창 왼쪽의 <b>[자물쇠 아이콘]</b>을 누르고 <b>[알림]</b> 설정을 '허용'으로 바꿔주세요.
+                    </p>
+                `;
+                buttonsHtml = `
+                    <button id="goToNotifSettings" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4); margin-bottom: 8px;">
+                        기기 설정 열기 ➔ [알림] 켜기
+                    </button>
+                    <button id="closeNotifWarn" style="width: 100%; padding: 12px; background: transparent; color: #64748b; border: none; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 14px;">
+                        직접 자물쇠 아이콘 누를게요
+                    </button>
+                `;
+            } else {
+                // PC 브라우저
+                guideHtml = `
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b style="color: #ef4444;">[알림이 꺼져있습니다]</b><br>
+                        <b>방법 1. (강력 추천)</b><br>
+                        상단 주소창 왼쪽의 <b>[자물쇠 아이콘]</b>을 누르고 <b>[알림]</b> 설정을 '허용'으로 바꿔주세요.
+                    </p>
+                    <hr style="border: 0; border-top: 1px solid #e2e8f0; margin: 12px 0;">
+                    <p style="font-size: 14px; color: #334155; line-height: 1.6; margin: 0; text-align: left;">
+                        <b>방법 2. 브라우저 설정(앱) 메뉴 이용</b><br>
+                        브라우저 우측 상단 옵션 메뉴를 통해 사이트 설정에서 <b>[알림]</b>을 찾아 허용해 주세요.
+                    </p>
+                `;
+                buttonsHtml = `
+                    <button id="closeNotifWarn" style="width: 100%; padding: 16px; background: #8B5CF6; color: white; border: none; border-radius: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s; font-size: 16px; box-shadow: 0 4px 12px rgba(139, 92, 246, 0.4);">
+                        직접 자물쇠 아이콘 누를게요
+                    </button>
+                `;
+            }
         }
     }
 
