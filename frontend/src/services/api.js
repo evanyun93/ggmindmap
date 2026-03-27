@@ -3,7 +3,8 @@
  * @description 백엔드 API와의 통신을 위한 기본 설정을 관리합니다.
  */
 
-export { API_BASE } from './config.js';
+import { API_BASE } from './config.js';
+export { API_BASE };
 
 /**
  * 전역 인증 헤더를 포함한 fetch 헬퍼 (필요시 확장 가능)

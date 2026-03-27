@@ -285,14 +285,6 @@
     </div>
   </footer>
 
-  <!-- Service Worker 등록 (알람 백그라운드 알림 지원) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js', { scope: '/' })
-        .then(reg => console.log('[SW] 등록 완료:', reg.scope))
-        .catch(err => console.warn('[SW] 등록 실패:', err));
-    }
-  </script>
   <script type="module" src="src/app.js"></script>
   <script type="module" src="src/admin.js"></script>
 
