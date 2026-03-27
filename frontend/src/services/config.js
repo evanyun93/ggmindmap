@@ -11,6 +11,6 @@ const isLocal = self.location.hostname === 'localhost' || self.location.hostname
  * 백엔드 API 베이스 주소
  * 로컬 환경이면 현재 오리진을, 배포 환경이면 ngrok 주소를 사용합니다.
  */
-export const API_BASE = isLocal 
-    ? self.location.origin 
+export const API_BASE = isLocal
+    ? self.location.origin
     : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
