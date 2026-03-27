@@ -3,17 +3,13 @@
  * @description GGMIND 알림 서비스 워커 - 백그라운드에서도 알람이 울리도록 IndexedDB에 알람 일정을 저장합니다.
  * 주의: 이 파일은 반드시 /frontend/ 루트(또는 서빙 루트)에 위치해야 합니다.
  */
+import { API_BASE } from './src/services/config.js';
 
 const CACHE_NAME = 'ggmind-sw-v2';
 const DB_NAME = 'ggmind-alarms';
 const DB_VERSION = 2;
 const STORE_NAME = 'alarms';
 const TOKEN_STORE = 'auth'; // JWT 토큰 저장용
-
-// ── API 베이스 주소 설정 (Vercel 환경 대응) ─────────────────────
-// 로컬이 아닐 경우(Vercel 등), 명시적인 오라클 백엔드(ngrok) 주소를 사용합니다.
-const isLocal = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
-const API_BASE = isLocal ? self.location.origin : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
 
 // ── IndexedDB 헬퍼 ─────────────────────────────────────────────
 function openAlarmDB() {

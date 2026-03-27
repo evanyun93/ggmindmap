@@ -1,4 +1,5 @@
 // frontend/src/features/supplement.js
+import { API_BASE } from './src/services/config.js';
 
 // ───────── API Mock Data (분석용은 아직 백엔드가 없으므로 유지) ─────────
 // MOCK_DB는 제거되었습니다. 이제 실제 API에서 검색 결과를 가져옵니다.
@@ -49,7 +50,7 @@ const mockApiAnalysis = (payload) => {
 async function fetchSupplements(keyword) {
   if (!keyword || keyword.trim() === '') return [];
   try {
-    const response = await fetch(`/api/supplements/search?q=${encodeURIComponent(keyword)}`);
+    const response = await fetch(`${API_BASE}/api/supplements/search?q=${encodeURIComponent(keyword)}`);
     if (!response.ok) throw new Error('네트워크 응답 실패');
     return await response.json();
   } catch (error) {

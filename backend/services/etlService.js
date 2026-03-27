@@ -108,14 +108,14 @@ async function syncSupplementsToDB() {
 
 // 서버 실행 시 스케줄러를 등록하는 함수 (server.js에서 호출)
 function startEtlScheduler() {
-    // 매주 일요일 새벽 3시에 자동 실행
-    cron.schedule('0 3 * * 0', () => {
+    // 매월 1일 새벽 3시에 자동 실행
+    cron.schedule('0 3 1 * *', () => {
         syncSupplementsToDB();
     });
     console.log('⏳ [Scheduler] 영양제 ETL 동기화 스케줄러 등록 완료 (매주 일요일 03:00)');
 
     // (옵션) 서버 시작할 때 최초 1회 바로 실행해보고 싶다면 아래 주석 해제
-    syncSupplementsToDB();
+    // syncSupplementsToDB();
 }
 
 module.exports = { startEtlScheduler, syncSupplementsToDB };

@@ -113,7 +113,7 @@ function isAlarmSent(id) {
 async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     try {
-        const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/' });
+        const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/', type: 'module' });
         await navigator.serviceWorker.ready;
         swRegistration = reg;
         console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
