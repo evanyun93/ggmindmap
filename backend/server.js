@@ -39,6 +39,10 @@ app.use(express.static(path.join(__dirname, '..', 'frontend')));
 const { startPushScheduler } = require('./utils/pushScheduler');
 startPushScheduler();
 
+// 영양제 DB 동기화(ETL) 스케줄러 시작 (추가!)
+const { startEtlScheduler } = require('./services/etlService');
+startEtlScheduler();
+
 // ─── API 라우트 등록 ──────────────────────────────────────────
 
 // 1. 인증 관련 (로그인, 가입, 소셜)
@@ -77,6 +81,10 @@ app.use('/api/sync', syncApi);
 const pushApi = require('./routes/pushApi');
 app.use('/api/push', pushApi);
 
+// 10. 영양제 위젯 전용 API 관련 (추가!)
+const supplementApi = require('./routes/supplementApi'); // 나중에 만들 검색 API 등
+app.use('/api/supplements', supplementApi);
+
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 
 app.get('*', (req, res) => {
@@ -91,7 +99,7 @@ async function startServer() {
   try {
     // DB 초기화 완료 후 서버 시작
     await initDatabase();
-    
+
     if (require.main === module) {
       app.listen(PORT, () => {
         console.log(`🧠 MindMap 서버 시작됨 | 포트: ${PORT} `);

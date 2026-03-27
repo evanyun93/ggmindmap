@@ -1,0 +1,430 @@
+/* supplement.css */
+
+/* 부모 위젯 래퍼를 꽉 차게 스크롤 가능하게 만듦 */
+.widget-supplement .supplement-content-wrapper {
+  overflow-y: auto;
+  height: calc(100% - 64px); /* 헤더(64px) 제외 높이 */
+  padding: 16px;
+  background: var(--card-bg); /* 테마에 연동된 배경 */
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom-left-radius: var(--radius-md);
+  border-bottom-right-radius: var(--radius-md);
+  position: relative;
+}
+
+/* 건강 테마를 강조하기 위한 은은한 그린 틴트 오버레이 */
+.widget-supplement .supplement-content-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at top left, rgba(16, 185, 129, 0.05), transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* 내부 콘텐츠가 오버레이 위로 오도록 설정 */
+.widget-supplement .supplement-content-wrapper > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* 텍스트 타이틀 통일감 */
+.sup-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin: 20px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sup-section-title:first-child {
+  margin-top: 0;
+}
+
+/* ─── 내 영양제 관리 (카드 리스트) ─── */
+.sup-list-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.sup-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(8px);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  animation: supItemPop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sup-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(16, 185, 129, 0.2);
+  transform: translateX(4px);
+}
+
+@keyframes supItemPop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.98); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.sup-item-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.sup-item-icon {
+  width: 38px;
+  height: 38px;
+  background: rgba(139, 92, 246, 0.1);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+}
+.sup-item-text {
+  display: flex;
+  flex-direction: column;
+}
+.sup-item-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.sup-item-maker {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+  font-weight: 500;
+}
+.sup-item-del-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 8px 10px;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  font-size: 10px;
+  font-weight: 700;
+  align-items: center;
+  gap: 2px;
+}
+.sup-item-del-btn:hover {
+  background: #ef4444;
+  color: white;
+  transform: scale(1.05);
+}
+
+/* 영양제 추가하기 영역 */
+.sup-add-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.sup-add-btn {
+  width: 100%;
+  padding: 15px;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.sup-add-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: var(--success);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.15);
+}
+.sup-add-icons {
+  display: flex;
+  gap: 12px;
+  opacity: 0.8;
+}
+
+/* 검색/직접입력 Fallback 폼 */
+.sup-fallback-wrapper {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  display: none;
+  flex-direction: column;
+  gap: 16px;
+  box-shadow: var(--shadow-lg);
+}
+.sup-fallback-wrapper.visible {
+  display: flex;
+  animation: slideInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInUp {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.sup-input-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sup-input-row label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+.sup-input {
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-primary);
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+.sup-input:focus {
+  outline: none;
+  border-color: var(--success);
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+.sup-auto-list {
+  max-height: 150px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.sup-auto-item {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+  color: var(--text-primary);
+  transition: background 0.2s;
+}
+.sup-auto-item:last-child {
+  border-bottom: none;
+}
+.sup-auto-item:hover {
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--success);
+}
+
+.sup-btn-group {
+  display: flex;
+  gap: 10px;
+}
+.sup-btn-action {
+  flex: 1;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+.sup-btn-save { 
+  background: var(--accent-gradient);
+  color: white;
+}
+.sup-btn-save:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+.sup-btn-cancel { 
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* 분석하기 버튼 (프리미엄 포인트) */
+.sup-btn-analyze {
+  width: 100%;
+  padding: 16px;
+  background: var(--accent-gradient);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  margin-bottom: 24px;
+  box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.sup-btn-analyze:hover {
+  transform: translateY(-3px) scale(1.02);
+  box-shadow: 0 15px 35px rgba(139, 92, 246, 0.4);
+}
+.sup-btn-analyze:active {
+  transform: scale(0.98);
+}
+.sup-btn-analyze.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* ─── AI 분석 알림 ─── */
+.sup-ai-alert {
+  padding: 18px;
+  border-radius: var(--radius-md);
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(10px);
+}
+.alert-warning {
+  background: rgba(221, 113, 21, 0.15);
+  border: 1px solid rgba(221, 113, 21, 0.4);
+  color: #fb923c;
+}
+.alert-success {
+  background: rgba(16, 185, 129, 0.15);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  color: #34d399;
+}
+.sup-ai-alert.visible {
+  display: flex;
+  animation: bounceIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes bounceIn {
+  0% { opacity: 0; transform: scale(0.9) translateY(10px); }
+  70% { transform: scale(1.05); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.sup-ai-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 800;
+}
+.sup-ai-message {
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* ─── 신호등 영양소 그리드 ─── */
+.sup-nutrient-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.sup-nutrient-card {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+.sup-nutrient-card:hover {
+  transform: scale(1.02);
+  background: rgba(255, 255, 255, 0.05);
+}
+.sup-nc-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sup-nc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+.sup-nc-name {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.sup-nc-status {
+  font-size: 11px;
+  font-weight: 700;
+  margin-top: 1px;
+}
+
+/* 프로그레스 바 스타일 개선 */
+.sup-progress-bar-bg {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 5px;
+  position: relative;
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+.sup-progress-fill {
+  height: 100%;
+  border-radius: 5px;
+  transition: width 1.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+  box-shadow: 0 0 10px currentColor;
+}
+
+/* 출처 박스 */
+.sup-ai-detail-box {
+  margin-top: 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px;
+}
+.sup-bot-msg {
+  background: rgba(139, 92, 246, 0.08);
+  border-left: 4px solid var(--accent-purple);
+  padding: 14px;
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 15px;
+}
+
+/* 다크 테마 대응 고도화 (과다/부족 색상) */
+.nc-RED .sup-nc-status { color: #f87171; }
+.nc-RED .sup-progress-fill { background: #ef4444; color: #ef4444; }
+.nc-ORANGE .sup-nc-status { color: #fb923c; }
+.nc-ORANGE .sup-progress-fill { background: #f59e0b; color: #f59e0b; }
+.nc-GREEN .sup-nc-status { color: #34d399; }
+.nc-GREEN .sup-progress-fill { background: #10b981; color: #10b981; }
+.nc-YELLOW .sup-nc-status { color: #fbbf24; }
+.nc-YELLOW .sup-progress-fill { background: #facc15; color: #facc15; }

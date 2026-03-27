@@ -13,7 +13,7 @@ if (process.env.DB_HOST) {
   };
   // 직접 구축한 DB 등 외부/로컬 환경에 따라 SSL 분기
   if (process.env.DB_SSL === 'true') {
-     poolConfig.ssl = { rejectUnauthorized: false };
+    poolConfig.ssl = { rejectUnauthorized: false };
   }
 } else {
   // 기존 Render 환경 (SSL 필수)
@@ -45,6 +45,32 @@ async function initDatabase() {
       // ============================================
       // [1단계] 모든 테이블부터 생성 (의존성 순서 준수)
       // ============================================
+
+      // tba_supplements 생성 (영양제 메인)
+      await client.query(`
+        CREATE EXTENSION IF NOT EXISTS pg_trgm;
+        
+        CREATE TABLE IF NOT EXISTS tba_supplements (
+          id VARCHAR(100) PRIMARY KEY,
+          name VARCHAR(255) NOT NULL,
+          manufacturer VARCHAR(255),
+          raw_data JSONB,
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+        
+        CREATE INDEX IF NOT EXISTS idx_supplements_search_name ON tba_supplements USING GIN (name gin_trgm_ops);
+        CREATE INDEX IF NOT EXISTS idx_supplements_search_maker ON tba_supplements USING GIN (manufacturer gin_trgm_ops);
+      `);
+
+      // tba_supplement_nutrients 생성 (영양제-성분 매핑 테이블)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_supplement_nutrients (
+          supplement_id VARCHAR(100) REFERENCES tba_supplements(id) ON DELETE CASCADE,
+          nutrient_id VARCHAR(50) NOT NULL,
+          amount_mg NUMERIC(10, 2) NOT NULL,
+          PRIMARY KEY (supplement_id, nutrient_id)
+        );
+      `);
 
       // tba_users 생성
       await client.query(`
@@ -204,8 +230,8 @@ async function initDatabase() {
           USING alarm_time AT TIME ZONE 'Asia/Seoul'
         `);
         console.log('✅ tba_todos.alarm_time 컬럼을 TIMESTAMPTZ로 마이그레이션 완료');
-      } catch (e) { 
-        console.error('⚠️ alarm_time 마이그레이션 중 오류:', e.message); 
+      } catch (e) {
+        console.error('⚠️ alarm_time 마이그레이션 중 오류:', e.message);
       }
 
       await client.query(`
@@ -287,7 +313,7 @@ async function initDatabase() {
       try {
         // 1. 컬럼 추가 (이미 있으면 무시)
         await client.query('ALTER TABLE tba_user_widgets ADD COLUMN IF NOT EXISTS title VARCHAR(100)');
-        
+
         // 2. tba_widget_settings 테이블에서 제목 데이터 가져오기
         await client.query(`
           UPDATE tba_user_widgets w
@@ -297,7 +323,7 @@ async function initDatabase() {
           AND s.setting_key IN ('todo_title', 'milestone_title') 
           AND (w.title IS NULL OR w.title = '')
         `);
-        
+
         // 3. settings JSONB 필드에서 제목 데이터 가져오기
         await client.query(`
           UPDATE tba_user_widgets
@@ -305,13 +331,13 @@ async function initDatabase() {
           WHERE settings ? 'title' 
           AND (title IS NULL OR title = '')
         `);
-        
+
         // 4. tba_widget_settings에서 중복된 제목 데이터 삭제
         await client.query(`
           DELETE FROM tba_widget_settings 
           WHERE setting_key IN ('todo_title', 'milestone_title')
         `);
-        
+
         // 5. settings JSONB 필드에서 중복된 title 키 삭제
         await client.query(`
           UPDATE tba_user_widgets 
