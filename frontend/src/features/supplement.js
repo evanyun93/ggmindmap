@@ -1,5 +1,5 @@
 // frontend/src/features/supplement.js
-import { API_BASE } from './src/services/config.js';
+import { API_BASE } from '../services/config.js';
 
 // ───────── API Mock Data (분석용은 아직 백엔드가 없으므로 유지) ─────────
 // MOCK_DB는 제거되었습니다. 이제 실제 API에서 검색 결과를 가져옵니다.
