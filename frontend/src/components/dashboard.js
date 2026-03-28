@@ -111,6 +111,96 @@ export function getDashboardHTML(user) {
       `;
   }
 
+  const healthInfoSection = `
+    <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">건강 정보</h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 10px; background: #f8f9fa; border: 1px solid #ddd; border-radius: 6px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 18px;">🏃</span>
+                <span style="font-size: 14px; color: #495057;">건강 정보</span>
+                <span id="healthInfoBadge" style="font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; background: #e9ecef; color: #868e96;">불러오는 중...</span>
+            </div>
+            <button id="openHealthInfoSubBtn" style="padding: 6px 12px; background: #8B5CF6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 600;">추가/수정</button>
+        </div>
+    </div>
+  `;
+
+  const healthInfoSubView = `
+    <div id="healthInfoSubView" style="display: none; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: #333; font-size: 16px;">건강 정보 입력</h4>
+            <button id="closeHealthInfoSubBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        <p style="font-size: 13px; color: #888; margin-bottom: 16px; line-height: 1.5;">영양제 분석 등에 활용되는 건강 정보입니다. 입력하지 않아도 기본 기능은 이용 가능합니다.</p>
+
+        <!-- 성별 -->
+        <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">성별</label>
+            <div style="display: flex; gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px;">
+                    <input type="radio" name="healthGender" id="healthGenderMale" value="male" style="accent-color: #8B5CF6;"> 남성
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px;">
+                    <input type="radio" name="healthGender" id="healthGenderFemale" value="female" style="accent-color: #8B5CF6;"> 여성
+                </label>
+            </div>
+        </div>
+
+        <!-- 출생년월일 -->
+        <div style="margin-bottom: 14px;">
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">출생년월일</label>
+            <div style="display: flex; gap: 8px;">
+                <select id="healthBirthYear" style="flex: 2; padding: 9px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white;">
+                    <option value="">년도</option>
+                    ${(() => { let opts = ''; for (let y = new Date().getFullYear(); y >= 1924; y--) opts += `<option value="${y}">${y}년</option>`; return opts; })()}
+                </select>
+                <select id="healthBirthMonth" style="flex: 1; padding: 9px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white;">
+                    <option value="">월</option>
+                    ${(() => { let opts = ''; for (let m = 1; m <= 12; m++) opts += `<option value="${m}">${m}월</option>`; return opts; })()}
+                </select>
+                <select id="healthBirthDay" style="flex: 1; padding: 9px 8px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; background: white;">
+                    <option value="">일</option>
+                    ${(() => { let opts = ''; for (let d = 1; d <= 31; d++) opts += `<option value="${d}">${d}일</option>`; return opts; })()}
+                </select>
+            </div>
+        </div>
+
+        <!-- 임신 여부 (여성일 때만 노출) -->
+        <div id="healthPregnancyRow" style="margin-bottom: 14px; display: none;">
+            <label style="display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">임신 여부</label>
+            <div style="display: flex; gap: 12px;">
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px;">
+                    <input type="radio" name="healthIsPregnant" id="healthPregnantYes" value="yes" style="accent-color: #8B5CF6;"> 임신 중
+                </label>
+                <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 14px;">
+                    <input type="radio" name="healthIsPregnant" id="healthPregnantNo" value="no" style="accent-color: #8B5CF6;" checked> 해당 없음
+                </label>
+            </div>
+        </div>
+
+        <!-- 몸무게 / 키 -->
+        <div style="margin-bottom: 14px; display: flex; gap: 12px;">
+            <div style="flex: 1;">
+                <label style="display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">몸무게</label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <input type="number" id="healthWeight" min="20" max="300" step="0.1" placeholder="kg" style="width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    <span style="font-size: 13px; color: #666; white-space: nowrap;">kg</span>
+                </div>
+            </div>
+            <div style="flex: 1;">
+                <label style="display: block; font-size: 13px; font-weight: 600; color: #495057; margin-bottom: 8px;">키</label>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <input type="number" id="healthHeight" min="50" max="250" step="0.1" placeholder="cm" style="width: 100%; padding: 9px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; box-sizing: border-box;">
+                    <span style="font-size: 13px; color: #666; white-space: nowrap;">cm</span>
+                </div>
+            </div>
+        </div>
+
+        <button id="submitHealthInfoBtn" style="width: 100%; padding: 12px; background: #8B5CF6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; margin-top: 4px;">저장하기</button>
+        <div id="healthInfoMsg" style="margin-top: 10px; font-size: 13px; text-align: center; min-height: 18px;"></div>
+    </div>
+  `;
+
   const securitySection = `
     <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
         <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">보안</h4>
@@ -205,6 +295,7 @@ export function getDashboardHTML(user) {
                 </button>
             </div>
 
+            ${healthInfoSection}
             ${securitySection}
             ${displaySection}
             <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;">
@@ -223,6 +314,7 @@ export function getDashboardHTML(user) {
         ${themeChangeSubView}
         ${nicknameChangeSubView}
         ${passwordResetSubView}
+        ${healthInfoSubView}
 
       </div>
     </div>
