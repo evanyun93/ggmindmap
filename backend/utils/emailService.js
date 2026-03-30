@@ -393,7 +393,7 @@ async function sendEmailVerificationCode(toEmail, verificationCode) {
       </div>
     </div>
   `;
-
+  const mailOptions = {
     from: process.env.SMTP_FROM || '"GGMindMap" <noreply@ggmindmap.app>',
     to: toEmail,
     subject: '[GGMindMap] 이메일 인증번호',
