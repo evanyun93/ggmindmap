@@ -279,10 +279,12 @@ function initUtilities() {
             const pResetView = document.getElementById('passwordResetSubView');
             const nChangeView = document.getElementById('nicknameChangeSubView');
             const tChangeView = document.getElementById('themeChangeSubView');
+            const hInfoView = document.getElementById('healthInfoSubView');
             if (mainView) mainView.style.display = 'block';
             if (pResetView) pResetView.style.display = 'none';
             if (nChangeView) nChangeView.style.display = 'none';
             if (tChangeView) tChangeView.style.display = 'none';
+            if (hInfoView) hInfoView.style.display = 'none';
         }
     };
 
@@ -653,6 +655,179 @@ function initUtilities() {
             });
         };
     }
+
+    // ── 건강 정보 서브 뷰 ──────────────────────────────────────────
+    const openHealthInfoSubBtn = document.getElementById('openHealthInfoSubBtn');
+    const closeHealthInfoSubBtn = document.getElementById('closeHealthInfoSubBtn');
+    const healthInfoSubView = document.getElementById('healthInfoSubView');
+
+    /**
+     * 서버에서 건강 정보를 불러와 뱃지를 갱신하고 데이터를 반환합니다.
+     * 영양제 위젯 등 다른 위젯에서도 window.loadUserHealthInfo() 로 호출 가능합니다.
+     */
+    const loadHealthInfo = async () => {
+        const badge = document.getElementById('healthInfoBadge');
+        try {
+            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            if (!token) {
+                if (badge) { badge.textContent = '미입력'; badge.style.background = '#fff3cd'; badge.style.color = '#856404'; }
+                return null;
+            }
+            const res = await apiFetch('/api/auth/health-info', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            const data = await res.json();
+            if (data.success && data.healthInfo && Object.keys(data.healthInfo).some(k => data.healthInfo[k])) {
+                if (badge) { badge.textContent = '입력됨 ✓'; badge.style.background = '#d4edda'; badge.style.color = '#155724'; }
+                return data.healthInfo;
+            } else {
+                if (badge) { badge.textContent = '미입력'; badge.style.background = '#fff3cd'; badge.style.color = '#856404'; }
+                return null;
+            }
+        } catch (e) {
+            if (badge) { badge.textContent = '오류'; badge.style.background = '#f8d7da'; badge.style.color = '#721c24'; }
+            return null;
+        }
+    };
+
+    // 전역으로 노출하여 다른 위젯에서도 사용 가능
+    window.loadUserHealthInfo = loadHealthInfo;
+
+    // 모달 열릴 때 건강 정보 상태 로딩 (userProfileBtn 클릭 시)
+    const userProfileBtnForHealth = document.getElementById('userProfileBtn');
+    if (userProfileBtnForHealth) {
+        userProfileBtnForHealth.addEventListener('click', () => loadHealthInfo());
+    }
+    // 페이지 로드 시 한 번 로딩
+    loadHealthInfo();
+
+    // 성별 선택에 따라 임신 여부 행 표시/숨김
+    const setupGenderToggle = () => {
+        const maleRadio = document.getElementById('healthGenderMale');
+        const femaleRadio = document.getElementById('healthGenderFemale');
+        const pregnancyRow = document.getElementById('healthPregnancyRow');
+        [maleRadio, femaleRadio].forEach(r => {
+            if (!r) return;
+            r.addEventListener('change', () => {
+                const isFemale = femaleRadio && femaleRadio.checked;
+                if (pregnancyRow) pregnancyRow.style.display = isFemale ? 'block' : 'none';
+                if (!isFemale) {
+                    const pregnantNo = document.getElementById('healthPregnantNo');
+                    if (pregnantNo) pregnantNo.checked = true;
+                }
+            });
+        });
+    };
+
+    // 서브 뷰 열기 + 기존 데이터 불러와 폼 채우기
+    if (openHealthInfoSubBtn && mainSettingsView && healthInfoSubView) {
+        openHealthInfoSubBtn.addEventListener('click', async () => {
+            mainSettingsView.style.display = 'none';
+            healthInfoSubView.style.display = 'block';
+            setupGenderToggle();
+
+            const healthInfo = await loadHealthInfo();
+            if (healthInfo) {
+                const maleRadio = document.getElementById('healthGenderMale');
+                const femaleRadio = document.getElementById('healthGenderFemale');
+                const pregnancyRow = document.getElementById('healthPregnancyRow');
+
+                if (healthInfo.gender === 'male' && maleRadio) maleRadio.checked = true;
+                if (healthInfo.gender === 'female' && femaleRadio) {
+                    femaleRadio.checked = true;
+                    if (pregnancyRow) pregnancyRow.style.display = 'block';
+                }
+
+                const birthYear = document.getElementById('healthBirthYear');
+                const birthMonth = document.getElementById('healthBirthMonth');
+                const birthDay = document.getElementById('healthBirthDay');
+                if (birthYear && healthInfo.birthYear) birthYear.value = healthInfo.birthYear;
+                if (birthMonth && healthInfo.birthMonth) birthMonth.value = healthInfo.birthMonth;
+                if (birthDay && healthInfo.birthDay) birthDay.value = healthInfo.birthDay;
+
+                if (healthInfo.gender === 'female') {
+                    const pregnantYes = document.getElementById('healthPregnantYes');
+                    const pregnantNo = document.getElementById('healthPregnantNo');
+                    if (healthInfo.isPregnant === 'yes' && pregnantYes) pregnantYes.checked = true;
+                    else if (pregnantNo) pregnantNo.checked = true;
+                }
+
+                const weightInput = document.getElementById('healthWeight');
+                const heightInput = document.getElementById('healthHeight');
+                if (weightInput && healthInfo.weight) weightInput.value = healthInfo.weight;
+                if (heightInput && healthInfo.height) heightInput.value = healthInfo.height;
+            }
+        });
+    }
+
+    // 서브 뷰 닫기
+    if (closeHealthInfoSubBtn && mainSettingsView && healthInfoSubView) {
+        closeHealthInfoSubBtn.addEventListener('click', () => {
+            healthInfoSubView.style.display = 'none';
+            mainSettingsView.style.display = 'block';
+        });
+    }
+
+    // 건강 정보 저장
+    const submitHealthInfoBtn = document.getElementById('submitHealthInfoBtn');
+    if (submitHealthInfoBtn) {
+        submitHealthInfoBtn.addEventListener('click', async () => {
+            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            if (!token) { window.appAlert('로그인이 필요합니다.'); return; }
+
+            const maleRadio = document.getElementById('healthGenderMale');
+            const femaleRadio = document.getElementById('healthGenderFemale');
+            const gender = femaleRadio && femaleRadio.checked ? 'female' : (maleRadio && maleRadio.checked ? 'male' : '');
+
+            const birthYear = document.getElementById('healthBirthYear')?.value || '';
+            const birthMonth = document.getElementById('healthBirthMonth')?.value || '';
+            const birthDay = document.getElementById('healthBirthDay')?.value || '';
+
+            const pregnantYes = document.getElementById('healthPregnantYes');
+            const isPregnant = (gender === 'female' && pregnantYes && pregnantYes.checked) ? 'yes' : 'no';
+
+            const weight = document.getElementById('healthWeight')?.value || '';
+            const height = document.getElementById('healthHeight')?.value || '';
+
+            const msgEl = document.getElementById('healthInfoMsg');
+            submitHealthInfoBtn.disabled = true;
+            submitHealthInfoBtn.textContent = '저장 중...';
+
+            try {
+                const res = await apiFetch('/api/auth/health-info', {
+                    method: 'PATCH',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ gender, birthYear, birthMonth, birthDay, isPregnant: gender === 'female' ? isPregnant : 'no', weight, height })
+                });
+                const result = await res.json();
+                if (result.success) {
+                    if (msgEl) { msgEl.textContent = '✓ 저장되었습니다!'; msgEl.style.color = '#155724'; }
+                    await loadHealthInfo();
+                    setTimeout(() => {
+                        if (healthInfoSubView) healthInfoSubView.style.display = 'none';
+                        if (mainSettingsView) mainSettingsView.style.display = 'block';
+                        if (msgEl) msgEl.textContent = '';
+                    }, 1000);
+                } else {
+                    if (msgEl) { msgEl.textContent = result.message || '저장에 실패했습니다.'; msgEl.style.color = '#721c24'; }
+                }
+            } catch (e) {
+                if (msgEl) { msgEl.textContent = '서버 통신 오류가 발생했습니다.'; msgEl.style.color = '#721c24'; }
+            } finally {
+                submitHealthInfoBtn.disabled = false;
+                submitHealthInfoBtn.textContent = '저장하기';
+            }
+        });
+    }
+
+    // 모달 닫힐 때 건강 정보 서브뷰도 초기화
+    const origCloseSettings = closeSettingsModal;
+    const closeSettingsWithHealth = () => {
+        origCloseSettings();
+        if (healthInfoSubView) healthInfoSubView.style.display = 'none';
+    };
+    // 기존 닫기 버튼들에 재등록 (위에서 이미 등록했으나 health 초기화 추가)
+    // closeSettingsModal 내부에서 healthInfoSubView 처리되도록 closeSettingsModal 재정의
 }
 
 /**

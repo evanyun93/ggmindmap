@@ -74,14 +74,14 @@ export async function initNotepad(el, widgetData) {
                 cancelBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
                 cancelBtn.title = "취소";
                 cancelBtn.style.cssText = "background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px; position:relative; z-index:9999; pointer-events:auto;";
-                
+
                 cancelBtn.onmousedown = (ev) => {
                     ev.preventDefault(); ev.stopPropagation();
                     input.value = current;
                     exitEditMode(current);
                 };
                 cancelBtn.ontouchstart = cancelBtn.onmousedown;
-                
+
                 editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
 
                 titleEl.replaceWith(input);
@@ -98,7 +98,7 @@ export async function initNotepad(el, widgetData) {
                 if (input) {
                     const newTitle = input.value.trim() || '나의 메모장';
                     exitEditMode(newTitle);
-                    
+
                     try {
                         await apiFetch(`/api/widgets/${widgetId}`, {
                             method: 'PATCH',
@@ -132,7 +132,74 @@ export async function initNotepad(el, widgetData) {
         }
     });
 
-    // 3. 텍스트 자동 저장 (디바운스 기반 auto-save)
+    // 3. 모바일 환경용 높이 조절 기능 (Resize Handle)
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+        // 기존에 설정된 모바일 높이가 있으면 적용
+        if (widgetData.settings && widgetData.settings.mobileHeight) {
+            textarea.style.height = `${widgetData.settings.mobileHeight}px`;
+        }
+
+        const resizeHandle = document.createElement('div');
+        resizeHandle.className = 'notepad-mobile-resize-handle';
+        resizeHandle.innerHTML = '<div class="resize-line"></div><div class="resize-line"></div>';
+
+        // 간단한 스타일링 (스타일 파일에 넣어도 됨)
+        resizeHandle.style.cssText = `
+            width: 100%;
+            height: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            cursor: row-resize;
+            background: rgba(0, 0, 0, 0.05);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        `;
+        resizeHandle.querySelectorAll('.resize-line').forEach(line => {
+            line.style.cssText = 'width: 30px; height: 2px; background: rgba(0, 0, 0, 0.2); border-radius: 1px;';
+        });
+
+        el.querySelector('.notepad-content-wrapper').appendChild(resizeHandle);
+
+        let startY = 0;
+        let startHeight = 0;
+
+        resizeHandle.addEventListener('touchstart', (e) => {
+            startY = e.touches[0].clientY;
+            startHeight = textarea.offsetHeight;
+            e.preventDefault(); // 스크롤 방지
+        }, { passive: false });
+
+        resizeHandle.addEventListener('touchmove', (e) => {
+            const currentY = e.touches[0].clientY;
+            const diffY = currentY - startY;
+            const newHeight = Math.max(100, startHeight + diffY); // 최소 100px
+            textarea.style.height = `${newHeight}px`;
+            e.preventDefault();
+        }, { passive: false });
+
+        resizeHandle.addEventListener('touchend', () => {
+            // 조절이 끝나면 높이 저장
+            const finalHeight = textarea.offsetHeight;
+            const currentSettings = widgetData.settings || {};
+            const updatedSettings = { ...currentSettings, mobileHeight: finalHeight };
+
+            apiFetch(`/api/widgets/${widgetId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ settings: updatedSettings })
+            }).then(() => {
+                widgetData.settings = updatedSettings;
+                syncService.setData('NOTEPAD_MOBILE_HEIGHT', widgetId, finalHeight);
+            }).catch(err => {
+                console.error('Notepad 모바일 높이 저장 에러:', err);
+            });
+        });
+    }
+
+    // 4. 텍스트 자동 저장 (디바운스 기반 auto-save) 
     let saveTimeout;
     textarea.addEventListener('input', () => {
         statusText.textContent = '저장 중...';
@@ -145,19 +212,19 @@ export async function initNotepad(el, widgetData) {
                 // 기존 설정값 유지하고 content만 병합
                 const currentSettings = widgetData.settings || {};
                 const updatedSettings = { ...currentSettings, content };
-                
+
                 await apiFetch(`/api/widgets/${widgetId}`, {
                     method: 'PATCH',
                     body: JSON.stringify({ settings: updatedSettings })
                 });
-                
+
                 widgetData.settings = updatedSettings;
 
                 const now = new Date();
                 const hh = String(now.getHours()).padStart(2, '0');
                 const mm = String(now.getMinutes()).padStart(2, '0');
                 statusText.innerHTML = `<span style="color: #10b981;">방금 저장됨</span> (${hh}:${mm})`;
-                
+
                 syncService.setData('NOTEPAD_CONTENT', widgetId, content);
 
                 // 3초 뒤에 페이드 아웃

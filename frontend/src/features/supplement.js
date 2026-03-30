@@ -342,6 +342,39 @@ class SupplementWidget {
       fallbackWrapper.classList.remove('visible');
       this.uiState.isAddFormOpen = false;
     });
+
+    // 자동완성 리스트 외부 영역 클릭 시 닫기
+    this.handleOutsideClick = (e) => {
+      if (!document.contains(this.container)) {
+        this.destroy();
+        return;
+      }
+      if (!searchInput.contains(e.target) && !autoList.contains(e.target)) {
+        autoList.style.display = 'none';
+      }
+    };
+    document.addEventListener('click', this.handleOutsideClick);
+
+    // ESC 키 누를 시 자동완성 리스트 닫기
+    this.handleEscapeKey = (e) => {
+      if (!document.contains(this.container)) {
+        this.destroy();
+        return;
+      }
+      if (e.key === 'Escape') {
+        autoList.style.display = 'none';
+      }
+    };
+    document.addEventListener('keydown', this.handleEscapeKey);
+  }
+
+  destroy() {
+    if (this.handleOutsideClick) {
+      document.removeEventListener('click', this.handleOutsideClick);
+    }
+    if (this.handleEscapeKey) {
+      document.removeEventListener('keydown', this.handleEscapeKey);
+    }
   }
 
   addSupplement(supInfo) {

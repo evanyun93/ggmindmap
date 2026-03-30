@@ -659,6 +659,60 @@ router.post('/verify-password-reset', async (req, res) => {
     }
 });
 
+/**
+ * 건강 정보 조회 API
+ * - tba_user_settings.settings.healthInfo 에서 유저 건강 정보를 읽어 반환합니다.
+ * - 영양제 위젯 등 다른 위젯에서 공통으로 사용할 수 있습니다.
+ */
+router.get('/health-info', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT settings FROM tba_user_settings WHERE user_id = $1',
+            [req.user.id]
+        );
+        const settings = result.rows[0]?.settings || {};
+        const healthInfo = settings.healthInfo || null;
+        res.json({ success: true, healthInfo });
+    } catch (error) {
+        console.error('건강 정보 조회 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 건강 정보 저장/수정 API
+ * - tba_user_settings.settings.healthInfo 에 건강 정보를 병합 저장합니다.
+ * - 영양제 위젯 등 다른 위젯에서 공통으로 사용할 수 있습니다.
+ * - 필드: gender, birthYear, birthMonth, birthDay, isPregnant, weight, height
+ */
+router.patch('/health-info', authenticateToken, async (req, res) => {
+    try {
+        const { gender, birthYear, birthMonth, birthDay, isPregnant, weight, height } = req.body;
+
+        const healthInfo = {};
+        if (gender !== undefined) healthInfo.gender = gender;
+        if (birthYear !== undefined) healthInfo.birthYear = birthYear;
+        if (birthMonth !== undefined) healthInfo.birthMonth = birthMonth;
+        if (birthDay !== undefined) healthInfo.birthDay = birthDay;
+        if (isPregnant !== undefined) healthInfo.isPregnant = isPregnant;
+        if (weight !== undefined) healthInfo.weight = weight;
+        if (height !== undefined) healthInfo.height = height;
+
+        await pool.query(`
+            INSERT INTO tba_user_settings (user_id, settings, updated_at)
+            VALUES ($1, jsonb_build_object('healthInfo', $2::jsonb), NOW())
+            ON CONFLICT (user_id) DO UPDATE
+            SET settings = tba_user_settings.settings || jsonb_build_object('healthInfo', $2::jsonb),
+                updated_at = NOW()
+        `, [req.user.id, JSON.stringify(healthInfo)]);
+
+        res.json({ success: true, message: '건강 정보가 저장되었습니다.' });
+    } catch (error) {
+        console.error('건강 정보 저장 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
 router.get('/check-login-id', async (req, res) => {
     const { login_id } = req.query;
     const result = await pool.query('SELECT id FROM tba_users WHERE login_id = $1', [login_id]);
