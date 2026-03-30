@@ -73,7 +73,17 @@ class SupplementWidget {
       },
       supplements: [
         // 테스트용 기본 데이터 (필요 시 비워두셔도 됩니다)
-        { id: "sup_001", name: "센트룸 멀티비타민", manufacturer: "GSK Consumer Healthcare", dailyDosage: 1 },
+        { 
+          id: "sup_001", 
+          name: "센트룸 멀티비타민", 
+          manufacturer: "GSK Consumer Healthcare", 
+          dailyDosage: 1,
+          customNutrients: [
+            { name: "비타민A", amount: 1000, unit: "IU" },
+            { name: "비타민C", amount: 100, unit: "mg" },
+            { name: "아연", amount: 8, unit: "mg" }
+          ]
+        },
       ],
       analysisStatus: 'IDLE', // 'IDLE' | 'LOADING' | 'SUCCESS'
       analysisResult: null
@@ -166,6 +176,10 @@ class SupplementWidget {
             <div class="sup-item-text">
               <span class="sup-item-name">${sup.name}</span>
               <span class="sup-item-maker">${sup.manufacturer}</span>
+              ${sup.customNutrients && sup.customNutrients.length > 0
+                ? `<div class="sup-item-nutrients">${sup.customNutrients.map(n => `${n.name} ${n.amount}${n.unit}`).join(', ')}</div>`
+                : ''
+              }
             </div>
           </div>
           <button class="sup-item-del-btn" data-idx="${idx}">
@@ -233,9 +247,16 @@ class SupplementWidget {
         if (hits.length > 0) {
           autoList.style.display = 'block';
           // 검색 결과 리스트 렌더링
-          autoList.innerHTML = hits.map(h =>
-            `<div class="sup-auto-item" data-id="${h.id}">${h.name} <span style="font-size: 11px; color:#888;">(${h.manufacturer})</span></div>`
-          ).join('');
+          autoList.innerHTML = hits.map(h => {
+            const nutrientsText = h.customNutrients && h.customNutrients.length > 0
+              ? `<div style="font-size: 10px; color: #10b981; margin-top: 2px;">${h.customNutrients.map(n => `${n.name} ${n.amount}${n.unit}`).join(', ')}</div>`
+              : '';
+            return `<div class="sup-auto-item" data-id="${h.id}">
+              <div style="font-weight: 600;">${h.name}</div>
+              <div style="font-size: 11px; color:#888;">${h.manufacturer}</div>
+              ${nutrientsText}
+            </div>`;
+          }).join('');
 
           // 리스트 항목 클릭 이벤트
           autoList.querySelectorAll('.sup-auto-item').forEach(el => {

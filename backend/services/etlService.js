@@ -2,6 +2,56 @@
 const cron = require('node-cron');
 const { pool } = require('../config/database'); // 기존 database.js의 pool 재사용
 
+/**
+ * 기준규격(STDR_STND) 문자열에서 정확한 1일 섭취량(표시량)을 파싱하는 함수
+ * (예: "비타민C : 표시량(100mg)의 80~150%" -> 100 추출)
+ */
+function parseAndMapNutrients(stdrStndString) {
+    if (!stdrStndString) return [];
+    const results = [];
+
+    // 오메가3의 경우 식약처에서는 보통 'EPA와 DHA의 합' 또는 'EPA 및 DHA'로 표기합니다.
+    const nutrientMap = [
+        { regex: /비타민\s*A/i, id: 'VITAMIN_A' },
+        { regex: /비타민\s*B/i, id: 'VITAMIN_B' },
+        { regex: /비타민\s*C/i, id: 'VITAMIN_C' },
+        { regex: /비타민\s*D/i, id: 'VITAMIN_D' },
+        { regex: /비타민\s*E/i, id: 'VITAMIN_E' },
+        { regex: /아연/i, id: 'ZINC' },
+        { regex: /철|제일철/i, id: 'IRON' },
+        { regex: /마그네슘/i, id: 'MAGNESIUM' },
+        { regex: /칼슘/i, id: 'CALCIUM' },
+        { regex: /오메가(?:\s*3)?|EPA\s*(?:와|및)\s*DHA/i, id: 'OMEGA_3' },
+    ];
+
+    for (const nut of nutrientMap) {
+        // [핵심] "영양소명 ... 표시량(숫자+단위" 형태를 정확히 캡처하는 정규식
+        // 1,000mg 처럼 콤마가 들어간 숫자 패턴도 대응: ([\d,]+(?:\.[\d]+)?)
+        const amountRegex = new RegExp(nut.regex.source + `.*?표시량\\s*\\(\\s*([\\d,]+(?:\\.[\\d]+)?)\\s*(mg|ug|g|mcg|IU)`, 'i');
+        const match = stdrStndString.match(amountRegex);
+
+        if (match) {
+            // "1,000" 같은 문자열에서 콤마 제거 후 숫자로 변환
+            const value = parseFloat(match[1].replace(/,/g, ''));
+            const unit = match[2].toLowerCase();
+
+            let amountMg = 0;
+
+            // 시스템 공통 단위인 mg으로 환산
+            if (unit === 'g') amountMg = value * 1000;
+            else if (unit === 'ug' || unit === 'mcg') amountMg = value / 1000;
+            else amountMg = value; // mg 이거나 IU인 경우 그대로 사용
+
+            results.push({
+                nutrientId: nut.id,
+                amountMg: amountMg
+            });
+        }
+    }
+
+    return results;
+}
+
 // [1단계: Extract] 공공데이터 API 호출 (1000개씩 페이징)
 async function fetchPublicData(startIndex, endIndex) {
     const OPEN_API_KEY = process.env.DATA_GO_KR_KEY;
@@ -62,26 +112,29 @@ async function syncSupplementsToDB() {
 
                 // 1. 메인 영양제 테이블 저장
                 const supQuery = `
-          INSERT INTO tba_supplements (id, name, manufacturer, raw_data, updated_at)
-          VALUES ($1, $2, $3, $4, NOW())
-          ON CONFLICT (id) DO UPDATE 
-          SET name = EXCLUDED.name, 
-              manufacturer = EXCLUDED.manufacturer, 
-              raw_data = EXCLUDED.raw_data, 
-              updated_at = NOW();
-        `;
+                  INSERT INTO tba_supplements (id, name, manufacturer, raw_data, updated_at)
+                  VALUES ($1, $2, $3, $4, NOW())
+                  ON CONFLICT (id) DO UPDATE 
+                  SET name = EXCLUDED.name, 
+                      manufacturer = EXCLUDED.manufacturer, 
+                      raw_data = EXCLUDED.raw_data, 
+                      updated_at = NOW();
+                `;
                 await client.query(supQuery, [supId, name, manufacturer, item]);
 
-                // 2. 임시 영양소 매핑
-                const mappedNutrientId = 'VITAMIN_C';
-                const amountMg = 100.0;
-                const nutQuery = `
-          INSERT INTO tba_supplement_nutrients (supplement_id, nutrient_id, amount_mg)
-          VALUES ($1, $2, $3)
-          ON CONFLICT (supplement_id, nutrient_id) DO UPDATE 
-          SET amount_mg = EXCLUDED.amount_mg;
-        `;
-                await client.query(nutQuery, [supId, mappedNutrientId, amountMg]);
+                // 2. RAWMTRL_NM 대신 STDR_STND(기준규격) 필드를 파싱에 사용
+                const nutrientList = parseAndMapNutrients(item.STDR_STND);
+
+                // 파싱된 영양소들을 DB에 저장
+                for (const nut of nutrientList) {
+                    const nutQuery = `
+                      INSERT INTO tba_supplement_nutrients (supplement_id, nutrient_id, amount_mg)
+                      VALUES ($1, $2, $3)
+                      ON CONFLICT (supplement_id, nutrient_id) DO UPDATE 
+                      SET amount_mg = EXCLUDED.amount_mg;
+                    `;
+                    await client.query(nutQuery, [supId, nut.nutrientId, nut.amountMg]);
+                }
             }
 
             await client.query('COMMIT'); // 1000개 저장 완료
@@ -112,9 +165,9 @@ function startEtlScheduler() {
     cron.schedule('0 3 1 * *', () => {
         syncSupplementsToDB();
     });
-    console.log('⏳ [Scheduler] 영양제 ETL 동기화 스케줄러 등록 완료 (매주 일요일 03:00)');
+    console.log('⏳ [Scheduler] 영양제 ETL 동기화 스케줄러 등록 완료 (매월 1일 03:00)');
 
-    // (옵션) 서버 시작할 때 최초 1회 바로 실행해보고 싶다면 아래 주석 해제
+    // 필요 시 아래 주석을 풀어서 서버 켤 때마다 1회 즉시 실행 (테스트 용도)
     // syncSupplementsToDB();
 }
 

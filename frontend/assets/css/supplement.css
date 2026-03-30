@@ -107,6 +107,15 @@
   margin-top: 2px;
   font-weight: 500;
 }
+.sup-item-nutrients {
+  font-size: 10px;
+  color: var(--success);
+  margin-top: 3px;
+  opacity: 0.8;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
 .sup-item-del-btn {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.2);
