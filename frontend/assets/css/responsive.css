@@ -251,7 +251,7 @@
     left: 0 !important;
     top: 0 !important;
     width: 100% !important; /* 컨테이너 너비에 맞춤 */
-    height: auto !important;
+    height: auto; 
     min-height: 140px !important;
     transform: none !important;
     margin-bottom: 0 !important; /* gap으로 대체 */
@@ -466,7 +466,7 @@
   .widget-todo,
   .widget-mindmap-cta {
     width: 100% !important;
-    height: auto !important;
+    height: auto;
   }
 
   /* 마인드맵 CTA 모바일 배치 */

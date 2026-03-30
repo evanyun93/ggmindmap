@@ -1,0 +1,57 @@
+/* ─── 통합 리사이즈 핸들 공통 스타일 ────────────────────────── */
+.resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 15px;
+  height: 15px;
+  cursor: nwse-resize;
+  z-index: 10;
+  background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.3) 50%);
+  border-bottom-right-radius: 8px;
+}
+
+.resize-handle:hover {
+  background: linear-gradient(135deg, transparent 50%, rgba(139, 92, 246, 0.5) 50%);
+}
+
+/* ─── 모바일 전용 스타일 (중앙 배치, 좁은 보라색 선) ──────────── */
+@media (max-width: 768px) {
+  .resize-handle {
+    bottom: 4px !important;
+    left: 50% !important;
+    right: auto !important;
+    transform: translateX(-50%) !important;
+    width: 60px !important; 
+    height: 12px !important; /* 터치 영역 쾌적화 */
+    background: transparent !important;
+    border: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 999 !important; /* 클릭 방해 방지 최우선 */
+    cursor: row-resize !important;
+    backdrop-filter: none !important;
+    touch-action: none !important; /* 터치 시 스크롤 방지 (중요!) */
+  }
+
+  /* 보라색 단일 선 디자인 */
+  .resize-handle::after {
+    content: '';
+    width: 40px;
+    height: 4px;
+    background: #8B5CF6; /* 요청하신 보라색 */
+    border-radius: 2px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
+  }
+
+  /* 롱프레스 활성화/터치 시 디자인 변화 */
+  .resize-handle.active-resizing::after,
+  .resize-handle:active::after {
+    width: 50px;
+    height: 6px;
+    background: #A78BFA; /* 더 밝은 보라색 */
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
+  }
+}

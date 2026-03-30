@@ -914,48 +914,25 @@ export function setupResizable(widget, grid) {
     const handle = widget.querySelector('.resize-handle');
     if (!handle) return;
 
-    const startResize = (e) => {
-        // e.button is undefined for touch events
-        if (e.type === 'mousedown' && e.button !== 0) return;
-
-        // Prevent dragging the widget or other default behaviors
-        e.preventDefault();
-        e.stopPropagation();
-
-        bringToFront(widget); // 리사이즈 시에도 앞으로
-
-        const isTouch = e.type === 'touchstart';
-        const initialEvent = isTouch ? e.touches[0] : e;
-        const startX = initialEvent.clientX;
-        const startY = initialEvent.clientY;
-
-        const startWidth = widget.offsetWidth;
-        const startHeight = widget.offsetHeight;
+    // --- 리사이즈 드래그 시작 로직 (공통) ---
+    const beginResize = (initialX, initialY, initialWidth, initialHeight, isTouch) => {
+        bringToFront(widget);
         const isMobile = window.innerWidth <= 768;
 
         const onMove = (moveEvent) => {
-            const currentEvent = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
+            if (moveEvent.cancelable) moveEvent.preventDefault();
+            const currentEvent = (moveEvent.type === 'touchmove' || moveEvent.type === 'touchstart') 
+                ? moveEvent.touches[0] : moveEvent;
 
-            const currentHeight = startHeight + (currentEvent.clientY - startY);
+            const currentHeight = initialHeight + (currentEvent.clientY - initialY);
             const minH = 120;
             const finalH = Math.max(minH, currentHeight);
             widget.style.height = `${finalH}px`;
 
-            // On mobile, width is fixed to 100%, so we only resize width on PC
             if (!isMobile) {
-                const gridRect = grid.getBoundingClientRect();
-                const widgetRect = widget.getBoundingClientRect();
-                const maxAllowedWidth = gridRect.right - widgetRect.left;
-
-                const currentWidth = startWidth + (currentEvent.clientX - startX);
+                const currentWidth = initialWidth + (currentEvent.clientX - initialX);
                 const minW = 250;
-                const finalW = Math.max(minW, Math.min(maxAllowedWidth, currentWidth));
-                widget.style.width = `${finalW}px`;
-
-                // 마인드맵 CTA 레이아웃 가변 처리
-                if (widget.classList.contains('widget-mindmap-cta')) {
-                    widget.style.flexDirection = finalW > 450 ? 'row' : 'column';
-                }
+                widget.style.width = `${Math.max(minW, currentWidth)}px`;
             }
         };
 
@@ -964,6 +941,7 @@ export function setupResizable(widget, grid) {
             document.removeEventListener('touchmove', onMove);
             document.removeEventListener('mouseup', onEnd);
             document.removeEventListener('touchend', onEnd);
+            handle.classList.remove('active-resizing');
             saveLayout();
             adjustGridHeight();
         };
@@ -974,8 +952,54 @@ export function setupResizable(widget, grid) {
         document.addEventListener('touchend', onEnd);
     };
 
-    handle.addEventListener('mousedown', startResize);
-    handle.addEventListener('touchstart', startResize, { passive: false });
+    // 마우스 이벤트 (PC)
+    handle.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        beginResize(e.clientX, e.clientY, widget.offsetWidth, widget.offsetHeight, false);
+    });
+
+    // 터치 이벤트 (모바일 - 롱프레스)
+    let longPressTimer = null;
+
+    handle.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // 스크롤 방지 및 이벤트 캡처 점유
+        e.stopPropagation();
+
+        const touch = e.touches[0];
+        const startX = touch.clientX;
+        const startY = touch.clientY;
+        const startW = widget.offsetWidth;
+        const startH = widget.offsetHeight;
+
+        longPressTimer = setTimeout(() => {
+            // 브라우저 보안 정책상 첫 터치 전에는 진동이 차단될 수 있음 (Intervention 대응)
+            try {
+                if (window.navigator.vibrate) window.navigator.vibrate(60);
+            } catch (vErr) {
+                // 비로그인 상태 등 첫 인터랙션 전 진동 차단은 무시
+            }
+            handle.classList.add('active-resizing');
+            // 이미 0.6초가 지났으므로 드래그 시작
+            beginResize(startX, startY, startW, startH, true);
+        }, 600);
+
+        const cancelTimer = (mv) => {
+            const t = mv.touches[0];
+            if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+                clearTimeout(longPressTimer);
+            }
+        };
+
+        const clearEvents = () => {
+            clearTimeout(longPressTimer);
+            document.removeEventListener('touchmove', cancelTimer);
+            document.removeEventListener('touchend', clearEvents);
+        };
+
+        document.addEventListener('touchmove', cancelTimer);
+        document.addEventListener('touchend', clearEvents);
+    }, { passive: false });
 }
 
 /**
