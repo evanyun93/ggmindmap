@@ -243,6 +243,12 @@ svg .node-group.collapsed {
   white-space: pre-wrap; /* Preserve line breaks */
 }
 
+.widget-notepad .notepad-editor ul,
+.widget-notepad .notepad-editor ol {
+  padding-left: 20px; /* 글머리 기호 앞 들여쓰기 (스페이스바 약 2칸) */
+  margin: 4px 0;
+}
+
 .widget-notepad .notepad-editor:focus {
   background: rgba(139, 92, 246, 0.1);
   border-color: rgba(167, 139, 250, 0.6);
