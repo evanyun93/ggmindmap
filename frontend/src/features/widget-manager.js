@@ -194,6 +194,7 @@ export class WidgetManager {
 
     // 기능 바인딩 (순환 참조 방지를 위해 동적 임포트 사용)
     import('./dashboard-grid.js').then(m => {
+      if (m.updateMaxZIndex) m.updateMaxZIndex(parseInt(z) || 100);
       if (m.setupDraggable) m.setupDraggable(widget, grid);
       if (m.setupResizable) m.setupResizable(widget, grid);
 

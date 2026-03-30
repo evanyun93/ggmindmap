@@ -14,6 +14,12 @@ import { API_BASE, apiFetch } from '../services/api.js';
 let isMoveModeActive = false;
 let longPressTimer = null;
 
+export function updateMaxZIndex(zIndex) {
+    if (typeof zIndex === 'number' && !isNaN(zIndex)) {
+        maxZIndex = Math.max(maxZIndex, zIndex);
+    }
+}
+
 export function initDashboardGrid() {
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
