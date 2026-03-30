@@ -16,7 +16,9 @@ const corsOptions = {
     'https://ggmindmap.vercel.app',
     'https://unperturbable-fatherless-annamae.ngrok-free.dev'
   ],
-  credentials: true
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
 };
 
 app.use(cors(corsOptions));
