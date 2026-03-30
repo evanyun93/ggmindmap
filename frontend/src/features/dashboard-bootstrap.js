@@ -4,7 +4,7 @@
  */
 
 import { createParticles } from '../utils/effects.js';
-import { logout } from '../services/auth.js';
+import { logout, verifyAndUpdateEmail } from '../services/auth.js';
 import { apiFetch } from '../services/api.js';
 import { setupManualPopup } from './manual-popup.js';
 import { initMemo } from './memo.js';
@@ -37,6 +37,7 @@ export async function initDashboardFeatures(user) {
     // 3. 도구 및 메뉴 초기화
     initUtilities(user);
     initCollapseAll();
+    initZoomControl();
 
     // 4. 할 일 알람 시스템 시작
     import('./todo-alarm.js').then(m => m.todoAlarmSystem.start());
@@ -164,40 +165,13 @@ function initUtilities() {
         };
     }
 
-    // 이메일 추가 버튼
+    // 이메일 추가 버튼 (인증 프로세스 포함)
     const addEmailBtn = document.getElementById('addEmailBtn');
     if (addEmailBtn) {
         addEmailBtn.onclick = async () => {
-            const email = prompt('이메일을 입력해 주세요:');
-            if (!email) return;
-            if (!email.includes('@')) {
-                window.appAlert('올바른 이메일을 입력해 주세요.');
-                return;
-            }
-            try {
-                const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
-                console.log('[DEBUG] 토큰 확인 시도: localStorage/sessionStorage에서 토큰 읽기');
-                if (token) {
-                    console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
-                } else {
-                    console.log('[DEBUG] 토큰이 없습니다. 로그인이 필요합니다.');
-                    window.appAlert('로그인이 필요합니다');
-                    return;
-                }
-                const response = await apiFetch('/api/auth/settings', {
-                    method: 'PATCH',
-                    headers: { 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ email })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    window.appAlert('이메일이 저장되었습니다!');
-                    window.location.reload();
-                } else {
-                    window.appAlert(result.message || '이메일 저장에 실패했습니다.');
-                }
-            } catch (error) {
-                window.appAlert('서버와 통신할 수 없습니다.');
+            const verified = await verifyAndUpdateEmail();
+            if (verified) {
+                window.location.reload(); // 성공 시 UI 갱신을 위해 새로고침
             }
         };
     }
@@ -873,3 +847,125 @@ function initCollapseAll() {
     };
 }
 
+/**
+ * 대시보드 배율(Zoom) 모듈 초기화
+ */
+async function initZoomControl() {
+    const desktopControl = document.getElementById('desktopZoomControl');
+    const mobileBtn = document.getElementById('mobileZoomBtn');
+    const mobilePopup = document.getElementById('mobileZoomPopup');
+    if (!desktopControl && !mobileBtn) return;
+
+    let zoomLevel = 1.0;
+    const ZOOM_STEP = 0.1;
+    const MIN_ZOOM = 0.5;
+    const MAX_ZOOM = 2.0;
+
+    const contentArea = document.getElementById('dashboardContent') || document.querySelector('.dashboard-content');
+    if (!contentArea) return;
+
+    // UI 요소 캐싱
+    const dZoomIn = document.getElementById('zoomInBtn');
+    const dZoomOut = document.getElementById('zoomOutBtn');
+    const dZoomText = document.getElementById('zoomLevelText');
+    
+    const mZoomIn = document.getElementById('mZoomInBtn');
+    const mZoomOut = document.getElementById('mZoomOutBtn');
+    const mZoomText = document.getElementById('mZoomLevelText');
+    const mZoomBtnText = document.getElementById('mobileZoomText');
+    const mZoomReset = document.getElementById('mZoomResetBtn');
+
+    // 서버에 배율 상태 저장 (디바운스 적용)
+    let saveTimeout;
+    const saveZoomLevel = (zoom) => {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(async () => {
+            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            if (token) {
+                try {
+                    await apiFetch('/api/auth/zoom-info', {
+                        method: 'PATCH',
+                        headers: { 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ dashboardZoom: zoom })
+                    });
+                } catch (e) {
+                    console.error('줌 레벨 저장 실패:', e);
+                }
+            }
+        }, 1000);
+    };
+
+    // 실제 화면에 줌 적용하고 UI 텍스트 갱신하는 함수
+    const applyZoom = (zoom, doSave = true) => {
+        // 소수점 1자리로 클리핑 및 범위 제한
+        zoom = Math.min(Math.max(zoom, MIN_ZOOM), MAX_ZOOM);
+        zoom = Math.round(zoom * 10) / 10;
+        zoomLevel = zoom;
+
+        // 적용
+        contentArea.style.zoom = zoomLevel.toString();
+        window.dashboardZoom = zoomLevel; // 전역 스코프에 노출하여 드래그/마우스 이벤트에서 참조하게 함
+
+        // 텍스트 업데이트
+        const textValue = Math.round(zoomLevel * 100) + '%';
+        if (dZoomText) dZoomText.textContent = textValue;
+        if (mZoomText) mZoomText.textContent = textValue;
+        if (mZoomBtnText) mZoomBtnText.textContent = textValue;
+
+        if (doSave) saveZoomLevel(zoomLevel);
+    };
+
+    // 서버(또는 임시 저장)에서 초기 배율 가져오기
+    const loadInitialZoom = async () => {
+        const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+        if (token) {
+            try {
+                const res = await apiFetch('/api/auth/zoom-info', { headers: { 'Authorization': `Bearer ${token}` } });
+                const data = await res.json();
+                if (data.success && data.dashboardZoom) {
+                    applyZoom(parseFloat(data.dashboardZoom), false);
+                }
+            } catch (e) {
+                console.error('초기 줌 레벨 로드 실패:', e);
+            }
+        }
+    };
+
+    await loadInitialZoom();
+
+    // === 이벤트 핸들러 등록 ===
+
+    const zoomIn = () => applyZoom(zoomLevel + ZOOM_STEP);
+    const zoomOut = () => applyZoom(zoomLevel - ZOOM_STEP);
+    const resetZoom = () => applyZoom(1.0);
+
+    if (dZoomIn) dZoomIn.onclick = zoomIn;
+    if (dZoomOut) dZoomOut.onclick = zoomOut;
+    if (dZoomText) dZoomText.onclick = resetZoom;
+
+    if (mZoomIn) mZoomIn.onclick = zoomIn;
+    if (mZoomOut) mZoomOut.onclick = zoomOut;
+    if (mZoomReset) mZoomReset.onclick = resetZoom;
+
+    // 모바일 팝업 토글 로직
+    if (mobileBtn && mobilePopup) {
+        mobileBtn.onclick = (e) => {
+            e.stopPropagation();
+            if (mobilePopup.style.display === 'none') {
+                mobilePopup.style.display = 'flex';
+                // 팝업이 열릴 때 버튼 위치에 맞추기 위해 약간의 트윅
+                const rect = mobileBtn.getBoundingClientRect();
+                mobilePopup.style.top = (rect.bottom + 10) + 'px';
+            } else {
+                mobilePopup.style.display = 'none';
+            }
+        };
+
+        // 바깥 클릭 시 닫기
+        document.addEventListener('click', (e) => {
+            if (mobilePopup.style.display === 'flex' && !mobilePopup.contains(e.target) && !mobileBtn.contains(e.target)) {
+                mobilePopup.style.display = 'none';
+            }
+        });
+    }
+}

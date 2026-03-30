@@ -4,6 +4,7 @@
  */
 
 import { apiFetch } from '../services/api.js';
+import { verifyAndUpdateEmail } from '../services/auth.js';
 import { showMessage, hideMessage, setLoading } from '../utils/dom.js';
 import { getMainDashboardContentHTML } from '../components/dashboard.js';
 import { getBoardHTML, getFeedbackItemHTML } from '../components/board.js';
@@ -105,6 +106,15 @@ async function switchToBoard(container) {
 
         submitBtn.disabled = true;
         try {
+            const user = window.currentUser || {};
+            if (!user.email) {
+                const verified = await verifyAndUpdateEmail();
+                if (!verified) {
+                    submitBtn.disabled = false;
+                    return; // 인증 실패 시 중단
+                }
+            }
+
             const res = await apiFetch('/api/feedback', {
                 method: 'POST',
                 body: JSON.stringify({ content })

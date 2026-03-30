@@ -4,7 +4,7 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const { pool } = require('../config/database');
 const { JWT_SECRET, authenticateToken } = require('../middleware/authHandler');
-const { sendPasswordResetEmail } = require('../utils/emailService');
+const { sendPasswordResetEmail, sendEmailVerificationCode } = require('../utils/emailService');
 
 /**
  * 소셜 로그인 시도 전 기존 사용자 확인 API (legacy - 이제 사용 안 함) - UI 대응을 위해 유지
@@ -660,6 +660,72 @@ router.post('/verify-password-reset', async (req, res) => {
 });
 
 /**
+ * 이메일 변경/등록 인증번호 요청
+ */
+router.post('/request-email-verify', authenticateToken, async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email || !email.includes('@')) {
+            return res.status(400).json({ success: false, message: '유효한 이메일 주소를 입력해주세요.' });
+        }
+
+        // 중복 확인 (본인 제외 다른 사람이 사용 중인지)
+        const emailCheck = await pool.query('SELECT id FROM tba_users WHERE email = $1 AND id != $2', [email, req.user.id]);
+        if (emailCheck.rows.length > 0) {
+            return res.status(409).json({ success: false, message: '이미 다른 사용자가 사용 중인 이메일입니다.' });
+        }
+
+        const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10분 유효
+
+        await pool.query(
+            'UPDATE tba_users SET email_verify_code = $1, email_verify_code_expires_at = $2 WHERE id = $3',
+            [verifyCode, expiresAt, req.user.id]
+        );
+
+        await sendEmailVerificationCode(email, verifyCode);
+
+        res.json({ success: true, message: '인증번호가 해당 이메일로 발송되었습니다.' });
+    } catch (error) {
+        console.error('이메일 인증 요청 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 이메일 인증번호 검증 및 업데이트
+ */
+router.post('/verify-email-update', authenticateToken, async (req, res) => {
+    try {
+        const { email, code } = req.body;
+        if (!email || !code) {
+            return res.status(400).json({ success: false, message: '이메일과 인증번호를 모두 입력해주세요.' });
+        }
+
+        const userResult = await pool.query(
+            'SELECT id, email_verify_code, email_verify_code_expires_at FROM tba_users WHERE id = $1',
+            [req.user.id]
+        );
+        const user = userResult.rows[0];
+
+        if (!user || user.email_verify_code !== code || new Date() > new Date(user.email_verify_code_expires_at)) {
+            return res.status(400).json({ success: false, message: '인증번호가 올바르지 않거나 만료되었습니다.' });
+        }
+
+        // 이메일 업데이트
+        await pool.query(
+            'UPDATE tba_users SET email = $1, email_verify_code = NULL, email_verify_code_expires_at = NULL WHERE id = $2',
+            [email, req.user.id]
+        );
+
+        res.json({ success: true, message: '이메일이 인증 및 저장되었습니다.' });
+    } catch (error) {
+        console.error('이메일 인증 검증 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
  * 건강 정보 조회 API
  * - tba_user_settings.settings.healthInfo 에서 유저 건강 정보를 읽어 반환합니다.
  * - 영양제 위젯 등 다른 위젯에서 공통으로 사용할 수 있습니다.
@@ -709,6 +775,47 @@ router.patch('/health-info', authenticateToken, async (req, res) => {
         res.json({ success: true, message: '건강 정보가 저장되었습니다.' });
     } catch (error) {
         console.error('건강 정보 저장 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 배율(Zoom) 정보 조회 API
+ */
+router.get('/zoom-info', authenticateToken, async (req, res) => {
+    try {
+        const result = await pool.query(
+            'SELECT settings FROM tba_user_settings WHERE user_id = $1',
+            [req.user.id]
+        );
+        const settings = result.rows[0]?.settings || {};
+        const dashboardZoom = settings.dashboardZoom || 1.0;
+        res.json({ success: true, dashboardZoom });
+    } catch (error) {
+        console.error('줌 정보 조회 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 배율(Zoom) 정보 저장 API
+ */
+router.patch('/zoom-info', authenticateToken, async (req, res) => {
+    try {
+        const { dashboardZoom } = req.body;
+        if (dashboardZoom === undefined) return res.status(400).json({ success: false, message: '배율 값이 없습니다.' });
+
+        await pool.query(`
+            INSERT INTO tba_user_settings (user_id, settings, updated_at)
+            VALUES ($1, jsonb_build_object('dashboardZoom', $2::numeric), NOW())
+            ON CONFLICT (user_id) DO UPDATE
+            SET settings = jsonb_set(COALESCE(tba_user_settings.settings, '{}'::jsonb), '{dashboardZoom}', $2::text::jsonb),
+                updated_at = NOW()
+        `, [req.user.id, dashboardZoom]);
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('줌 정보 저장 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 });

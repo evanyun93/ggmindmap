@@ -350,11 +350,15 @@ export function getDashboardHTML(user) {
                 <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
               </svg>
             </button>
-            <button class="btn-manual" id="manualBtn" style="order: 1;">
+            <button class="btn-zoom mobile-only-btn" id="mobileZoomBtn" style="display:none; order: 1;" title="화면 배율 조절">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <span class="btn-text" id="mobileZoomText">100%</span>
+            </button>
+            <button class="btn-manual" id="manualBtn" style="order: 2;">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
               <span class="btn-text">매뉴얼</span>
             </button>
-            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none; order: 2;" title="모든 위젯 접기/펴기">
+            <button class="btn-collapse-all mobile-only-btn" id="collapseAllBtn" style="display:none; order: 3;" title="모든 위젯 접기/펴기">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"></polyline><polyline points="20 10 14 10 14 4"></polyline><line x1="14" y1="10" x2="21" y2="3"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
               <span class="btn-text">모두 접기</span>
             </button>
@@ -381,6 +385,26 @@ export function getDashboardHTML(user) {
         <div class="manual-content" id="manualContent" style="overflow-y:auto; max-height:60vh; padding:18px 8px 8px 8px; background:rgba(255,255,255,0.03); border-radius:12px;">
           로딩 중...
         </div>
+      </div>
+
+      <!-- Desktop Zoom Control -->
+      <div id="desktopZoomControl" class="mobile-hide" style="position: fixed; right: 28px; bottom: 90px; display: flex; align-items: center; background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(10px); border: 1px solid rgba(0,0,0,0.1); border-radius: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); z-index: 99; overflow: hidden; font-weight: 600;">
+        <button id="zoomOutBtn" style="background: none; border: none; padding: 6px 14px; cursor: pointer; color: #495057; font-size: 16px; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='none'">−</button>
+        <div style="width: 1px; height: 16px; background: rgba(0,0,0,0.1);"></div>
+        <span id="zoomLevelText" style="font-size: 13px; color: #333; min-width: 48px; text-align: center; cursor: pointer; user-select: none;" title="100%로 초기화">100%</span>
+        <div style="width: 1px; height: 16px; background: rgba(0,0,0,0.1);"></div>
+        <button id="zoomInBtn" style="background: none; border: none; padding: 6px 14px; cursor: pointer; color: #495057; font-size: 16px; transition: background 0.2s;" onmouseover="this.style.background='rgba(0,0,0,0.05)'" onmouseout="this.style.background='none'">+</button>
+      </div>
+
+      <!-- Mobile Zoom Popup -->
+      <div id="mobileZoomPopup" style="display: none; position: fixed; top: 64px; right: 16px; background: white; padding: 14px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.15); z-index: 1000; border: 1px solid #eee; flex-direction: column; align-items: center; gap: 10px;">
+         <div style="font-size: 12px; color: #666; font-weight: 600; text-align: center;">화면 배율</div>
+         <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #f8f9fa; border-radius: 24px; padding: 4px 6px;">
+            <button id="mZoomOutBtn" style="background: white; border: 1px solid #ddd; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer;">−</button>
+            <span id="mZoomLevelText" style="font-size: 14px; font-weight: 700; color: #8B5CF6; min-width: 44px; text-align: center; font-variant-numeric: tabular-nums;">100%</span>
+            <button id="mZoomInBtn" style="background: white; border: 1px solid #ddd; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-size: 18px; color: #333; box-shadow: 0 2px 4px rgba(0,0,0,0.05); cursor: pointer;">+</button>
+         </div>
+         <button id="mZoomResetBtn" style="margin-top: 4px; font-size: 12px; background: #e9ecef; border: none; padding: 6px 12px; border-radius: 12px; color: #495057; font-weight: 600; cursor: pointer; width: 100%;">기본화면(100%)</button>
       </div>
 
       <!-- 플로팅 메모 버튼 (FAB) -->

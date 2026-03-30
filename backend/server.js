@@ -29,10 +29,8 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', version: '1.9.0', time: new Date().toISOString() });
 });
 
-// 프론트엔드 정적 파일 제공
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
-
 // DB 초기화
+// startServer()에서 비동기로 호출됨
 // startServer()에서 비동기로 호출됨
 
 // Web Push 스케줄러 시작
@@ -84,6 +82,9 @@ app.use('/api/push', pushApi);
 // 10. 영양제 위젯 전용 API 관련 (추가!)
 const supplementApi = require('./routes/supplementApi'); // 나중에 만들 검색 API 등
 app.use('/api/supplements', supplementApi);
+
+// ─── 프론트엔드 정적 파일 제공 ──────────────────────────────────────────
+app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
 // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 

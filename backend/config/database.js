@@ -86,6 +86,8 @@ async function initDatabase() {
           created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
           reset_code VARCHAR(10),
           reset_code_expires_at TIMESTAMPTZ,
+          email_verify_code VARCHAR(10),
+          email_verify_code_expires_at TIMESTAMPTZ,
           UNIQUE(social_id, provider)
         );
       `);
@@ -249,6 +251,8 @@ async function initDatabase() {
         ALTER TABLE tba_users ALTER COLUMN password DROP NOT NULL;
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10);
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS reset_code_expires_at TIMESTAMPTZ;
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS email_verify_code VARCHAR(10);
+        ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS email_verify_code_expires_at TIMESTAMPTZ;
       `);
 
       await client.query(`
@@ -302,6 +306,7 @@ async function initDatabase() {
               ALTER TABLE tba_users ALTER COLUMN last_login_at TYPE TIMESTAMPTZ USING last_login_at AT TIME ZONE 'Asia/Seoul';
               ALTER TABLE tba_users ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Seoul';
               ALTER TABLE tba_users ALTER COLUMN reset_code_expires_at TYPE TIMESTAMPTZ USING reset_code_expires_at AT TIME ZONE 'Asia/Seoul';
+              ALTER TABLE tba_users ALTER COLUMN email_verify_code_expires_at TYPE TIMESTAMPTZ USING email_verify_code_expires_at AT TIME ZONE 'Asia/Seoul';
               
               ALTER TABLE tba_todos ALTER COLUMN created_at TYPE TIMESTAMPTZ USING created_at AT TIME ZONE 'Asia/Seoul';
               ALTER TABLE tba_usage_logs ALTER COLUMN login_at TYPE TIMESTAMPTZ USING login_at AT TIME ZONE 'Asia/Seoul';

@@ -134,9 +134,10 @@ export function initDashboardGrid() {
                 action: () => {
                     console.log('[DashboardGrid] To-Do 카드 추가 요청');
                     import('./widget-manager.js').then(m => {
+                        const zoom = window.dashboardZoom || 1.0;
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, clientX - rect.left - 100);
-                        const y = Math.max(0, clientY - rect.top - 10);
+                        const x = Math.max(0, (clientX - rect.left) / zoom - 100);
+                        const y = Math.max(0, (clientY - rect.top) / zoom - 10);
                         m.widgetManager.createWidget('todo', x, y);
                     });
                 }
@@ -147,9 +148,10 @@ export function initDashboardGrid() {
                 action: () => {
                     console.log('[DashboardGrid] 마일스톤 카드 추가 요청');
                     import('./widget-manager.js').then(m => {
+                        const zoom = window.dashboardZoom || 1.0;
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, clientX - rect.left - 100);
-                        const y = Math.max(0, clientY - rect.top - 10);
+                        const x = Math.max(0, (clientX - rect.left) / zoom - 100);
+                        const y = Math.max(0, (clientY - rect.top) / zoom - 10);
                         m.widgetManager.createWidget('milestone', x, y);
                     });
                 }
@@ -160,9 +162,10 @@ export function initDashboardGrid() {
                 action: () => {
                     console.log('[DashboardGrid] 요리 레시피 북 추가 요청');
                     import('./widget-manager.js').then(m => {
+                        const zoom = window.dashboardZoom || 1.0;
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, clientX - rect.left - 100);
-                        const y = Math.max(0, clientY - rect.top - 10);
+                        const x = Math.max(0, (clientX - rect.left) / zoom - 100);
+                        const y = Math.max(0, (clientY - rect.top) / zoom - 10);
                         m.widgetManager.createWidget('recipe', x, y, 500, 600);
                     });
                 }
@@ -173,9 +176,10 @@ export function initDashboardGrid() {
                 action: () => {
                     console.log('[DashboardGrid] 메모장 추가 요청');
                     import('./widget-manager.js').then(m => {
+                        const zoom = window.dashboardZoom || 1.0;
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, clientX - rect.left - 100);
-                        const y = Math.max(0, clientY - rect.top - 10);
+                        const x = Math.max(0, (clientX - rect.left) / zoom - 100);
+                        const y = Math.max(0, (clientY - rect.top) / zoom - 10);
                         m.widgetManager.createWidget('notepad', x, y, 400, 450);
                     });
                 }
@@ -186,9 +190,10 @@ export function initDashboardGrid() {
                 action: () => {
                     console.log('[DashboardGrid] 영양제 신호등 추가 요청');
                     import('./widget-manager.js').then(m => {
+                        const zoom = window.dashboardZoom || 1.0;
                         const rect = grid.getBoundingClientRect();
-                        const x = Math.max(0, clientX - rect.left - 100);
-                        const y = Math.max(0, clientY - rect.top - 10);
+                        const x = Math.max(0, (clientX - rect.left) / zoom - 100);
+                        const y = Math.max(0, (clientY - rect.top) / zoom - 10);
                         m.widgetManager.createWidget('supplement', x, y);
                     });
                 }
