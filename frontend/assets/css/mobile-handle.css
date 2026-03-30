@@ -33,6 +33,16 @@
     cursor: row-resize !important;
     backdrop-filter: none !important;
     touch-action: none !important; /* 터치 시 스크롤 방지 (중요!) */
+    margin-top: -10px !important; /* 위쪽으로 터치 영여 확장 */
+    padding-top: 10px !important;
+  }
+
+  /* 리사이즈 중 위젯 강조 효과 */
+  .draggable-widget.is-resizing {
+    outline: 2px solid #8B5CF6 !important;
+    outline-offset: -2px;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4) !important;
+    z-index: 999 !important;
   }
 
   /* 보라색 단일 선 디자인 */

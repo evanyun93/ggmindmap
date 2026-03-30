@@ -8,7 +8,7 @@ const { initDatabase } = require('./config/database');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS 설정 강화
+// CORS 설정
 const corsOptions = {
   origin: [
     'http://localhost:3000',
@@ -16,10 +16,7 @@ const corsOptions = {
     'https://ggmindmap.vercel.app',
     'https://unperturbable-fatherless-annamae.ngrok-free.dev'
   ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
-  optionsSuccessStatus: 200 // 일부 레거시 브라우저 호환성
+  credentials: true
 };
 
 app.use(cors(corsOptions));

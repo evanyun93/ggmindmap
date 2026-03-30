@@ -918,31 +918,78 @@ export function setupResizable(widget, grid) {
     const beginResize = (initialX, initialY, initialWidth, initialHeight, isTouch) => {
         bringToFront(widget);
         const isMobile = window.innerWidth <= 768;
+        widget.classList.add('is-resizing'); // 시각적 피드백 제공 시작
+
+        let scrollRafId = null;
+        const dashContent = document.getElementById('dashboardContent') || document.body;
+
+        const stopAutoScroll = () => {
+            if (scrollRafId) {
+                cancelAnimationFrame(scrollRafId);
+                scrollRafId = null;
+            }
+        };
+
+        const startAutoScroll = (direction) => {
+            stopAutoScroll();
+            const step = () => {
+                const speed = 8;
+                dashContent.scrollTop += (direction === 'down' ? speed : -speed);
+                scrollRafId = requestAnimationFrame(step);
+            };
+            scrollRafId = requestAnimationFrame(step);
+        };
 
         const onMove = (moveEvent) => {
             if (moveEvent.cancelable) moveEvent.preventDefault();
             const currentEvent = (moveEvent.type === 'touchmove' || moveEvent.type === 'touchstart') 
                 ? moveEvent.touches[0] : moveEvent;
 
-            const currentHeight = initialHeight + (currentEvent.clientY - initialY);
+            // 대시보드 오토 스크롤 감지 (모바일 리사이즈 시 하단/상단 영역)
+            if (isMobile) {
+                const viewH = window.innerHeight;
+                const threshold = viewH * 0.12;
+                const clientY = currentEvent.clientY;
+                
+                if (clientY > viewH - threshold) {
+                    startAutoScroll('down');
+                } else if (clientY < threshold) {
+                    startAutoScroll('up');
+                } else {
+                    stopAutoScroll();
+                }
+            }
+
+            // PageY를 사용하여 스크롤 영향을 배제한 절대 좌표 거리 계산
+            const currentHeight = initialHeight + (currentEvent.pageY - initialY);
             const minH = 120;
             const finalH = Math.max(minH, currentHeight);
+            
+            // 모바일에서 강력한 스타일 적용 (min/max를 함께 설정하여 CSS 제약 우회)
             widget.style.height = `${finalH}px`;
+            if (isMobile) {
+                widget.style.minHeight = `${finalH}px`;
+                widget.style.maxHeight = `${finalH}px`;
+            }
 
             if (!isMobile) {
-                const currentWidth = initialWidth + (currentEvent.clientX - initialX);
+                const currentWidth = initialWidth + (currentEvent.pageX - initialX);
                 const minW = 250;
                 widget.style.width = `${Math.max(minW, currentWidth)}px`;
             }
         };
 
         const onEnd = () => {
+            stopAutoScroll();
             document.removeEventListener('mousemove', onMove);
             document.removeEventListener('touchmove', onMove);
             document.removeEventListener('mouseup', onEnd);
             document.removeEventListener('touchend', onEnd);
             handle.classList.remove('active-resizing');
-            saveLayout();
+            widget.classList.remove('is-resizing'); // 피드백 종료
+            
+            // 변경된 이 위젯만 저장 (효율적 업데이트)
+            saveLayout(widget);
             adjustGridHeight();
         };
 
@@ -956,37 +1003,31 @@ export function setupResizable(widget, grid) {
     handle.addEventListener('mousedown', (e) => {
         if (e.button !== 0) return;
         e.preventDefault();
-        beginResize(e.clientX, e.clientY, widget.offsetWidth, widget.offsetHeight, false);
+        beginResize(e.pageX, e.pageY, widget.offsetWidth, widget.offsetHeight, false);
     });
 
-    // 터치 이벤트 (모바일 - 롱프레스)
+    // 터치 이벤트 (모바일 - 롱프레스 400ms로 단축)
     let longPressTimer = null;
 
     handle.addEventListener('touchstart', (e) => {
-        e.preventDefault(); // 스크롤 방지 및 이벤트 캡처 점유
+        e.preventDefault(); 
         e.stopPropagation();
 
         const touch = e.touches[0];
-        const startX = touch.clientX;
-        const startY = touch.clientY;
+        const startX = touch.pageX;
+        const startY = touch.pageY;
         const startW = widget.offsetWidth;
         const startH = widget.offsetHeight;
 
         longPressTimer = setTimeout(() => {
-            // 브라우저 보안 정책상 첫 터치 전에는 진동이 차단될 수 있음 (Intervention 대응)
-            try {
-                if (window.navigator.vibrate) window.navigator.vibrate(60);
-            } catch (vErr) {
-                // 비로그인 상태 등 첫 인터랙션 전 진동 차단은 무시
-            }
+            if (window.navigator.vibrate) try { window.navigator.vibrate(60); } catch(e) {}
             handle.classList.add('active-resizing');
-            // 이미 0.6초가 지났으므로 드래그 시작
             beginResize(startX, startY, startW, startH, true);
-        }, 600);
+        }, 400); 
 
         const cancelTimer = (mv) => {
             const t = mv.touches[0];
-            if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) {
+            if (Math.abs(t.pageX - startX) > 15 || Math.abs(t.pageY - startY) > 15) {
                 clearTimeout(longPressTimer);
             }
         };
@@ -1003,15 +1044,15 @@ export function setupResizable(widget, grid) {
 }
 
 /**
- * 레이아웃 상태 저장 (기기/상태별 독립 저장)
+ * 레이아웃 상태 저장 (특정 위젯만 업데이트하여 효율성 극대화)
  */
-export function saveLayout() {
+export function saveLayout(targetWidget = null) {
     const isMobile = window.innerWidth <= 768;
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
 
     const platform = isMobile ? 'mobile' : 'pc';
-    const widgets = grid.querySelectorAll('.draggable-widget');
+    const widgets = targetWidget ? [targetWidget] : Array.from(grid.querySelectorAll('.draggable-widget'));
 
     widgets.forEach(async (w) => {
         const id = w.dataset.id;
@@ -1021,15 +1062,25 @@ export function saveLayout() {
         const state = isCollapsed ? 'collapsed' : 'expanded';
         const layoutKey = `${platform}_${state}`;
 
+        // 현재 스타일에서 좌표/크기 추출 (반드시 px 단위 데이터가 있는 경우만)
+        const leftVal = w.style.left;
+        const topVal = w.style.top;
+        const widthVal = w.style.width;
+        const heightVal = w.style.height;
+
+        // 아무 값도 설정되지 않은 위젯(기본 auto 상태)은 저장을 건너뛰어 기존 데이터 보호
+        if (!leftVal && !topVal && !widthVal && !heightVal) return;
+
         const currentLayout = {
-            x: Math.round(parseFloat(w.style.left) || 0),
-            y: Math.round(parseFloat(w.style.top) || 0),
-            w: Math.round(parseFloat(w.style.width) || 0),
-            h: Math.round(parseFloat(w.style.height) || 0),
+            x: Math.round(parseFloat(leftVal) || 0),
+            y: Math.round(parseFloat(topVal) || 0),
+            w: Math.round(parseFloat(widthVal) || 0),
+            h: Math.round(parseFloat(heightVal) || 0),
             z: parseInt(w.style.zIndex) || 100
         };
 
         try {
+            // 레이스 컨디션을 방지하기 위해 개별 위젯 업데이트 진행
             const res = await apiFetch(`/api/widgets`);
             const data = await res.json();
             const widgetData = data.widgets.find(item => item.id == id);
@@ -1043,7 +1094,6 @@ export function saveLayout() {
                     method: 'PATCH',
                     body: JSON.stringify({
                         settings,
-                        // 하위 호환성을 위해 기존 컬럼도 순수 PC/기본값으로 업데이트
                         x: currentLayout.x,
                         y: currentLayout.y,
                         width: currentLayout.w,
@@ -1051,9 +1101,10 @@ export function saveLayout() {
                         zIndex: currentLayout.z
                     })
                 });
+                console.log(`[saveLayout] 위젯 ${id} (${layoutKey}) 저장 완료`);
             }
         } catch (err) {
-            console.error(`[LayoutSave] 저장 실패 (ID: ${id}):`, err);
+            console.error('[saveLayout] 저장 오류:', err);
         }
     });
 }
