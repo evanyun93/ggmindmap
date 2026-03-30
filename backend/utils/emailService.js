@@ -63,6 +63,63 @@ async function sendPasswordResetEmail(toEmail, verificationCode) {
   }
 }
 
+/**
+ * Sends a notification email when an admin replies to a feedback.
+ * @param {string} toEmail The recipient's email address
+ * @param {string} feedbackContent The original feedback content
+ * @param {string} replyContent The admin's reply content
+ */
+async function sendFeedbackReplyEmail(toEmail, feedbackContent, replyContent) {
+  const mailOptions = {
+    from: process.env.SMTP_FROM || '"MindMap" <noreply@mindmap.app>', // sender address
+    to: toEmail,
+    subject: '[MindMap] 고객님의 소중한 의견에 답변이 등록되었습니다.',
+    text: `고객님이 남겨주신 의견:\n${feedbackContent}\n\n운영자 답변:\n${replyContent}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #333 text-align: center;">MindMap 고객의 소리 답변 완료</h2>
+        <p style="font-size: 16px; color: #555;">항상 MindMap을 이용해주셔서 감사합니다.</p>
+        <p style="font-size: 16px; color: #555;">남겨주신 소중한 의견에 대한 답변이 등록되었습니다.</p>
+
+        <div style="background-color: #f9f9f9; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #8b5cf6;">
+          <strong>나의 제안 내용:</strong>
+          <p style="white-space: pre-wrap; font-size: 14px; color: #333;">${feedbackContent}</p>
+        </div>
+
+        <div style="background-color: #f0fdfa; padding: 15px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #06b6d4;">
+          <strong>운영자 답변:</strong>
+          <p style="white-space: pre-wrap; font-size: 14px; color: #333;">${replyContent}</p>
+        </div>
+
+        <p style="font-size: 14px; color: #777; margin-top: 30px; text-align: center;">자세한 내용은 MindMap 대시보드의 '고객의 소리함'에서 확인하실 수 있습니다.</p>
+      </div>
+    `
+  };
+
+  if (transporter) {
+    try {
+      const info = await transporter.sendMail(mailOptions);
+      console.log('✅ 피드백 답변 알림 이메일 발송 완료: %s', info.messageId);
+    } catch (error) {
+      console.error('❌ 이메일 발송 실패:', error);
+      console.log('--- 🛑 이메일 발송 오류로 콘솔에 대신 출력합니다 ---');
+      console.log(`To: ${toEmail}\nSubject: ${mailOptions.subject}\nReply: ${replyContent}`);
+      console.log('--------------------------------------------------');
+    }
+  } else {
+    // Mock Mode
+    console.log('\n================================================--');
+    console.log('📧 [MOCK EMAIL 발송]');
+    console.log(`To: ${toEmail}`);
+    console.log(`Subject: ${mailOptions.subject}`);
+    console.log(`피드백 내용: ${feedbackContent}`);
+    console.log(`답변 내용: ${replyContent}`);
+    console.log('SMTP 설정(SMTP_HOST 등)이 없어서 콘솔에만 출력합니다.');
+    console.log('================================================--\n');
+  }
+}
+
 module.exports = {
-  sendPasswordResetEmail
+  sendPasswordResetEmail,
+  sendFeedbackReplyEmail
 };

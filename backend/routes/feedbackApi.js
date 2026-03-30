@@ -3,6 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 const { JWT_SECRET } = require('../middleware/authHandler');
+const { sendFeedbackReplyEmail } = require('../utils/emailService');
 
 /**
  * 고객의 소리(피드백) 목록 조회 API
@@ -10,7 +11,7 @@ const { JWT_SECRET } = require('../middleware/authHandler');
 router.get('/', async (req, res) => {
     try {
         const result = await pool.query(`
-      SELECT f.id, f.content, f.created_at, u.display_name, u.login_id
+      SELECT f.id, f.content, f.admin_reply, f.admin_replied_at, f.created_at, u.display_name, u.login_id
       FROM tba_feedback f
       LEFT JOIN tba_users u ON f.user_id = u.id
       ORDER BY f.created_at DESC
@@ -83,6 +84,54 @@ router.delete('/:id', async (req, res) => {
         res.json({ success: true, message: '의견이 삭제되었습니다.' });
     } catch (error) {
         console.error('피드백 삭제 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
+    }
+});
+
+/**
+ * 고객의 소리(피드백) 답변 달기 API - 관리자 전용
+ */
+router.post('/:id/reply', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { reply } = req.body;
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ success: false, message: '권한이 없습니다.' });
+        }
+
+        const token = authHeader.split(' ')[1];
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        if (decoded.login_id !== 'admin') {
+            return res.status(403).json({ success: false, message: '관리자만 답변할 수 있습니다.' });
+        }
+
+        const result = await pool.query(
+            'UPDATE tba_feedback SET admin_reply = $1, admin_replied_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING user_id, content',
+            [reply, id]
+        );
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ success: false, message: '항목을 찾을 수 없습니다.' });
+        }
+
+        const feedbackRow = result.rows[0];
+        if (feedbackRow.user_id) {
+            // Find user email
+            const userResult = await pool.query('SELECT email FROM tba_users WHERE id = $1', [feedbackRow.user_id]);
+            if (userResult.rowCount > 0 && userResult.rows[0].email) {
+                // Background email sending
+                sendFeedbackReplyEmail(userResult.rows[0].email, feedbackRow.content, reply).catch(e => {
+                    console.error('피드백 답변 이메일 발송 실패:', e);
+                });
+            }
+        }
+
+        res.json({ success: true, message: '답변이 등록되었습니다.' });
+    } catch (error) {
+        console.error('피드백 답변 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류가 발생했습니다.' });
     }
 });

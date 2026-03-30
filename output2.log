@@ -1,0 +1,27 @@
+
+> mindmap-monorepo@1.9.0 start
+> cd backend && npm install && node server.js
+
+
+up to date, audited 299 packages in 2s
+
+44 packages are looking for funding
+  run `npm fund` for details
+
+9 vulnerabilities (8 low, 1 high)
+
+To address all issues (including breaking changes), run:
+  npm audit fix --force
+
+Run `npm audit` for details.
+[dotenv@17.3.1] injecting env (6) from .env -- tip: 🔐 encrypt with Dotenvx: https://dotenvx.com
+[dotenv@17.3.1] injecting env (0) from .env -- tip: ⚙️  override existing env vars with { override: true }
+⚠️ [FCM] Firebase 서비스 계정 키 파일을 찾을 수 없습니다: /app/backend/config/firebase-service-account.json
+⚠️ 푸시 알림 기능이 작동하지 않습니다. 키 파일을 업로드해 주세요.
+[PushScheduler] Firebase 미초기화 - FCM 푸시 알람 비활성화
+⏳ [Scheduler] 영양제 ETL 동기화 스케줄러 등록 완료 (매월 1일 03:00)
+[dotenv@17.3.1] injecting env (0) from .env -- tip: 🛡️ auth for agents: https://vestauth.com
+⚠️ DB 연결 실패(로컬 환경일 수 있음):
+💡 DB 없이 프론트엔드 서버만 시작합니다.
+🧠 MindMap 서버 시작됨 | 포트: 3001
+Terminated
