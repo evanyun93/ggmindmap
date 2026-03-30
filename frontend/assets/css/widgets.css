@@ -191,7 +191,41 @@ svg .node-group.collapsed {
   transition: all 0.3s ease;
 }
 
-.widget-notepad .notepad-textarea {
+.widget-notepad .notepad-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.widget-notepad .toolbar-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-primary, rgba(255, 255, 255, 0.8));
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.widget-notepad .toolbar-btn:hover {
+  background: rgba(139, 92, 246, 0.2);
+  color: #fff;
+}
+
+.widget-notepad .toolbar-separator {
+  width: 1px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.2);
+  margin: 0 4px;
+}
+
+.widget-notepad .notepad-editor {
   flex: 1;
   width: 100%;
   padding: 12px 15px;
@@ -201,34 +235,44 @@ svg .node-group.collapsed {
   color: var(--text-primary, rgba(255, 255, 255, 0.9));
   font-size: 0.95rem;
   line-height: 1.6;
-  resize: none;
   outline: none;
   font-family: inherit;
   transition: all 0.3s ease;
   box-shadow: inset 0 0 10px rgba(139, 92, 246, 0.05);
+  overflow-y: auto;
+  white-space: pre-wrap; /* Preserve line breaks */
 }
 
-.widget-notepad .notepad-textarea:focus {
+.widget-notepad .notepad-editor:focus {
   background: rgba(139, 92, 246, 0.1);
   border-color: rgba(167, 139, 250, 0.6);
   box-shadow: inset 0 0 15px rgba(139, 92, 246, 0.1), 0 0 12px rgba(139, 92, 246, 0.2);
 }
 
-.widget-notepad .notepad-textarea::placeholder {
+.widget-notepad .notepad-editor[placeholder]:empty:before {
+  content: attr(placeholder);
   color: rgba(255, 255, 255, 0.3);
+  pointer-events: none;
 }
 
-.widget-notepad .notepad-textarea::-webkit-scrollbar {
+.widget-notepad .notepad-editor::-webkit-scrollbar {
   width: 6px;
 }
 
-.widget-notepad .notepad-textarea::-webkit-scrollbar-thumb {
+.widget-notepad .notepad-editor::-webkit-scrollbar-thumb {
   background: rgba(167, 139, 250, 0.3);
   border-radius: 4px;
 }
 
-.widget-notepad .notepad-textarea::-webkit-scrollbar-thumb:hover {
+.widget-notepad .notepad-editor::-webkit-scrollbar-thumb:hover {
   background: rgba(167, 139, 250, 0.5);
+}
+
+.widget-notepad .notepad-checkbox {
+  margin-right: 6px;
+  accent-color: var(--accent-purple, #8b5cf6);
+  cursor: pointer;
+  vertical-align: middle;
 }
 
 .widget-notepad .notepad-status-bar {

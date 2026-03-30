@@ -417,7 +417,19 @@ export class WidgetManager {
           </div>
         </div>
         <div class="notepad-content-wrapper">
-          <textarea class="notepad-textarea" placeholder="자유롭게 아이디어를 적어보세요...">${data.settings?.content || ''}</textarea>
+          <div class="notepad-toolbar">
+            <button class="toolbar-btn" data-command="bold" title="굵게 (Ctrl+B)"><b>B</b></button>
+            <button class="toolbar-btn" data-command="underline" title="밑줄 (Ctrl+U)"><u>U</u></button>
+            <button class="toolbar-btn" data-command="strikeThrough" title="취소선"><s>S</s></button>
+            <span class="toolbar-separator"></span>
+            <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="3" title="보통 글씨">A</button>
+            <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="5" title="큰 글씨" style="font-size: 1.1em;">A</button>
+            <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="6" title="매우 큰 글씨" style="font-size: 1.2em;">A</button>
+            <span class="toolbar-separator"></span>
+            <button class="toolbar-btn" data-command="insertUnorderedList" title="글머리 기호">•</button>
+            <button class="toolbar-btn" data-command="insertCheckbox" title="체크박스 삽입 ([ ])">☑</button>
+          </div>
+          <div class="notepad-editor" contenteditable="true" placeholder="자유롭게 아이디어를 적어보세요...">${data.settings?.content || ''}</div>
           <div class="notepad-status-bar">
             <span class="notepad-save-status"></span>
           </div>

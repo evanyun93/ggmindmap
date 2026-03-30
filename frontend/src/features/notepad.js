@@ -14,13 +14,14 @@ export async function initNotepad(el, widgetData) {
     const widgetId = el.dataset.id;
     const titleEl = el.querySelector('.notepad-widget-title');
     const editBtn = el.querySelector('.edit-title-btn');
-    const textarea = el.querySelector('.notepad-textarea');
+    const editor = el.querySelector('.notepad-editor');
+    const toolbar = el.querySelector('.notepad-toolbar');
     const statusText = el.querySelector('.notepad-save-status');
     const header = el.querySelector('.notepad-header');
 
     // 1. 접기/펼치기 기능
     header.addEventListener('mousedown', (e) => {
-        if (e.target.closest('button, input, textarea, .notepad-widget-title')) return;
+        if (e.target.closest('button, input, textarea, .notepad-editor, .notepad-widget-title')) return;
         if (el.classList.contains('is-editing')) return;
 
         let isDragging = false;
@@ -137,7 +138,7 @@ export async function initNotepad(el, widgetData) {
     if (isMobile) {
         // 기존에 설정된 모바일 높이가 있으면 적용
         if (widgetData.settings && widgetData.settings.mobileHeight) {
-            textarea.style.height = `${widgetData.settings.mobileHeight}px`;
+            editor.style.height = `${widgetData.settings.mobileHeight}px`;
         }
 
         const resizeHandle = document.createElement('div');
@@ -169,7 +170,7 @@ export async function initNotepad(el, widgetData) {
 
         resizeHandle.addEventListener('touchstart', (e) => {
             startY = e.touches[0].clientY;
-            startHeight = textarea.offsetHeight;
+            startHeight = editor.offsetHeight;
             e.preventDefault(); // 스크롤 방지
         }, { passive: false });
 
@@ -177,13 +178,13 @@ export async function initNotepad(el, widgetData) {
             const currentY = e.touches[0].clientY;
             const diffY = currentY - startY;
             const newHeight = Math.max(100, startHeight + diffY); // 최소 100px
-            textarea.style.height = `${newHeight}px`;
+            editor.style.height = `${newHeight}px`;
             e.preventDefault();
         }, { passive: false });
 
         resizeHandle.addEventListener('touchend', () => {
             // 조절이 끝나면 높이 저장
-            const finalHeight = textarea.offsetHeight;
+            const finalHeight = editor.offsetHeight;
             const currentSettings = widgetData.settings || {};
             const updatedSettings = { ...currentSettings, mobileHeight: finalHeight };
 
@@ -199,15 +200,77 @@ export async function initNotepad(el, widgetData) {
         });
     }
 
-    // 4. 텍스트 자동 저장 (디바운스 기반 auto-save) 
+    // 4. 툴바 기능 연동
+    if (toolbar) {
+        toolbar.addEventListener('mousedown', (e) => {
+            e.preventDefault(); // 편집기 포커스 유지
+        });
+
+        toolbar.addEventListener('click', (e) => {
+            const btn = e.target.closest('.toolbar-btn');
+            if (!btn) return;
+
+            const command = btn.dataset.command;
+
+            if (command === 'insertCheckbox') {
+                const checkboxHtml = '<input type="checkbox" class="notepad-checkbox"> ';
+                document.execCommand('insertHTML', false, checkboxHtml);
+            } else if (command === 'fontSize') {
+                const size = btn.dataset.value;
+                document.execCommand('fontSize', false, size);
+            } else if (command) {
+                document.execCommand(command, false, null);
+            }
+
+            editor.focus();
+            triggerSave();
+        });
+    }
+
+    // 간단한 HTML 필터링 함수 (XSS 방지용)
+    const sanitizeHTML = (html) => {
+        const temp = document.createElement('div');
+        temp.innerHTML = html;
+        const scripts = temp.querySelectorAll('script, iframe, object, embed, form');
+        scripts.forEach(s => s.remove());
+
+        // on* 속성 제거
+        const allElements = temp.querySelectorAll('*');
+        allElements.forEach(el => {
+            Array.from(el.attributes).forEach(attr => {
+                if (attr.name.startsWith('on')) {
+                    el.removeAttribute(attr.name);
+                }
+                if (attr.name === 'href' || attr.name === 'src') {
+                    if (attr.value.trim().toLowerCase().startsWith('javascript:')) {
+                        el.removeAttribute(attr.name);
+                    }
+                }
+            });
+        });
+        return temp.innerHTML;
+    };
+
+    // 5. 텍스트 자동 저장 및 체크박스/단축키 변환
     let saveTimeout;
-    textarea.addEventListener('input', () => {
+
+    const triggerSave = () => {
         statusText.textContent = '저장 중...';
         statusText.style.opacity = '1';
 
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(async () => {
-            const content = textarea.value;
+            // 체크박스 상태를 HTML에 반영하기 위한 사전 작업
+            const checkboxes = editor.querySelectorAll('.notepad-checkbox');
+            checkboxes.forEach(cb => {
+                if (cb.checked) {
+                    cb.setAttribute('checked', 'checked');
+                } else {
+                    cb.removeAttribute('checked');
+                }
+            });
+
+            const content = sanitizeHTML(editor.innerHTML);
             try {
                 // 기존 설정값 유지하고 content만 병합
                 const currentSettings = widgetData.settings || {};
@@ -236,12 +299,73 @@ export async function initNotepad(el, widgetData) {
                 statusText.innerHTML = '<span style="color: #ef4444;">저장 실패! 연결 상태를 확인하세요.</span>';
                 console.error('Notepad 본문 저장 에러:', err);
             }
-        }, 600); // 600ms 뒤에 저장
+        }, 600);
+    };
+
+    editor.addEventListener('input', () => {
+        triggerSave();
+    });
+
+    // 체크박스 클릭 시 바로 저장 및 상태 토글
+    editor.addEventListener('change', (e) => {
+        if (e.target.classList.contains('notepad-checkbox')) {
+            if (e.target.checked) {
+                e.target.setAttribute('checked', 'checked');
+            } else {
+                e.target.removeAttribute('checked');
+            }
+            triggerSave();
+        }
+    });
+
+    // '[ ]' 입력 시 체크박스로 자동 변환
+    editor.addEventListener('keyup', (e) => {
+        // [ ] 치환 (브라우저에 따라 텍스트 노드 처리가 필요하므로 execCommand 사용)
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        const node = selection.focusNode;
+        if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent;
+            const match = text.match(/\[\s?\]\s?$/); // "[] " 또는 "[ ] "
+            if (match) {
+                const range = selection.getRangeAt(0);
+                // 방금 입력한 '[ ] ' 만큼 지우고
+                range.setStart(node, range.endOffset - match[0].length);
+                range.deleteContents();
+
+                // 체크박스 삽입
+                const checkboxHtml = '<input type="checkbox" class="notepad-checkbox"> ';
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = checkboxHtml;
+                const frag = document.createDocumentFragment();
+                let lastNode;
+                while (tempDiv.firstChild) {
+                    lastNode = frag.appendChild(tempDiv.firstChild);
+                }
+                range.insertNode(frag);
+
+                // 커서를 삽입된 요소 뒤로 이동
+                if (lastNode) {
+                    range.setStartAfter(lastNode);
+                    range.setEndAfter(lastNode);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                }
+
+                triggerSave();
+            }
+        }
     });
 
     syncService.addListener('NOTEPAD_CONTENT', (id, val) => {
-        if (id == widgetId && textarea.value !== val) {
-            textarea.value = val;
+        if (id == widgetId && editor.innerHTML !== val) {
+            editor.innerHTML = sanitizeHTML(val || '');
         }
     });
+
+    // 초기 로딩 시에도 sanitize
+    if (editor.innerHTML) {
+        editor.innerHTML = sanitizeHTML(editor.innerHTML);
+    }
 }
