@@ -67,7 +67,23 @@ async function switchToBoard(container) {
     if (returnBtn) {
         returnBtn.addEventListener('click', () => {
             const feedbackBtn = document.getElementById('feedbackBtn');
-            if (feedbackBtn) feedbackBtn.click();
+            const contentArea = document.getElementById('dashboardContent');
+            if (feedbackBtn) {
+                feedbackBtn.click();
+            } else if (isBoardView && contentArea) {
+                // If feedbackBtn is somehow not found but we are in board view, simulate the fallback
+                contentArea.classList.add('fade-out');
+                setTimeout(() => {
+                    const user = window.currentUser;
+                    contentArea.innerHTML = getMainDashboardContentHTML(user);
+                    initDashboardFeatures(user); // 모든 기능 재초기화
+
+                    contentArea.classList.remove('fade-out');
+                    contentArea.classList.add('fade-in');
+                }, 300);
+                isBoardView = false;
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
         });
     }
 
@@ -198,6 +214,39 @@ window.deleteFeedback = async (id) => {
             loadFeedbackList(listSection);
         } else {
             window.appAlert(result.message || '삭제에 실패했습니다.');
+        }
+    } catch (err) {
+        window.appAlert('서버와 통신할 수 없습니다.');
+    }
+};
+
+// 피드백 답변 달기 (관리자 전용)
+window.replyFeedback = async (id) => {
+    // 기존 답변 내용이 있으면 가져오기 위해 allFeedback 활용
+    const feedback = allFeedback.find(f => f.id === id);
+    const existingReply = feedback && feedback.admin_reply ? feedback.admin_reply : '';
+
+    // appPrompt가 없으므로 prompt() 사용
+    const reply = window.prompt('답변 내용을 입력하세요:', existingReply);
+    if (reply === null) return; // 취소 버튼 클릭 시
+
+    if (reply.trim().length === 0) {
+        window.appAlert('답변 내용을 입력해야 합니다.');
+        return;
+    }
+
+    try {
+        const res = await apiFetch(`/api/feedback/${id}/reply`, {
+            method: 'POST',
+            body: JSON.stringify({ reply })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+            const listSection = document.getElementById('boardListSection');
+            loadFeedbackList(listSection);
+        } else {
+            window.appAlert(result.message || '답변 등록에 실패했습니다.');
         }
     } catch (err) {
         window.appAlert('서버와 통신할 수 없습니다.');

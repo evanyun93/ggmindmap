@@ -159,6 +159,8 @@ async function initDatabase() {
           id SERIAL PRIMARY KEY,
           user_id INTEGER REFERENCES tba_users(id),
           content TEXT NOT NULL,
+          admin_reply TEXT,
+          admin_replied_at TIMESTAMPTZ,
           created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
@@ -233,6 +235,11 @@ async function initDatabase() {
       } catch (e) {
         console.error('⚠️ alarm_time 마이그레이션 중 오류:', e.message);
       }
+
+      await client.query(`
+        ALTER TABLE tba_feedback ADD COLUMN IF NOT EXISTS admin_reply TEXT;
+        ALTER TABLE tba_feedback ADD COLUMN IF NOT EXISTS admin_replied_at TIMESTAMPTZ;
+      `);
 
       await client.query(`
         ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_login_at TIMESTAMPTZ;

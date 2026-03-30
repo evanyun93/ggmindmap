@@ -792,6 +792,63 @@
   opacity: 1;
 }
 
+.item-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+
+.item-actions .item-date {
+  margin-right: 5px;
+}
+
+.item-actions .btn-delete-feedback,
+.item-actions .btn-reply-feedback {
+  position: static;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  opacity: 0.5;
+}
+
+.item-actions .btn-delete-feedback {
+  color: var(--text-muted);
+}
+
+.item-actions .btn-reply-feedback {
+  color: var(--accent-cyan);
+}
+
+.item-actions .btn-reply-feedback:hover {
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.1);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+.item-actions .btn-delete-feedback:hover {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
+  transform: scale(1.1);
+  opacity: 1;
+}
+
+/* Original positioned delete button fallback, though item-actions overrides it */
+.btn-delete-feedback {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+}
+
+
 .premium-glass-card::before {
   content: '';
   position: absolute;
@@ -816,15 +873,20 @@
 
 .item-header {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   margin-bottom: 16px;
+  gap: 10px;
 }
 
 .author-info {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 12px;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .author-avatar {
@@ -846,11 +908,15 @@
   font-weight: 700;
   font-size: 16px;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .item-date {
   font-size: 13px;
   color: var(--text-muted);
+  white-space: nowrap;
 }
 
 .item-content {
@@ -859,6 +925,69 @@
   font-size: 15px;
   padding-left: 48px;
 
+}
+
+/* ─── Feedback Reply Styles ────────── */
+
+.reply-badge {
+  background: linear-gradient(135deg, var(--accent-purple), var(--accent-cyan));
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 12px;
+  margin-left: 10px;
+  display: inline-block;
+  vertical-align: middle;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.feedback-reply {
+  margin-top: 20px;
+  padding: 20px;
+  background: rgba(139, 92, 246, 0.05);
+  border-left: 3px solid var(--accent-purple);
+  border-radius: 8px;
+  position: relative;
+}
+
+.reply-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.admin-avatar {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, #10b981, #3b82f6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+.reply-author {
+  font-weight: 700;
+  color: #e5e7eb;
+  font-size: 14px;
+}
+
+.reply-date {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-left: auto;
+}
+
+.reply-content {
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: pre-wrap;
 }
 
 .no-data,
