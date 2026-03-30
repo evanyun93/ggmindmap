@@ -914,55 +914,68 @@ export function setupResizable(widget, grid) {
     const handle = widget.querySelector('.resize-handle');
     if (!handle) return;
 
-    handle.onmousedown = (e) => {
-        if (e.button !== 0) return;
+    const startResize = (e) => {
+        // e.button is undefined for touch events
+        if (e.type === 'mousedown' && e.button !== 0) return;
 
-        // 모바일에서는 리사이즈 비활성화 (좌표 오염 방지)
-        if (window.innerWidth <= 768) return;
-
+        // Prevent dragging the widget or other default behaviors
         e.preventDefault();
         e.stopPropagation();
 
         bringToFront(widget); // 리사이즈 시에도 앞으로
 
+        const isTouch = e.type === 'touchstart';
+        const initialEvent = isTouch ? e.touches[0] : e;
+        const startX = initialEvent.clientX;
+        const startY = initialEvent.clientY;
+
         const startWidth = widget.offsetWidth;
         const startHeight = widget.offsetHeight;
-        const startX = e.clientX;
-        const startY = e.clientY;
+        const isMobile = window.innerWidth <= 768;
 
-        const onMouseMove = (moveEvent) => {
-            const gridRect = grid.getBoundingClientRect();
-            const widgetRect = widget.getBoundingClientRect();
-            const maxAllowedWidth = gridRect.right - widgetRect.left;
+        const onMove = (moveEvent) => {
+            const currentEvent = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
 
-            const currentWidth = startWidth + (moveEvent.clientX - startX);
-            const currentHeight = startHeight + (moveEvent.clientY - startY);
-
-            const minW = 250;
+            const currentHeight = startHeight + (currentEvent.clientY - startY);
             const minH = 120;
-
-            const finalW = Math.max(minW, Math.min(maxAllowedWidth, currentWidth));
             const finalH = Math.max(minH, currentHeight);
-
-            widget.style.width = `${finalW}px`;
             widget.style.height = `${finalH}px`;
 
-            // 마인드맵 CTA 레이아웃 가변 처리
-            if (widget.classList.contains('widget-mindmap-cta')) {
-                widget.style.flexDirection = finalW > 450 ? 'row' : 'column';
+            // On mobile, width is fixed to 100%, so we only resize width on PC
+            if (!isMobile) {
+                const gridRect = grid.getBoundingClientRect();
+                const widgetRect = widget.getBoundingClientRect();
+                const maxAllowedWidth = gridRect.right - widgetRect.left;
+
+                const currentWidth = startWidth + (currentEvent.clientX - startX);
+                const minW = 250;
+                const finalW = Math.max(minW, Math.min(maxAllowedWidth, currentWidth));
+                widget.style.width = `${finalW}px`;
+
+                // 마인드맵 CTA 레이아웃 가변 처리
+                if (widget.classList.contains('widget-mindmap-cta')) {
+                    widget.style.flexDirection = finalW > 450 ? 'row' : 'column';
+                }
             }
         };
 
-        const onMouseUp = () => {
-            document.removeEventListener('mousemove', onMouseMove);
-            document.removeEventListener('mouseup', onMouseUp);
+        const onEnd = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('touchmove', onMove);
+            document.removeEventListener('mouseup', onEnd);
+            document.removeEventListener('touchend', onEnd);
             saveLayout();
             adjustGridHeight();
         };
 
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('touchmove', onMove, { passive: false });
+        document.addEventListener('mouseup', onEnd);
+        document.addEventListener('touchend', onEnd);
     };
+
+    handle.addEventListener('mousedown', startResize);
+    handle.addEventListener('touchstart', startResize, { passive: false });
 }
 
 /**

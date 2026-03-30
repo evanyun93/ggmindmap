@@ -1,6 +1,6 @@
 /* ─── 스크롤바 스타일 (Webkit 기반) ────────────────────────── */
 .widget-todo .todo-list-container {
-  max-height: 260px;
+  flex: 1;
   overflow-y: auto;
   padding-right: 4px;
 }
