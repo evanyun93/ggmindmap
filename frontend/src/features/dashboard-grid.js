@@ -934,6 +934,8 @@ export function setupResizable(widget, grid) {
         const isMobile = window.innerWidth <= 768;
 
         const onMove = (moveEvent) => {
+            if (moveEvent.cancelable) moveEvent.preventDefault(); // 스크롤(스와이프) 방지
+
             const currentEvent = moveEvent.type === 'touchmove' ? moveEvent.touches[0] : moveEvent;
 
             const currentHeight = startHeight + (currentEvent.clientY - startY);

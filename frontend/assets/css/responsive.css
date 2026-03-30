@@ -449,6 +449,7 @@
     opacity: 0.8 !important;
     border-radius: 0 0 20px 20px !important;
     z-index: 100 !important; /* 클릭 이벤트를 잘 받기 위함 */
+    touch-action: none !important; /* 브라우저 기본 스크롤 동작 완벽 차단 */
   }
 
   /* 핸들 내부에 둥근 선 표시 */
