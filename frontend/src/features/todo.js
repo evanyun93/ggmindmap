@@ -861,7 +861,7 @@ function renderTodos(el, todos) {
     });
 
     // 알람 권한 요청 (최초 렌더링 시 1회 시도)
-    if (Notification.permission === 'default') {
+    if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         Notification.requestPermission();
     }
 }

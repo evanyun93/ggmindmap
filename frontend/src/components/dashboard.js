@@ -299,6 +299,20 @@ export function getDashboardHTML(user) {
                 </button>
             </div>
 
+            <!-- 인앱 브라우저 탈출 브릿지 섹션 추가 -->
+            <div id="inAppBrowserModalSection" style="display: none; background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 8px; padding: 12px; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                    <span style="font-size: 18px;">🌐</span>
+                    <strong style="font-size: 14px; color: #0369a1;">더 좋은 브라우저에서 사용하기</strong>
+                </div>
+                <p style="font-size: 12px; color: #0c4a6e; margin: 0 0 10px 0; line-height: 1.4;">
+                    현재 환경은 웹뷰로, 앱 설치 및 알림 수신이 원활하지 않을 수 있습니다. <b>Chrome/Safari</b>에서 즐겨찾기하고 앱으로 설치해 보세요.
+                </p>
+                <button id="modalOpenExternalBtn" style="width: 100%; padding: 8px; background: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
+                    외부 브라우저로 전환
+                </button>
+            </div>
+
             ${healthInfoSection}
             ${securitySection}
             ${displaySection}

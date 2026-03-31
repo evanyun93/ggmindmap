@@ -12,6 +12,7 @@ import { initChangelog } from './features/changelog.js';
 import { initDashboardFeatures } from './features/dashboard-bootstrap.js';
 import { safeLocalStorage, safeSessionStorage } from './utils/storage.js';
 import { initDebugConsole } from './utils/debug-console.js';
+import { isInAppBrowser, openInExternalBrowser } from './utils/browser-utils.js';
 import './utils/dialog.js'; // 전역 커스텀 Alert/Confirm/Toast 등록
 
 // 피드백 모듈 등에서 initDashboardFeatures를 사용할 수 있도록 re-export
@@ -79,6 +80,17 @@ function initAuthView() {
 
     // 소셜 로그인 초기화
     initSocialAuth();
+
+    // [WebView] 인앱 브라우저 안내 배너 활성화
+    const inAppBanner = document.getElementById('inAppBrowserBanner');
+    const openInExternalBtn = document.getElementById('openExternalBrowserBtn');
+    
+    if (isInAppBrowser() && inAppBanner) {
+        inAppBanner.style.display = 'block';
+        if (openInExternalBtn) {
+            openInExternalBtn.onclick = openInExternalBrowser;
+        }
+    }
 }
 
 /**
@@ -101,6 +113,17 @@ async function showDashboardView(user) {
 
     // 대시보드 내 소셜 연동 버튼을 위해 다시 초기화 (이미 이벤트 리스너가 중복 등록되지 않도록 social-auth.js에서 처리됨)
     initSocialAuth();
+
+    // [WebView] 대시보드 내 인앱 브라우저 안내 활성화
+    const inAppDashboardBtn = document.getElementById('modalOpenExternalBtn');
+    const inAppDashboardSection = document.getElementById('inAppBrowserModalSection');
+    
+    if (isInAppBrowser() && inAppDashboardSection) {
+        inAppDashboardSection.style.display = 'block';
+        if (inAppDashboardBtn) {
+            inAppDashboardBtn.onclick = openInExternalBrowser;
+        }
+    }
 }
 
 /**

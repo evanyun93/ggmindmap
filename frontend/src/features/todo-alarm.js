@@ -28,6 +28,10 @@ try {
     // 여기서 직접 알림을 띄워주어야 앱 사용 중에도 알람이 보입니다.
     onMessage(messaging, (payload) => {
         console.log('[TodoAlarm] 앱 화면 열림 상태에서 FCM 메시지 수신:', payload);
+        
+        // [WebView 대응] Notification API가 없는 환경에서는 실행하지 않음
+        if (typeof Notification === 'undefined') return;
+
         if (Notification.permission === 'granted') {
             const data = payload.data || payload;
             const notifTitle = data.title || 'GGMIND-알리미';
@@ -49,7 +53,7 @@ try {
                         { action: 'action_v48_dismiss', title: '🔕 알림끄기' }
                     ]
                 });
-            } else {
+            } else if (typeof Notification !== 'undefined') {
                 new Notification(notifTitle, notifOptions);
             }
             if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
@@ -188,7 +192,7 @@ async function subscribeWebPush(reg) {
         }
 
         // 알림 권한 확인
-        if (Notification.permission === 'denied') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
             console.warn('[TodoAlarm] 알림 권한이 거부되어 FCM을 활성화할 수 없습니다.');
             return;
         }

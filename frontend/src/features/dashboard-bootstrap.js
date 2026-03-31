@@ -169,7 +169,8 @@ function initUtilities() {
     const modalRequestNotif = document.getElementById('modalRequestNotif');
     if (modalRequestNotif) {
         modalRequestNotif.onclick = async () => {
-            if (!('Notification' in window)) {
+            // [WebView 대응] 'typeof Notification'으로 존재 여부 선행 확인 (ReferenceError 방지)
+            if (typeof Notification === 'undefined' || !('Notification' in window)) {
                 window.appAlert('이 브라우저는 알림 기능을 지원하지 않습니다.');
                 return;
             }
@@ -177,7 +178,7 @@ function initUtilities() {
             if (permission === 'granted') {
                 window.appAlert('알림 권한이 허용되었습니다! 이제 실시간 알람을 받으실 수 있습니다.');
                 // 서비스 워커에 구독 갱신 요청 (import 동적으로 수행)
-                import('./features/todo-alarm.js').then(m => m.todoAlarmSystem.start());
+                import('./todo-alarm.js').then(m => m.todoAlarmSystem.start());
             }
             if (window.updateNotifStatusUI) window.updateNotifStatusUI();
         };
