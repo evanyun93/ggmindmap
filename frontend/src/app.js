@@ -11,6 +11,7 @@ import { getDashboardHTML } from './components/dashboard.js';
 import { initChangelog } from './features/changelog.js';
 import { initDashboardFeatures } from './features/dashboard-bootstrap.js';
 import { safeLocalStorage, safeSessionStorage } from './utils/storage.js';
+import { initDebugConsole } from './utils/debug-console.js';
 import './utils/dialog.js'; // 전역 커스텀 Alert/Confirm/Toast 등록
 
 // 피드백 모듈 등에서 initDashboardFeatures를 사용할 수 있도록 re-export
@@ -20,6 +21,9 @@ export { initDashboardFeatures };
 let loginCard, registerCard, loginForm, registerForm, loginError, registerError, registerSuccess;
 
 document.addEventListener('DOMContentLoaded', async () => {
+    // 0. 디버그 콘솔 및 글로벌 에러 감시 활성화 (최우선 실행)
+    initDebugConsole();
+
     // 1. 배경 파티클 생성
     createParticles('particles');
 

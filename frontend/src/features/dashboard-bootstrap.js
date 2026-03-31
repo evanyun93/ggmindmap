@@ -197,14 +197,20 @@ function initUtilities() {
     // 사용자 프로필 버튼 클릭 시 설정 모달 띄우기
     const userProfileBtn = document.getElementById('userProfileBtn');
     if (userProfileBtn) {
-        userProfileBtn.addEventListener('click', () => {
+        const openSettings = (e) => {
+            if (e) e.preventDefault();
             const modal = document.getElementById('setupWarningModal');
             if (modal) {
                 modal.style.display = 'flex';
+                if (window.updateNotifStatusUI) window.updateNotifStatusUI();
+                if (window.navigator.vibrate) window.navigator.vibrate(5);
             }
-        });
+        };
+
+        userProfileBtn.addEventListener('click', openSettings);
+        userProfileBtn.addEventListener('touchstart', openSettings, { passive: false });
         
-        // 닫기 버튼 효과 (선택적)
+        // 마우스 호버 효과
         userProfileBtn.addEventListener('mouseenter', () => {
             userProfileBtn.style.background = 'rgba(255,255,255,0.15)';
         });
