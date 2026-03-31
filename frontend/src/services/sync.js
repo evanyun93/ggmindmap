@@ -75,13 +75,13 @@ class SyncService {
         if (this.initPromise) return this.initPromise;
 
         this.initPromise = (async () => {
-            console.log('[Sync] 초기화 시작');
+
             
             // 마이그레이션 상태 확인
             const needsMigration = await this.checkMigrationNeeded();
             
             if (needsMigration) {
-                console.log('[Sync] 마이그레이션 필요 - 실행 중...');
+
                 await this.migrateLocalStorage();
             }
             
@@ -92,7 +92,7 @@ class SyncService {
             await this.startSync();
             
             this.isInitialized = true;
-            console.log('[Sync] 초기화 완료');
+
             return true;
         })();
 
@@ -199,7 +199,6 @@ class SyncService {
             const result = await res.json();
             
             if (result.success) {
-                console.log(`[Sync] 마이그레이션 완료: ${result.migratedCount}개 항목`);
                 localStorage.setItem(MIGRATED_KEY, 'true');
             } else {
                 console.error('[Sync] 마이그레이션 실패:', result.message);

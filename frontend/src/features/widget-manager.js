@@ -56,16 +56,12 @@ export class WidgetManager {
       const data = await res.json();
       if (data.success) {
         if (!data.widgets || data.widgets.length === 0) {
-          console.warn('[WidgetManager] 저장된 위젯이 없습니다. 초기 배치를 진행합니다.');
           await this.createInitialWidgets();
           return;
         }
 
-        console.log(`[WidgetManager] ${data.widgets.length}개의 위젯을 로드했습니다. 렌더링을 시작합니다.`);
-
         grid.querySelectorAll('.draggable-widget').forEach(w => w.remove());
         data.widgets.forEach(w => {
-          console.log(`[WidgetManager] 위젯 데이터 처리 중: ${w.widget_type}`);
           this.renderWidget(w);
         });
 
@@ -138,10 +134,8 @@ export class WidgetManager {
         })
       });
       const data = await res.json();
-      console.log('[WidgetManager] API 응답 데이터:', data);
       if (data.success) {
         this.renderWidget(data.widget);
-        console.log('[WidgetManager] 위젯 렌더링 완료');
       }
     } catch (err) {
       console.error('[WidgetManager] 위젯 생성 실패:', err);
@@ -152,7 +146,6 @@ export class WidgetManager {
    * 위젯을 DOM에 렌더링하고 이벤트 바인딩
    */
   renderWidget(widgetData) {
-    console.warn(`[WidgetManager] 위젯 렌더링 시작: ${widgetData.widget_type} (ID: ${widgetData.id})`);
     const grid = this.getGrid();
     if (!grid) return;
 
