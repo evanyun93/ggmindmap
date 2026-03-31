@@ -10,6 +10,7 @@ import { initSocialAuth } from './services/social-auth.js'; // social-auth 임�
 import { getDashboardHTML } from './components/dashboard.js';
 import { initChangelog } from './features/changelog.js';
 import { initDashboardFeatures } from './features/dashboard-bootstrap.js';
+import { safeLocalStorage, safeSessionStorage } from './utils/storage.js';
 import './utils/dialog.js'; // 전역 커스텀 Alert/Confirm/Toast 등록
 
 // 피드백 모듈 등에서 initDashboardFeatures를 사용할 수 있도록 re-export
@@ -313,8 +314,8 @@ window.checkNotificationPermissionAndWarn = () => {
     if (Notification.permission === 'granted') return;
 
     // 세션당 1회 노출 제한 (새로고침 시 다시 안 뜸)
-    if (sessionStorage.getItem('notif_prompt_shown') === 'true') return;
-    sessionStorage.setItem('notif_prompt_shown', 'true');
+    if (safeSessionStorage.getItem('notif_prompt_shown') === 'true') return;
+    safeSessionStorage.setItem('notif_prompt_shown', 'true');
 
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
     const isDenied = Notification.permission === 'denied';

@@ -2,6 +2,7 @@
 // 관리자 전용 페이지 모듈
 
 import { fetchAdminUsers } from './services/api.js';
+import { safeLocalStorage } from './utils/storage.js';
 
 /**
  * 관리자 페이지 오버레이 생성 및 표시
@@ -144,7 +145,7 @@ async function loadUserList() {
   const container = document.getElementById('adminUserList');
   if (!container) return;
 
-  const token = localStorage.getItem('adminToken') || 'dummy-admin-token';
+  const token = safeLocalStorage.getItem('adminToken') || 'dummy-admin-token';
 
   try {
     const res = await fetchAdminUsers(token);
@@ -198,7 +199,7 @@ function renderAdminLogin() {
   document.getElementById('adminLoginBtn').onclick = () => {
     const pw = document.getElementById('adminPw').value;
     if (pw === '1234') {
-      localStorage.setItem('adminToken', 'dummy-admin-token');
+      safeLocalStorage.setItem('adminToken', 'dummy-admin-token');
       overlay.remove();
       createAdminOverlay();
       loadUserList();
@@ -212,7 +213,7 @@ function renderAdminLogin() {
 }
 
 export function initAdmin() {
-  if (localStorage.getItem('adminToken') === 'dummy-admin-token') {
+  if (safeLocalStorage.getItem('adminToken') === 'dummy-admin-token') {
     createAdminOverlay();
     loadUserList();
   } else {

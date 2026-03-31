@@ -240,7 +240,7 @@ function renderLayoutChips() {
                     } else if (draggedChipIndex > currActive && targetIndex <= currActive) {
                         activeLayoutIndex[platform]++;
                     }
-                    localStorage.setItem(`activeDashboardLayout_${platform}`, activeLayoutIndex[platform]);
+                    safeLocalStorage.setItem(`activeDashboardLayout_${platform}`, activeLayoutIndex[platform]);
                     
                     persistLayouts().then(() => renderLayoutChips());
                 };
@@ -415,7 +415,7 @@ async function deleteLayout(platform, index) {
         } else if (activeLayoutIndex[plat] > index) {
             activeLayoutIndex[plat]--; // 앞쪽이 지워지면 내 인덱스도 1 감소해야 함
         }
-        localStorage.setItem(`activeDashboardLayout_${plat}`, activeLayoutIndex[plat]);
+        safeLocalStorage.setItem(`activeDashboardLayout_${plat}`, activeLayoutIndex[plat]);
     });
 
     // 화면(위젯) 실시간 전환 폴백

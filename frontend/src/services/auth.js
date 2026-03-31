@@ -4,14 +4,15 @@
  */
 
 import { apiFetch } from './api.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 
 /**
  * 저장된 토큰을 확인하여 자동 로그인을 시도합니다.
  * @returns {Promise<object|null>} 유저 정보 또는 null
  */
 export async function checkAutoLogin() {
-    const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-        sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+    const token = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('mindmap_token') ||
+        safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
     if (!token) return null;
 
     try {
@@ -44,11 +45,11 @@ export async function login(login_id, password, rememberMe) {
         const data = await res.json();
         if (data.success) {
             if (rememberMe) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('mindmap_token', data.token);
+                safeLocalStorage.setItem('token', data.token);
+                safeLocalStorage.setItem('mindmap_token', data.token);
             } else {
-                sessionStorage.setItem('token', data.token);
-                sessionStorage.setItem('mindmap_token', data.token);
+                safeSessionStorage.setItem('token', data.token);
+                safeSessionStorage.setItem('mindmap_token', data.token);
             }
         }
         return data;
@@ -90,10 +91,10 @@ export async function logout() {
  * 저장된 인증 토큰을 삭제합니다.
  */
 export function clearTokens() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('mindmap_token');
-    sessionStorage.removeItem('token');
-    sessionStorage.removeItem('mindmap_token');
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('mindmap_token');
+    safeSessionStorage.removeItem('token');
+    safeSessionStorage.removeItem('mindmap_token');
 }
 
 /**

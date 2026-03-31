@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../services/api.js';
 import { syncService } from '../services/sync.js';
+import { safeLocalStorage } from '../utils/storage.js';
 
 export async function initNotepad(el, widgetData) {
     if (!el) return;
@@ -33,7 +34,7 @@ export async function initNotepad(el, widgetData) {
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
                 const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
-                localStorage.setItem(`notepad_collapsed_${platform}_${widgetId}`, collapsed);
+                safeLocalStorage.setItem(`notepad_collapsed_${platform}_${widgetId}`, collapsed);
                 import('./dashboard-grid.js').then(m => {
                     if (m.saveLayout) m.saveLayout();
                 });
@@ -44,7 +45,7 @@ export async function initNotepad(el, widgetData) {
     });
 
     const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
-    if (localStorage.getItem(`notepad_collapsed_${platform}_${widgetId}`) === 'true') {
+    if (safeLocalStorage.getItem(`notepad_collapsed_${platform}_${widgetId}`) === 'true') {
         el.classList.add('collapsed');
     }
 

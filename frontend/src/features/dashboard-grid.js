@@ -1082,7 +1082,7 @@ export function saveLayout(targetWidget = null) {
  */
 export function restoreLayout() {
     const grid = document.getElementById('widgetGrid');
-    const saved = localStorage.getItem('dashboard_layout_free_v1');
+    const saved = safeLocalStorage.getItem('dashboard_layout_free_v1');
     if (!grid) return;
 
     if (!saved) {

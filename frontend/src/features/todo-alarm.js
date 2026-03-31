@@ -218,8 +218,8 @@ async function subscribeWebPush(reg) {
 
         if (currentToken) {
             // 서버에 토큰 저장
-            const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-                          sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('mindmap_token') ||
+                          safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
             if (!token) {
                 console.log('[TodoAlarm] 로그인이 되어있지 않아 FCM 구독 정보를 서버에 저장하지 않습니다.');
                 return;

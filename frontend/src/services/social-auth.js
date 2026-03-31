@@ -4,6 +4,7 @@
  */
 
 import { apiFetch } from './api.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 
 // ⚠️ 보안을 위해 키 값은 백엔드 .env 및 API를 통해 동적으로 로드합니다.
 let KAKAO_JS_KEY = null;
@@ -37,7 +38,7 @@ export async function initSocialAuth() {
     // 이 부분은 이제 사용 안 함 - 대신 직접 연동 API 호출
     const handleSocialLink = async (socialData) => {
         try {
-            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
             if (!token) {
                 window.appAlert('로그인이 필요합니다.');
                 return;
@@ -321,7 +322,7 @@ async function processSocialLogin(socialData) {
     try {
         // 연동 모드인 경우 (로그인 상태에서 다른 소셜 추가)
         if (currentMode === 'link') {
-            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
             if (!token) {
                 window.appAlert('로그인이 필요합니다.');
                 return;
@@ -353,7 +354,7 @@ async function processSocialLogin(socialData) {
         const result = await response.json();
 
         if (result.success) {
-            localStorage.setItem('mindmap_token', result.token);
+            safeLocalStorage.setItem('mindmap_token', result.token);
             window.location.reload();
         } else if (result.linked && result.type === 'already_linked') {
             // 다른 소셜에 연동된 계정이 있음
@@ -383,7 +384,7 @@ async function doSocialLogin(socialData, mode) {
         
         // 연동 모드인 경우 현재 로그인한 사용자 정보 포함
         if (mode === 'link') {
-            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
             if (token) {
                 try {
                     const payload = JSON.parse(atob(token.split('.')[1]));
@@ -402,7 +403,7 @@ async function doSocialLogin(socialData, mode) {
 
         if (result.success) {
             if (mode === 'login' || mode === 'link') {
-                localStorage.setItem('mindmap_token', result.token);
+                safeLocalStorage.setItem('mindmap_token', result.token);
             }
             window.location.reload();
         } else {
@@ -482,7 +483,7 @@ function showSocialLinkModal(socialData, email) {
             document.getElementById('socialLinkModal').remove();
 
             if (result.success) {
-                localStorage.setItem('mindmap_token', result.token);
+                safeLocalStorage.setItem('mindmap_token', result.token);
                 window.location.reload();
             } else {
                 window.appAlert(result.message || '연동 중 오류가 발생했습니다.');
@@ -574,7 +575,7 @@ function showSocialRegisterModal(socialData) {
             document.getElementById('socialRegisterModal').remove();
 
             if (result.success) {
-                localStorage.setItem('mindmap_token', result.token);
+                safeLocalStorage.setItem('mindmap_token', result.token);
                 window.location.reload();
             } else {
                 window.appAlert(result.message || '회원가입 중 오류가 발생했습니다.');

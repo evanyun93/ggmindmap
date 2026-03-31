@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../services/api.js';
 import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
+import { safeLocalStorage } from '../utils/storage.js';
 
 /**
  * 마일스톤 위젯 초기화
@@ -50,7 +51,7 @@ export async function initMilestone(el, widgetData) {
             document.removeEventListener('mouseup', onUp);
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
-                localStorage.setItem(`milestone_collapsed_${widgetId}`, collapsed);
+                safeLocalStorage.setItem(`milestone_collapsed_${widgetId}`, collapsed);
 
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());
@@ -286,7 +287,7 @@ async function renderMilestoneData(el, settings) {
 
     if (isSync) {
         // 연동 모드일 때는 전역 빠른 메모 날짜 사용
-        const targetStr = localStorage.getItem('mindmap_dday_target');
+        const targetStr = safeLocalStorage.getItem('mindmap_dday_target');
         if (targetStr) {
             targetDate = new Date(targetStr);
             baseDate = new Date(); // 연동 시 기준일은 오늘

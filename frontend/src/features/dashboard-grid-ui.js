@@ -3,6 +3,8 @@
  * @description 대시보드 그리드의 UI 상태(환영 섹션, 테마)를 관리합니다.
  */
 
+import { safeLocalStorage } from '../utils/storage.js';
+
 /**
  * 환영 세션 제어 로직
  */
@@ -16,7 +18,7 @@ export function initWelcomeSection() {
     };
 
     // '다시는 보지 않기' 설정 확인
-    const isHiddenForever = localStorage.getItem('hide_welcome_forever') === 'true';
+    const isHiddenForever = safeLocalStorage.getItem('hide_welcome_forever') === 'true';
     if (isHiddenForever) {
         welcomeSection.style.display = 'none';
         showLogo();
@@ -30,7 +32,7 @@ export function initWelcomeSection() {
         closeBtn.onclick = () => {
             // 체크박스 상태 확인
             if (dontShowCheckbox && dontShowCheckbox.checked) {
-                localStorage.setItem('hide_welcome_forever', 'true');
+                safeLocalStorage.setItem('hide_welcome_forever', 'true');
             }
             welcomeSection.style.display = 'none';
             showLogo();
@@ -42,7 +44,7 @@ export function initWelcomeSection() {
  * 테마 초기화 및 연동
  */
 export function initTheme() {
-    const savedTheme = localStorage.getItem('dashboard_theme') || 'midnight';
+    const savedTheme = safeLocalStorage.getItem('dashboard_theme') || 'midnight';
     applyTheme(savedTheme);
 
     const themePickers = document.querySelectorAll('.theme-picker-premium');
@@ -70,6 +72,6 @@ function applyTheme(theme) {
     });
 
     // 저장
-    localStorage.setItem('dashboard_theme', theme);
+    safeLocalStorage.setItem('dashboard_theme', theme);
 }
 

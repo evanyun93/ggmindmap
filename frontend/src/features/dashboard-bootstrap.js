@@ -13,6 +13,7 @@ import { initMilestone } from './milestone.js';
 import { initAdmin } from '../admin.js';
 import { syncService } from '../services/sync.js';
 import { initDashboardLayouts } from './dashboard-layout-manager.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 
 /**
  * 대시보드의 모든 동적 기능(메모, 피드백, 그리드 등)을 초기화합니다.
@@ -224,7 +225,7 @@ function initUtilities() {
             }
 
             try {
-                const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+                const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
                 if (!token) {
                     window.appAlert('로그인이 필요합니다.');
                     return;
@@ -534,8 +535,8 @@ function initUtilities() {
                     }
 
                      try {
-                         const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
-                         console.log('[DEBUG] 토큰 확인 시도: localStorage/sessionStorage에서 토큰 읽기');
+                         const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
+                         console.log('[DEBUG] 토큰 확인 시도: safeLocalStorage/safeSessionStorage에서 토큰 읽기');
                          if (token) {
                              console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
                          } else {
@@ -620,7 +621,7 @@ function initUtilities() {
                 }
 
                 try {
-                    const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+                    const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
                     const response = await apiFetch('/api/auth/settings', {
                         method: 'PATCH',
                         headers: { 'Authorization': `Bearer ${token}` },
@@ -659,7 +660,7 @@ function initUtilities() {
     const loadHealthInfo = async () => {
         const badge = document.getElementById('healthInfoBadge');
         try {
-            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
             if (!token) {
                 if (badge) { badge.textContent = '미입력'; badge.style.background = '#fff3cd'; badge.style.color = '#856404'; }
                 return null;
@@ -763,7 +764,7 @@ function initUtilities() {
     const submitHealthInfoBtn = document.getElementById('submitHealthInfoBtn');
     if (submitHealthInfoBtn) {
         submitHealthInfoBtn.addEventListener('click', async () => {
-            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
             if (!token) { window.appAlert('로그인이 필요합니다.'); return; }
 
             const maleRadio = document.getElementById('healthGenderMale');
@@ -842,17 +843,17 @@ function initCollapseAll() {
                 // 모두 접기
                 w.classList.add('collapsed');
                 if (widgetId) {
-                    localStorage.setItem(`todo_collapsed_${plat}_${widgetId}`, 'true');
-                    localStorage.setItem(`milestone_collapsed_${plat}_${widgetId}`, 'true');
-                    localStorage.setItem(`recipe_collapsed_${plat}_${widgetId}`, 'true');
+                    safeLocalStorage.setItem(`todo_collapsed_${plat}_${widgetId}`, 'true');
+                    safeLocalStorage.setItem(`milestone_collapsed_${plat}_${widgetId}`, 'true');
+                    safeLocalStorage.setItem(`recipe_collapsed_${plat}_${widgetId}`, 'true');
                 }
             } else {
                 // 모두 펴기
                 w.classList.remove('collapsed');
                 if (widgetId) {
-                    localStorage.setItem(`todo_collapsed_${plat}_${widgetId}`, 'false');
-                    localStorage.setItem(`milestone_collapsed_${plat}_${widgetId}`, 'false');
-                    localStorage.setItem(`recipe_collapsed_${plat}_${widgetId}`, 'false');
+                    safeLocalStorage.setItem(`todo_collapsed_${plat}_${widgetId}`, 'false');
+                    safeLocalStorage.setItem(`milestone_collapsed_${plat}_${widgetId}`, 'false');
+                    safeLocalStorage.setItem(`recipe_collapsed_${plat}_${widgetId}`, 'false');
                 }
             }
         });
@@ -903,7 +904,7 @@ async function initZoomControl() {
     const saveZoomLevel = (zoom) => {
         clearTimeout(saveTimeout);
         saveTimeout = setTimeout(async () => {
-            const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+            const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
             if (token) {
                 try {
                     await apiFetch('/api/auth/zoom-info', {
@@ -940,7 +941,7 @@ async function initZoomControl() {
 
     // 서버(또는 임시 저장)에서 초기 배율 가져오기
     const loadInitialZoom = async () => {
-        const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
+        const token = safeLocalStorage.getItem('mindmap_token') || safeSessionStorage.getItem('mindmap_token');
         if (token) {
             try {
                 const res = await apiFetch('/api/auth/zoom-info', { headers: { 'Authorization': `Bearer ${token}` } });

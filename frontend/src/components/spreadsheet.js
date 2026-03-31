@@ -3,6 +3,8 @@
  * @description 경량 엑셀 스타일의 스프레드시트 위젯입니다. 수식 계산 및 로컬 데이터 저장을 지원합니다.
  */
 
+import { safeLocalStorage } from '../utils/storage.js';
+
 export class Spreadsheet {
     /**
      * @param {string} containerId - 위젯이 렌더링될 요소의 ID
@@ -91,11 +93,11 @@ export class Spreadsheet {
     }
 
     saveHeaders() {
-        localStorage.setItem('mindmap_spreadsheet_headers', JSON.stringify(this.headers));
+        safeLocalStorage.setItem('mindmap_spreadsheet_headers', JSON.stringify(this.headers));
     }
 
     loadHeaders() {
-        const saved = localStorage.getItem('mindmap_spreadsheet_headers');
+        const saved = safeLocalStorage.getItem('mindmap_spreadsheet_headers');
         if (saved) {
             this.headers = JSON.parse(saved);
         }
@@ -185,11 +187,11 @@ export class Spreadsheet {
     }
 
     saveData() {
-        localStorage.setItem('mindmap_spreadsheet_data', JSON.stringify(this.data));
+        safeLocalStorage.setItem('mindmap_spreadsheet_data', JSON.stringify(this.data));
     }
 
     loadData() {
-        const saved = localStorage.getItem('mindmap_spreadsheet_data');
+        const saved = safeLocalStorage.getItem('mindmap_spreadsheet_data');
         if (saved) {
             this.data = JSON.parse(saved);
             Object.keys(this.data).forEach(cellId => this.renderCell(cellId));
