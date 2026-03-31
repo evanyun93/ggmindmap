@@ -227,52 +227,6 @@ export function initDashboardGrid() {
         ]);
     };
 
-    /**
-     * 모든 위젯을 좌상단부터 겹치지 않게 순서대로 자동 정렬
-     */
-    const autoArrangeWidgets = () => {
-        const gridRect = grid.getBoundingClientRect();
-        const gridWidth = gridRect.width;
-        const widgets = Array.from(grid.querySelectorAll('.draggable-widget:not(.widget-ghost)'));
-
-        if (widgets.length === 0) return;
-
-        console.log('[DashboardGrid] 위젯 자동 정렬 시작');
-
-        const GAP = 20;
-        let currentX = 20;
-        let currentY = 20;
-        let rowMaxHeight = 0;
-
-        widgets.forEach((widget) => {
-            const w = widget.offsetWidth;
-            const h = widget.offsetHeight;
-
-            // 너비를 초과하면 다음 줄로
-            if (currentX + w > gridWidth - GAP && currentX > GAP) {
-                currentX = 20;
-                currentY += rowMaxHeight + GAP;
-                rowMaxHeight = 0;
-            }
-
-            widget.style.transition = 'all 0.5s cubic-bezier(0.2, 0, 0, 1)';
-            widget.style.left = `${currentX}px`;
-            widget.style.top = `${currentY}px`;
-
-            currentX += w + GAP;
-            rowMaxHeight = Math.max(rowMaxHeight, h);
-
-            // 애니메이션 종료 후 트랜지션 제거
-            setTimeout(() => {
-                widget.style.transition = '';
-            }, 500);
-        });
-
-        // 변경된 레이아웃 서버 저장
-        saveLayout();
-
-        if (window.navigator.vibrate) window.navigator.vibrate(20);
-    };
 
     const clearLongPressTimer = () => {
         if (longPressTimer) {
@@ -800,6 +754,7 @@ export function setupDraggable(widget, grid) {
                     grid.classList.remove('move-mode-active');
                 }
                 reassignMobileZIndices();
+                saveLayout(); // 모바일 순서 변경 상태도 현재 커스텀 레이아웃에 동기화
             } else {
                 saveLayout();
                 adjustGridHeight();
@@ -1052,6 +1007,12 @@ export function setupResizable(widget, grid) {
  * 레이아웃 상태 저장 (특정 위젯만 업데이트하여 효율성 극대화)
  */
 export function saveLayout(targetWidget = null) {
+    // 활성 커스텀 레이아웃 실시간 동기화 훅 호출
+    if (window.autoSyncActiveLayout) {
+        // saveLayout을 호출한 주체가 applyLayout() 내부인 무한 루프 등 방어
+        window.autoSyncActiveLayout();
+    }
+
     const isMobile = window.innerWidth <= 768;
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
@@ -1083,6 +1044,7 @@ export function saveLayout(targetWidget = null) {
             h: Math.round(parseFloat(heightVal) || 0),
             z: parseInt(w.style.zIndex) || 100
         };
+
 
         try {
             // 레이스 컨디션을 방지하기 위해 개별 위젯 업데이트 진행
@@ -1316,4 +1278,54 @@ export function adjustGridHeight() {
     // 기본 최소 높이 1000px, 최하단 위젯 + 여유 공간 100px
     const minHeight = Math.max(1000, maxBottom + 100);
     grid.style.minHeight = `${minHeight}px`;
+}
+
+/**
+ * 모든 위젯을 좌상단부터 겹치지 않게 순서대로 자동 정렬
+ */
+export function autoArrangeWidgets() {
+    const grid = document.getElementById('widgetGrid');
+    if (!grid) return;
+
+    const gridRect = grid.getBoundingClientRect();
+    const gridWidth = gridRect.width;
+    const widgets = Array.from(grid.querySelectorAll('.draggable-widget:not(.widget-ghost)'));
+
+    if (widgets.length === 0) return;
+
+    console.log('[DashboardGrid] 위젯 자동 정렬 시작');
+
+    const GAP = 20;
+    let currentX = 20;
+    let currentY = 20;
+    let rowMaxHeight = 0;
+
+    widgets.forEach((widget) => {
+        const w = widget.offsetWidth;
+        const h = widget.offsetHeight;
+
+        // 너비를 초과하면 다음 줄로
+        if (currentX + w > gridWidth - GAP && currentX > GAP) {
+            currentX = 20;
+            currentY += rowMaxHeight + GAP;
+            rowMaxHeight = 0;
+        }
+
+        widget.style.transition = 'all 0.5s cubic-bezier(0.2, 0, 0, 1)';
+        widget.style.left = `${currentX}px`;
+        widget.style.top = `${currentY}px`;
+
+        currentX += w + GAP;
+        rowMaxHeight = Math.max(rowMaxHeight, h);
+
+        // 애니메이션 종료 후 트랜지션 제거
+        setTimeout(() => {
+            widget.style.transition = '';
+        }, 500);
+    });
+
+    // 변경된 레이아웃 서버 저장
+    saveLayout();
+
+    if (window.navigator.vibrate) window.navigator.vibrate(20);
 }

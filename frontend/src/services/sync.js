@@ -27,9 +27,10 @@ export const SYNC_DATA_TYPES = {
     DDAY_TARGET: 'dday_target',
     FAB_POS: 'fab_pos',
     SPREADSHEET_DATA: 'spreadsheet_data',
-     SPREADSHEET_HEADERS: 'spreadsheet_headers',
-     RECIPE_TITLE: 'recipe_title',
-     MINDMAP_UPDATE: 'mindmap_update'
+    SPREADSHEET_HEADERS: 'spreadsheet_headers',
+    RECIPE_TITLE: 'recipe_title',
+    MINDMAP_UPDATE: 'mindmap_update',
+    DASHBOARD_LAYOUTS: 'dashboard_layouts'
 };
 
 /**
@@ -260,12 +261,25 @@ class SyncService {
     }
 
     /**
+     * 특정 플랫폼별로 캐시 키와 서버 동기화 Type을 분리하기 위한 도우미 메서드
+     */
+    resolveType(type) {
+        if (type === SYNC_DATA_TYPES.TODO_COLLAPSED ||
+            type === SYNC_DATA_TYPES.MILESTONE_COLLAPSED) {
+            const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+            return `${type}_${platform}`;
+        }
+        return type;
+    }
+
+    /**
      * 데이터 조회 (로컬 캐시 우선, 서버에서 업데이트 있으면 가져오기)
-     * @param {string} type - 데이터 타입
+     * @param {string} rawType - 데이터 타입
      * @param {string|number} widgetId - 위젯 ID (optional)
      * @returns {Promise<any>}
      */
-    async getData(type, widgetId = null) {
+    async getData(rawType, widgetId = null) {
+        const type = this.resolveType(rawType);
         // 초기화가 진행 중이면 완료될 때까지 대기 (최신 데이터 확보 보장)
         if (!this.isInitialized && this.initPromise) {
             await this.initPromise;
@@ -282,7 +296,7 @@ class SyncService {
         }
         
         // 2. 로컬 스토리지에서 확인 (레거시 호환)
-        const legacyValue = this.getFromLocalStorage(type, widgetId);
+        const legacyValue = this.getFromLocalStorage(rawType, widgetId); // 레거시는 rawType 그대로 처리
         if (legacyValue !== null) {
             // 캐시에 저장
             this.saveCache(cacheKey, legacyValue);
@@ -345,56 +359,62 @@ class SyncService {
     /**
      * 레거시 로컬 스토리지에서 데이터 읽기
      */
-     getFromLocalStorage(type, widgetId) {
-         switch (type) {
-             case SYNC_DATA_TYPES.TODO_COLOR:
-                 return localStorage.getItem('todo_checkbox_color');
-                 
-             case SYNC_DATA_TYPES.TODO_COLLAPSED:
-                 if (widgetId) {
-                     return localStorage.getItem(`todo_collapsed_${widgetId}`);
-                 }
-                 break;
-                 
-             case SYNC_DATA_TYPES.TODO_TITLE:
-                 if (widgetId) {
-                     return localStorage.getItem(`todo_widget_title_${widgetId}`);
-                 }
-                 break;
-                 
-             case SYNC_DATA_TYPES.TODO_AUTO_DELETE:
-                 if (widgetId) {
-                     return localStorage.getItem(`todo_auto_delete_${widgetId}`);
-                 }
-                 return localStorage.getItem('todo_auto_delete');
-                 
-             case SYNC_DATA_TYPES.DDAY_TARGET:
-                 return localStorage.getItem('mindmap_dday_target');
-                 
-             case SYNC_DATA_TYPES.FAB_POS:
-                 return localStorage.getItem('mindmap_fab_pos');
-                 
-             case SYNC_DATA_TYPES.SPREADSHEET_DATA:
-                 return localStorage.getItem('mindmap_spreadsheet_data');
-                 
-             case SYNC_DATA_TYPES.SPREADSHEET_HEADERS:
-                 return localStorage.getItem('mindmap_spreadsheet_headers');
-                 
-             case SYNC_DATA_TYPES.MILESTONE_COLLAPSED:
-                 if (widgetId) {
-                     return localStorage.getItem(`milestone_collapsed_${widgetId}`);
-                 }
-                 break;
-                 
-             case SYNC_DATA_TYPES.MILESTONE_TITLE:
-                 if (widgetId) {
-                     return localStorage.getItem(`milestone_widget_title_${widgetId}`);
-                 }
-                 break;
-         }
-         
-         return null;
-     }
+    getFromLocalStorage(type, widgetId) {
+        switch (type) {
+            case SYNC_DATA_TYPES.TODO_COLOR:
+                return localStorage.getItem('todo_checkbox_color');
+                
+            case SYNC_DATA_TYPES.TODO_COLLAPSED:
+                if (widgetId) {
+                    const objPlatform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+                    return localStorage.getItem(`todo_collapsed_${objPlatform}_${widgetId}`);
+                }
+                break;
+                
+            case SYNC_DATA_TYPES.TODO_TITLE:
+                if (widgetId) {
+                    return localStorage.getItem(`todo_widget_title_${widgetId}`);
+                }
+                break;
+                
+            case SYNC_DATA_TYPES.TODO_AUTO_DELETE:
+                if (widgetId) {
+                    return localStorage.getItem(`todo_auto_delete_${widgetId}`);
+                }
+                return localStorage.getItem('todo_auto_delete');
+                
+            case SYNC_DATA_TYPES.DDAY_TARGET:
+                return localStorage.getItem('mindmap_dday_target');
+                
+            case SYNC_DATA_TYPES.FAB_POS:
+                return localStorage.getItem('mindmap_fab_pos');
+                
+            case SYNC_DATA_TYPES.SPREADSHEET_DATA:
+                return localStorage.getItem('mindmap_spreadsheet_data');
+                
+            case SYNC_DATA_TYPES.SPREADSHEET_HEADERS:
+                return localStorage.getItem('mindmap_spreadsheet_headers');
+                
+            case SYNC_DATA_TYPES.MILESTONE_COLLAPSED:
+                if (widgetId) {
+                    const objPlatform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+                    return localStorage.getItem(`milestone_collapsed_${objPlatform}_${widgetId}`);
+                }
+                break;
+                
+            case SYNC_DATA_TYPES.MILESTONE_TITLE:
+                if (widgetId) {
+                    return localStorage.getItem(`milestone_widget_title_${widgetId}`);
+                }
+                break;
+
+            case SYNC_DATA_TYPES.DASHBOARD_LAYOUTS:
+                // 로컬 캐시 없음 - 항상 서버(userSettings)에서 로드
+                return null;
+        }
+        
+        return null;
+    }
 
     /**
      * 데이터 설정 (로컬 + 서버)
@@ -402,14 +422,15 @@ class SyncService {
      * @param {string|number} widgetId - 위젯 ID (optional)
      * @param {any} data - 저장할 데이터
      */
-    async setData(type, widgetId = null, data) {
+    async setData(rawType, widgetId = null, data) {
+        const type = this.resolveType(rawType);
         const cacheKey = widgetId ? `${type}_${widgetId}` : type;
         
         // 1. 로컬 캐시 업데이트
         this.saveCache(cacheKey, data);
         
         // 2. 레거시 로컬 스토리지 업데이트 (호환성 유지)
-        this.saveToLocalStorage(type, widgetId, data);
+        this.saveToLocalStorage(rawType, widgetId, data);
         
         // 3. 서버에 동기화 (비동기)
         try {
@@ -458,7 +479,8 @@ class SyncService {
                 
             case SYNC_DATA_TYPES.TODO_COLLAPSED:
                 if (widgetId) {
-                    localStorage.setItem(`todo_collapsed_${widgetId}`, value);
+                    const objPlatform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+                    localStorage.setItem(`todo_collapsed_${objPlatform}_${widgetId}`, value);
                 }
                 break;
                 
@@ -486,7 +508,8 @@ class SyncService {
                 
             case SYNC_DATA_TYPES.MILESTONE_COLLAPSED:
                 if (widgetId) {
-                    localStorage.setItem(`milestone_collapsed_${widgetId}`, value);
+                    const objPlatform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+                    localStorage.setItem(`milestone_collapsed_${objPlatform}_${widgetId}`, value);
                 }
                 break;
                 
@@ -494,6 +517,10 @@ class SyncService {
                 if (widgetId) {
                     localStorage.setItem(`milestone_widget_title_${widgetId}`, value);
                 }
+                break;
+
+            case SYNC_DATA_TYPES.DASHBOARD_LAYOUTS:
+                // dashboard_layouts는 userSettings에 저장 - 로컬 스토리지는 캐시만 사용
                 break;
         }
     }
@@ -605,6 +632,16 @@ class SyncService {
             for (const [key, value] of Object.entries(serverData.userSettings)) {
                 if (key.startsWith('_')) continue; // 시스템 키 건너뛰기
                 this.saveToLocalStorage(key, null, value);
+                // userSettings의 모든 항목을 캐시에도 저장 (dashboard_layouts 등 JSON 오브젝트도 캐시로 관리)
+                const oldCache = this.getCache(key);
+                this.saveCache(key, value);
+                
+                // 값이 변경된 경우에만 이벤트 발생 (대시보드 레이아웃 실시간 반영 등)
+                const oldValue = oldCache ? JSON.stringify(oldCache.value) : null;
+                const newValue = JSON.stringify(value);
+                if (oldValue !== newValue) {
+                    this.emit(key, null, value);
+                }
             }
         }
         
@@ -680,7 +717,8 @@ class SyncService {
     /**
      * 이벤트 리스너 등록
      */
-    on(event, callback) {
+    on(rawEvent, callback) {
+        const event = this.resolveType(rawEvent);
         if (!this.listeners.has(event)) {
             this.listeners.set(event, []);
         }
@@ -733,7 +771,8 @@ class SyncService {
     /**
      * 이벤트 리스너 제거
      */
-    off(event, callback) {
+    off(rawEvent, callback) {
+        const event = this.resolveType(rawEvent);
         if (!this.listeners.has(event)) return;
         
         const callbacks = this.listeners.get(event);
@@ -746,7 +785,8 @@ class SyncService {
     /**
      * 이벤트 발생
      */
-    emit(event, widgetId, data) {
+    emit(rawEvent, widgetId, data) {
+        const event = this.resolveType(rawEvent);
         if (!this.listeners.has(event)) return;
         
         for (const callback of this.listeners.get(event)) {

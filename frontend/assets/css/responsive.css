@@ -2,6 +2,11 @@
   display: none !important;
 }
 
+/* PC에서만 숨김 (모바일에서만 표시) */
+.pc-hide {
+  display: none !important;
+}
+
 /* ─── [모바일 전용] 반응형 최적화 및 수직 레이아웃 ───────────────── */
 @media (max-width: 768px) {
   /* 루트 변수 조정 */
@@ -17,6 +22,11 @@
 
   .mobile-hide {
     display: none !important;
+  }
+
+  /* 모바일에서 pc-hide 해제 */
+  .pc-hide {
+    display: flex !important;
   }
 
   .mobile-only-btn {

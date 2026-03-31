@@ -81,6 +81,7 @@ router.post('/data', authenticateToken, async (req, res) => {
                 case DATA_TYPES.DDAY_TARGET:
                 case DATA_TYPES.FAB_POS:
                 case DATA_TYPES.TODO_COLOR:
+                case DATA_TYPES.DASHBOARD_LAYOUTS:
                     // 사용자 전역 설정으로 저장
                     const settingKey = type;
                     await client.query(

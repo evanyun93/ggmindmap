@@ -101,7 +101,8 @@ export function initRecipe(el, data) {
     };
 
     // 1. 초기 접기 상태 복원
-    const isCollapsed = localStorage.getItem(`recipe_collapsed_${widgetId}`) === 'true';
+    const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+    const isCollapsed = localStorage.getItem(`recipe_collapsed_${platform}_${widgetId}`) === 'true';
     if (isCollapsed) el.classList.add('collapsed');
 
     // 2. 헤더 클릭 시 접기/펼치기
@@ -124,7 +125,8 @@ export function initRecipe(el, data) {
 
             if (!isDragging && upEvent.target.closest('.recipe-header')) {
                 const collapsed = el.classList.toggle('collapsed');
-                localStorage.setItem(`recipe_collapsed_${widgetId}`, collapsed);
+                const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+                localStorage.setItem(`recipe_collapsed_${platform}_${widgetId}`, collapsed);
 
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());

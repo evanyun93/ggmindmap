@@ -12,6 +12,7 @@ import { initFeedback } from './feedback.js';
 import { initMilestone } from './milestone.js';
 import { initAdmin } from '../admin.js';
 import { syncService } from '../services/sync.js';
+import { initDashboardLayouts } from './dashboard-layout-manager.js';
 
 /**
  * 대시보드의 모든 동적 기능(메모, 피드백, 그리드 등)을 초기화합니다.
@@ -41,6 +42,16 @@ export async function initDashboardFeatures(user) {
 
     // 4. 할 일 알람 시스템 시작
     import('./todo-alarm.js').then(m => m.todoAlarmSystem.start());
+
+    // 5. 레이아웃 관리 초기화
+    let layouts = await syncService.getData('dashboard_layouts');
+
+    // null이거나 잘못된 구조면 기본값으로 초기화
+    if (!layouts || typeof layouts !== 'object' || (!Array.isArray(layouts.pc) && !Array.isArray(layouts.mobile))) {
+        layouts = { pc: [], mobile: [] };
+    }
+
+    initDashboardLayouts({ dashboard_layouts: layouts });
 
     console.log('[Init] 모든 피처 초기화 완료.');
 }
@@ -817,6 +828,7 @@ function initCollapseAll() {
 
         // 하나라도 펼쳐진 위젯이 있는지 확인
         const anyExpanded = Array.from(widgets).some(w => !w.classList.contains('collapsed'));
+        const plat = window.innerWidth <= 768 ? 'mobile' : 'pc';
 
         widgets.forEach(w => {
             const widgetId = w.dataset.id;
@@ -824,23 +836,28 @@ function initCollapseAll() {
                 // 모두 접기
                 w.classList.add('collapsed');
                 if (widgetId) {
-                    localStorage.setItem(`todo_collapsed_${widgetId}`, 'true');
-                    localStorage.setItem(`milestone_collapsed_${widgetId}`, 'true');
-                    localStorage.setItem(`recipe_collapsed_${widgetId}`, 'true');
+                    localStorage.setItem(`todo_collapsed_${plat}_${widgetId}`, 'true');
+                    localStorage.setItem(`milestone_collapsed_${plat}_${widgetId}`, 'true');
+                    localStorage.setItem(`recipe_collapsed_${plat}_${widgetId}`, 'true');
                 }
             } else {
                 // 모두 펴기
                 w.classList.remove('collapsed');
                 if (widgetId) {
-                    localStorage.setItem(`todo_collapsed_${widgetId}`, 'false');
-                    localStorage.setItem(`milestone_collapsed_${widgetId}`, 'false');
-                    localStorage.setItem(`recipe_collapsed_${widgetId}`, 'false');
+                    localStorage.setItem(`todo_collapsed_${plat}_${widgetId}`, 'false');
+                    localStorage.setItem(`milestone_collapsed_${plat}_${widgetId}`, 'false');
+                    localStorage.setItem(`recipe_collapsed_${plat}_${widgetId}`, 'false');
                 }
             }
         });
 
         // 버튼 텍스트 변경
         collapseAllBtn.textContent = anyExpanded ? '모두 펴기' : '모두 접기';
+        
+        // 변경된 접기 상태를 현재 활성 커스텀 레이아웃 데이터에 동기화
+        import('./dashboard-grid.js').then(m => {
+            if (m.saveLayout) m.saveLayout();
+        });
         
         // 햅틱 피드백
         if (window.navigator.vibrate) window.navigator.vibrate(5);

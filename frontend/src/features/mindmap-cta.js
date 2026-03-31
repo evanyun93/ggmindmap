@@ -22,7 +22,8 @@ export function initMindmapCTA(el) {
     const widgetId = el.dataset.id;
 
     // 1. 초기 UI 상태 설정
-    const isCollapsed = localStorage.getItem(`mindmap_collapsed_${widgetId}`) === 'true';
+    const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+    const isCollapsed = localStorage.getItem(`mindmap_collapsed_${platform}_${widgetId}`) === 'true';
     if (isCollapsed) el.classList.add('collapsed');
 
     // 2. 이벤트 바인딩
@@ -43,7 +44,8 @@ export function initMindmapCTA(el) {
             
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
-                localStorage.setItem(`mindmap_collapsed_${widgetId}`, collapsed);
+                const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+                localStorage.setItem(`mindmap_collapsed_${platform}_${widgetId}`, collapsed);
                 
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());

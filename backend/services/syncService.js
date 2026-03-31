@@ -22,6 +22,7 @@ const SYNC_TYPES = {
     FAB_POS: 'fab_pos',
     SPREADSHEET_DATA: 'spreadsheet_data',
     SPREADSHEET_HEADERS: 'spreadsheet_headers',
+    DASHBOARD_LAYOUTS: 'dashboard_layouts',
     DATA_UPDATE: 'data_update'
 };
 

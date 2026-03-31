@@ -59,7 +59,7 @@ function injectDialogStyles() {
             color: white; padding: 14px 28px; border-radius: 30px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
             font-weight: 500; font-size: 0.95rem; text-align: center;
-            animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, toastOut 0.4s 4s forwards;
+            animation: toastIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, toastOut 0.4s 2s forwards;
         }
         @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
         @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(20px) scale(0.9); } }
@@ -151,7 +151,7 @@ export function appToast(msg) {
     setTimeout(() => {
         if (toast.parentNode) toast.remove();
         if (container.childElementCount === 0 && container.parentNode) container.remove();
-    }, 4500);
+    }, 2500);
 }
 
 // 전역 객체에 속성 부여 (모듈 시스템 외부 파일에서도 접근 가능하도록 설정)

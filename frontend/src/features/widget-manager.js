@@ -68,6 +68,18 @@ export class WidgetManager {
           console.log(`[WidgetManager] 위젯 데이터 처리 중: ${w.widget_type}`);
           this.renderWidget(w);
         });
+
+        // 모바일 환경이면 렌더링 완료 직후 저장된 모바일 레이아웃(순서/접힘상태)을 즉시 적용
+        // (서버 DB 기반 PC 기본 좌표로 그려진 뒤, 모바일용 상태로 덮어씀)
+        if (window.innerWidth <= 768) {
+          import('./dashboard-layout-manager.js').then(m => {
+            const layout = m.getActiveMobileLayout?.();
+            if (layout && layout.widgets && layout.widgets.length > 0) {
+              // 초기 로드 시에는 토스트/햅틱 없이 조용히 적용
+              m.applyLayoutSilent?.(layout);
+            }
+          });
+        }
       } else {
         console.error('[WidgetManager] 위젯 API 응답 오류:', data.message);
       }
@@ -145,8 +157,10 @@ export class WidgetManager {
     if (!grid) return;
 
     const isMobile = window.innerWidth <= 768;
+    const platform = isMobile ? 'mobile' : 'pc';
     const widgetId = widgetData.id;
-    const isCollapsed = localStorage.getItem(`${widgetData.widget_type}_collapsed_${widgetId}`) === 'true';
+    // 플랫폼별 독립적인 접힘 상태 저장
+    const isCollapsed = localStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true';
 
     const widget = document.createElement('div');
     widget.className = `draggable-widget dashboard-card premium-glass-card widget-${widgetData.widget_type}`;
@@ -154,7 +168,6 @@ export class WidgetManager {
     if (isCollapsed) widget.classList.add('collapsed');
 
     // 기기 및 상태별 레이아웃 키 결정
-    const platform = isMobile ? 'mobile' : 'pc';
     const state = isCollapsed ? 'collapsed' : 'expanded';
     const layoutKey = `${platform}_${state}`;
 

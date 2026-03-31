@@ -240,7 +240,15 @@ svg .node-group.collapsed {
   transition: all 0.3s ease;
   box-shadow: inset 0 0 10px rgba(139, 92, 246, 0.05);
   overflow-y: auto;
-  white-space: pre-wrap; /* Preserve line breaks */
+  white-space: pre-wrap;
+  /* Preserve line breaks */
+}
+
+.widget-notepad .notepad-editor ul,
+.widget-notepad .notepad-editor ol {
+  padding-left: 15px;
+  /* 글머리 기호 앞 들여쓰기 (스페이스바 약 2칸) */
+  margin: 2px 0;
 }
 
 .widget-notepad .notepad-editor:focus {
