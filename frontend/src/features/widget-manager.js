@@ -4,6 +4,7 @@
  */
 
 import { apiFetch } from '../services/api.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 
 export class WidgetManager {
   constructor() {
@@ -42,8 +43,8 @@ export class WidgetManager {
       return;
     }
 
-    const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-      sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+    const token = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('mindmap_token') ||
+      safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
 
     try {
       const res = await apiFetch('/api/widgets');
@@ -151,7 +152,7 @@ export class WidgetManager {
     const platform = isMobile ? 'mobile' : 'pc';
     const widgetId = widgetData.id;
     // 플랫폼별 독립적인 접힘 상태 저장
-    const isCollapsed = localStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true';
+    const isCollapsed = safeLocalStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true';
 
     const widget = document.createElement('div');
     widget.className = `draggable-widget dashboard-card premium-glass-card widget-${widgetData.widget_type}`;

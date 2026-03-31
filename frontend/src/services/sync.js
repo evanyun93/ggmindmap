@@ -279,9 +279,12 @@ class SyncService {
      */
     async getData(rawType, widgetId = null) {
         const type = this.resolveType(rawType);
-        // 초기화가 진행 중이면 완료될 때까지 대기 (최신 데이터 확보 보장)
+        // 초기화가 진행 중이면 잠시 대기하지만, 로컬 데이터를 우선시하도록 타임아웃 적용 (최대 1초)
         if (!this.isInitialized && this.initPromise) {
-            await this.initPromise;
+            await Promise.race([
+                this.initPromise,
+                new Promise(resolve => setTimeout(resolve, 1000))
+            ]);
         }
 
         const cacheKey = widgetId ? `${type}_${widgetId}` : type;

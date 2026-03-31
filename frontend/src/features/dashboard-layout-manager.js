@@ -5,6 +5,7 @@
 
 import { apiFetch } from '../services/api.js';
 import { syncService } from '../services/sync.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 import { autoArrangeWidgets, saveLayout, adjustGridHeight } from './dashboard-grid.js';
 
 let currentLayouts = { pc: [], mobile: [] };
@@ -35,7 +36,7 @@ export function initDashboardLayouts(userSettings) {
         }
 
         // 로컬스토리지에서 최근 활성화 패널 인덱스 복구 (없으면 0번 인덱스)
-        const savedIndex = localStorage.getItem(`activeDashboardLayout_${platform}`);
+        const savedIndex = safeLocalStorage.getItem(`activeDashboardLayout_${platform}`);
         if (savedIndex !== null) {
             const idx = parseInt(savedIndex, 10);
             if (idx >= 0 && idx < currentLayouts[platform].length) {
@@ -69,7 +70,7 @@ export function initDashboardLayouts(userSettings) {
             // activeLayoutIndex가 범위를 벗어나지 않도록 안전장치
             if (activeLayoutIndex[platform] >= currentLayouts[platform].length) {
                 activeLayoutIndex[platform] = 0;
-                localStorage.setItem(`activeDashboardLayout_${platform}`, 0);
+                safeLocalStorage.setItem(`activeDashboardLayout_${platform}`, 0);
             }
         });
 
@@ -154,7 +155,7 @@ function renderLayoutChips() {
                 if (index >= freshLayouts.length) return;
 
                 activeLayoutIndex[platform] = index;
-                localStorage.setItem(`activeDashboardLayout_${platform}`, index);
+                safeLocalStorage.setItem(`activeDashboardLayout_${platform}`, index);
 
                 applyLayout(freshLayouts[index]);
                 renderLayoutChips(); // DOM 클래스 갱신
@@ -526,7 +527,7 @@ async function saveCurrentLayout(name, icon, platform, overwriteIndex = -1) {
                 });
             }
         }
-        localStorage.setItem(`activeDashboardLayout_${platform}`, activeLayoutIndex[platform]);
+        safeLocalStorage.setItem(`activeDashboardLayout_${platform}`, activeLayoutIndex[platform]);
 
 
         // 서버 저장 (syncService 캐시도 함께 갱신)

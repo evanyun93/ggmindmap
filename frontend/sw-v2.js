@@ -6,10 +6,10 @@
 // import { API_BASE } from './src/services/config.js';
 
 // WebView 호환성을 위해 ESM 대신 고전적 방식으로 API_BASE 정의
-const isLocal = self.location.hostname === 'localhost' || self.location.hostname === '127.0.0.1';
-const API_BASE = isLocal
-    ? self.location.origin
-    : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
+const isVercel = self.location.hostname === 'ggmindmap.vercel.app';
+const API_BASE = isVercel
+    ? 'https://unperturbable-fatherless-annamae.ngrok-free.dev'
+    : self.location.origin;
 
 const CACHE_NAME = 'ggmind-sw-v2';
 const DB_NAME = 'ggmind-alarms';
