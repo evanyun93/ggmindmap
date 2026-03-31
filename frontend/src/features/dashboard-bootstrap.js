@@ -19,6 +19,7 @@ import { initDashboardLayouts } from './dashboard-layout-manager.js';
  * @param {object} user
  */
 export async function initDashboardFeatures(user) {
+    console.log('[Init] 대시보드 피처 초기화 시작...');
 
     // 알림 권한 차단 여부 체크 및 경고 (비차단)
     if (window.checkNotificationPermissionAndWarn) {
@@ -58,6 +59,7 @@ export async function initDashboardFeatures(user) {
 
     initDashboardLayouts({ dashboard_layouts: layouts });
 
+    console.log('[Init] 모든 피처 초기화 완료.');
 }
 
 /**
@@ -142,7 +144,7 @@ function initUtilities() {
         refreshBtn.onclick = () => {
             if (refreshBtn.classList.contains('spinning')) return;
             
-
+            console.log('[Dashboard] 수동 새로고침 시작 (F5와 완벽히 동일한 동작)');
             refreshBtn.classList.add('spinning');
             
             // 애니메이션 피드백을 0.5초 보여준 뒤 페이지 전체(F5) 새로고침
@@ -495,38 +497,61 @@ function initUtilities() {
             // setTimeout을 사용하여 DOM이 완전히 준비된 후 이벤트 리스너 연결
             setTimeout(() => {
                 const checkBtn = document.getElementById('checkLoginIdBtn');
+                const resultDiv = document.getElementById('loginIdCheckResult');
                 const loginIdInput = document.getElementById('newLoginId');
 
-                if (!checkBtn || !loginIdInput) {
+                if (!checkBtn || !resultDiv || !loginIdInput) {
                     console.error('모달 요소를 찾을 수 없습니다.');
                     return;
                 }
 
+                console.log('[DEBUG] 중복 확인 버튼 이벤트 연결됨');
+
                 // 중복 확인 버튼 이벤트
                 checkBtn.addEventListener('click', async () => {
+                    console.log('[DEBUG] 중복 확인 버튼 클릭됨');
                     const newLoginId = loginIdInput.value.trim();
+
+                    // 방어 코드: resultDiv 요소 확인
                     const resultDiv = document.getElementById('loginIdCheckResult');
-                    if (!resultDiv) return;
+                    console.log('[DEBUG] resultDiv 요소 확인:', resultDiv);
+                    if (!resultDiv) {
+                        console.error('[DEBUG] loginIdCheckResult 요소를 찾을 수 없습니다!');
+                        return;
+                    }
+
+                    // 요소 확인을 위한 상세 디버그 로그
+                    console.log('[DEBUG] resultDiv.style.display (초기):', resultDiv.style.display);
+                    console.log('[DEBUG] resultDiv.parentElement:', resultDiv.parentElement);
 
                     if (!newLoginId || newLoginId.length < 4) {
                         resultDiv.textContent = '✗ 아이디는 4자 이상이어야 합니다.';
                         resultDiv.style.color = '#dc3545';
                         resultDiv.style.display = 'block';
                         isLoginIdChecked = false;
+                        console.log('[DEBUG] 4자 미만 입력 처리 완료');
                         return;
                     }
 
-                    try {
+                     try {
                          const token = localStorage.getItem('mindmap_token') || sessionStorage.getItem('mindmap_token');
-                         if (!token) {
+                         console.log('[DEBUG] 토큰 확인 시도: localStorage/sessionStorage에서 토큰 읽기');
+                         if (token) {
+                             console.log('[DEBUG] 토큰 값:', token.substring(0, 20) + '...');
+                         } else {
+                             console.log('[DEBUG] 토큰이 없습니다. 로그인이 필요합니다.');
                              window.appAlert('로그인이 필요합니다');
                              return;
                          }
+                         console.log('[DEBUG] API 호출 시작: /api/auth/check-login-id?login_id=', newLoginId);
                          const response = await apiFetch(`/api/auth/check-login-id?login_id=${encodeURIComponent(newLoginId)}`, {
                              method: 'GET',
                              headers: { 'Authorization': `Bearer ${token}` }
                          });
+                         console.log('[DEBUG] API 호출 완료 - 상태 코드:', response.status);
                          const result = await response.json();
+                         console.log('[DEBUG] 응답 데이터 전체:', result);
+                         console.log('[DEBUG] 중복 확인 결과 - available:', result.available);
 
                          if (result.available) {
                              resultDiv.textContent = '✓ 사용 가능한 ID입니다';
@@ -534,15 +559,23 @@ function initUtilities() {
                              resultDiv.style.fontWeight = 'bold';
                              resultDiv.style.display = 'block';
                              isLoginIdChecked = true;
+                             console.log('[DEBUG] 사용 가능한 ID - UI 업데이트 완료');
                          } else {
                              resultDiv.textContent = '✗ 이미 사용 중인 ID입니다';
                              resultDiv.style.color = '#dc3545';
                              resultDiv.style.fontWeight = 'bold';
                              resultDiv.style.display = 'block';
                              isLoginIdChecked = false;
+                             console.log('[DEBUG] 중복된 ID - UI 업데이트 완료');
                          }
+
+                         // 최종 상태 확인
+                         console.log('[DEBUG] resultDiv.textContent (최종):', resultDiv.textContent);
+                         console.log('[DEBUG] resultDiv.style.display (최종):', resultDiv.style.display);
+                         console.log('[DEBUG] resultDiv.style.color (최종):', resultDiv.style.color);
                      } catch (error) {
-                         console.error('ID 중복 확인 오류:', error);
+                         console.error('[DEBUG] API 호출 중 오류 발생:', error);
+                         console.error('[DEBUG] 오류 상세 정보:', error.message, error.stack);
                          resultDiv.textContent = '중복 확인 중 오류가 발생했습니다.';
                          resultDiv.style.color = '#dc3545';
                          resultDiv.style.display = 'block';

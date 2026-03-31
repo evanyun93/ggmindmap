@@ -27,6 +27,7 @@ export function initDashboardGrid() {
 
     // 중복 초기화 방지
     if (grid._isGridInitialized) {
+        console.log('[DashboardGrid] 이미 초기화된 그리드입니다. 중복 방지.');
         return;
     }
     grid._isGridInitialized = true;
@@ -902,7 +903,7 @@ export function setupResizable(widget, grid) {
 
         const onMove = (moveEvent) => {
             if (moveEvent.cancelable) moveEvent.preventDefault();
-            const currentEvent = (moveEvent.type === 'touchmove' || moveEvent.type === 'touchstart')
+            const currentEvent = (moveEvent.type === 'touchmove' || moveEvent.type === 'touchstart') 
                 ? moveEvent.touches[0] : moveEvent;
 
             // 대시보드 오토 스크롤 감지 (모바일 리사이즈 시 하단/상단 영역)
@@ -910,7 +911,7 @@ export function setupResizable(widget, grid) {
                 const viewH = window.innerHeight;
                 const threshold = viewH * 0.12;
                 const clientY = currentEvent.clientY;
-
+                
                 if (clientY > viewH - threshold) {
                     startAutoScroll('down');
                 } else if (clientY < threshold) {
@@ -924,7 +925,7 @@ export function setupResizable(widget, grid) {
             const currentHeight = initialHeight + (currentEvent.pageY - initialY);
             const minH = 120;
             const finalH = Math.max(minH, currentHeight);
-
+            
             // 모바일에서 강력한 스타일 적용 (min/max를 함께 설정하여 CSS 제약 우회)
             widget.style.height = `${finalH}px`;
             if (isMobile) {
@@ -947,7 +948,7 @@ export function setupResizable(widget, grid) {
             document.removeEventListener('touchend', onEnd);
             handle.classList.remove('active-resizing');
             widget.classList.remove('is-resizing'); // 피드백 종료
-
+            
             // 변경된 이 위젯만 저장 (효율적 업데이트)
             saveLayout(widget);
             adjustGridHeight();
@@ -970,7 +971,7 @@ export function setupResizable(widget, grid) {
     let longPressTimer = null;
 
     handle.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+        e.preventDefault(); 
         e.stopPropagation();
 
         const touch = e.touches[0];
@@ -980,10 +981,10 @@ export function setupResizable(widget, grid) {
         const startH = widget.offsetHeight;
 
         longPressTimer = setTimeout(() => {
-            if (window.navigator.vibrate) try { window.navigator.vibrate(60); } catch (e) { }
+            if (window.navigator.vibrate) try { window.navigator.vibrate(60); } catch(e) {}
             handle.classList.add('active-resizing');
             beginResize(startX, startY, startW, startH, true);
-        }, 400);
+        }, 400); 
 
         const cancelTimer = (mv) => {
             const t = mv.touches[0];
@@ -1068,7 +1069,7 @@ export function saveLayout(targetWidget = null) {
                         zIndex: currentLayout.z
                     })
                 });
-                // console.log(`[saveLayout] 위젯 ${id} (${layoutKey}) 저장 완료`);
+                console.log(`[saveLayout] 위젯 ${id} (${layoutKey}) 저장 완료`);
             }
         } catch (err) {
             console.error('[saveLayout] 저장 오류:', err);
@@ -1293,7 +1294,7 @@ export function autoArrangeWidgets() {
 
     if (widgets.length === 0) return;
 
-
+    console.log('[DashboardGrid] 위젯 자동 정렬 시작');
 
     const GAP = 20;
     let currentX = 20;

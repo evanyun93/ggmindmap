@@ -37,12 +37,12 @@ function openAlarmDB() {
 
 // ── Service Worker 라이프사이클 ────────────────────────────
 self.addEventListener('install', (event) => {
-
+    console.log('[SW] Installing...');
     self.skipWaiting(); // 즉시 활성화
 });
 
 self.addEventListener('activate', (event) => {
-
+    console.log('[SW] Activating...');
     event.waitUntil(self.clients.claim()); // 즉시 제어권 획득
 });
 
@@ -56,7 +56,8 @@ async function getAuthToken() {
             req.onsuccess = () => resolve(req.result?.value || null);
             req.onerror = () => resolve(null);
         });
-        if (!token) return token;
+        if (!token) console.warn('[SW] IndexedDB에서 인증 토큰을 찾지 못했습니다.');
+        else console.log('[SW] 인증 토큰 획득 성공 (IDB)');
         return token;
     } catch (e) {
         console.error('[SW] 토큰 읽기 중 DB 오류:', e);
@@ -206,7 +207,7 @@ self.addEventListener('message', (event) => {
             openAlarmDB().then(db => new Promise((resolve, reject) => {
                 const tx = db.transaction(TOKEN_STORE, 'readwrite');
                 tx.objectStore(TOKEN_STORE).put({ key: 'jwt', value: jwtValue });
-                tx.oncomplete = () => { resolve(); };
+                tx.oncomplete = () => { console.log('[SW] JWT 토큰 IDB 저장 완료'); resolve(); };
                 tx.onerror = () => reject(tx.error);
             }))
         );

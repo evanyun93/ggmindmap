@@ -27,7 +27,7 @@ try {
     // [중요] 앱이 열려있는 상태(Foreground)에서는 SW 대신 메인 스레드로 FCM 푸시가 가로채어집니다.
     // 여기서 직접 알림을 띄워주어야 앱 사용 중에도 알람이 보입니다.
     onMessage(messaging, (payload) => {
-        // Foreground FCM 수신
+        console.log('[TodoAlarm] 앱 화면 열림 상태에서 FCM 메시지 수신:', payload);
         if (Notification.permission === 'granted') {
             const data = payload.data || payload;
             const notifTitle = data.title || 'GGMIND-알리미';
@@ -114,6 +114,7 @@ function isAlarmSent(id) {
 async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     try {
+<<<<<<< HEAD
         // [WebView 호환성] 'type: module'은 많은 인앱 브라우저에서 지원되지 않아 제거합니다.
         const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/' });
         
@@ -136,6 +137,23 @@ async function registerServiceWorker() {
                 } catch (e) {
                     // console.warn('[TodoAlarm] Periodic Sync 등록 실패:', e);
                 }
+=======
+        const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/', type: 'module' });
+        await navigator.serviceWorker.ready;
+        swRegistration = reg;
+        console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
+        
+        // Periodic Background Sync 등록 (Chrome/Edge 전용)
+        if ('periodicSync' in reg) {
+            try {
+                const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+                if (status.state === 'granted') {
+                    await reg.periodicSync.register('ggmind-alarm-check', { minInterval: 60 * 1000 });
+                    console.log('[TodoAlarm] Periodic Background Sync 등록 완료');
+                }
+            } catch (e) {
+                console.warn('[TodoAlarm] Periodic Background Sync 등록 실패:', e);
+>>>>>>> parent of 421c0c0 (v2.0.0 코드 리팩토링)
             }
 
             // FCM 토큰 갱신 및 구독
@@ -146,7 +164,7 @@ async function registerServiceWorker() {
         
         return reg;
     } catch (err) {
-
+        console.warn('[TodoAlarm] Service Worker 등록 실패 (일반 Notification으로 폴백):', err);
         return null;
     }
 }
@@ -163,9 +181,11 @@ async function syncTokenToSW(reg) {
                      safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
     
     if (jwtToken) {
+        console.log(`[TodoAlarm] JWT 토큰 발견 (출처: ${tokenSource}, 길이: ${jwtToken.length}) → SW로 전송 시도`);
         sw.postMessage({ type: 'SAVE_TOKEN', token: jwtToken });
+        console.log('[TodoAlarm] JWT 토큰을 SW에 전달 요청완료');
     } else {
-
+        console.warn('[TodoAlarm] SW에 전달할 JWT 토큰이 없습니다. (현재 비로그인 상태로 보임)');
     }
 }
 
@@ -174,16 +194,19 @@ async function syncTokenToSW(reg) {
  */
 async function subscribeWebPush(reg) {
     if (!firebaseApp || !messaging) {
+        console.warn('[TodoAlarm] Firebase 초기화 정보가 없어 푸시를 활성화할 수 없습니다.');
         return;
     }
 
     try {
         if (!reg) {
+            console.warn('[TodoAlarm] Service Worker 등록 객체가 없습니다.');
             return;
         }
 
         // 알림 권한 확인
         if (Notification.permission === 'denied') {
+            console.warn('[TodoAlarm] 알림 권한이 거부되어 FCM을 활성화할 수 없습니다.');
             return;
         }
 
@@ -198,6 +221,7 @@ async function subscribeWebPush(reg) {
             const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
                           sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
             if (!token) {
+                console.log('[TodoAlarm] 로그인이 되어있지 않아 FCM 구독 정보를 서버에 저장하지 않습니다.');
                 return;
             }
 
@@ -205,12 +229,14 @@ async function subscribeWebPush(reg) {
                 method: 'POST',
                 body: JSON.stringify({ token: currentToken })
             });
-
+            console.log('[TodoAlarm] FCM 푸시 구독 서버 저장 완료 → 완전한 백그라운드 알람 활성화');
         } else {
-
+            console.warn('[TodoAlarm] FCM 토큰을 가져올 수 없습니다. 알림 권한을 요청해야 합니다.');
         }
     } catch (err) {
-        if (Notification.permission !== 'denied') {
+        if (Notification.permission === 'denied') {
+            console.warn('[TodoAlarm] FCM 구독 실패: 사용자가 알림 권한을 거부했습니다.');
+        } else {
             console.error('[TodoAlarm] FCM 구독 중 오류 발생:', err);
         }
     }
@@ -231,7 +257,7 @@ async function syncAlarmsToSW(pendingAlarms) {
         type: 'SYNC_ALARMS',
         alarms: pendingAlarms // [{id, alarmTime (ms), body}, ...]
     });
-
+    console.log(`[TodoAlarm] SW에 알람 ${pendingAlarms.length}개 동기화 완료`);
 }
 
 // ────────────────────────────────────────────────
@@ -262,6 +288,7 @@ async function sendNotification(todo, alarmDate) {
             body: notifBody, 
             tag: notifTag 
         });
+        console.warn(`[TodoAlarm] SW 알람 발송: ${todo.task}`);
         return;
     }
 
@@ -273,7 +300,7 @@ async function sendNotification(todo, alarmDate) {
             tag: notifTag,
             renotify: false
         });
-
+        console.warn(`[TodoAlarm] 일반 알람 발송: ${todo.task}`);
     }
 
     // 진동 (모바일)
@@ -292,7 +319,7 @@ class TodoAlarmSystem {
 
     /** 알람 시스템 시작 */
     async start() {
-
+        console.log('[TodoAlarm] 알람 시스템 시작');
         await this._requestPermission();
         await registerServiceWorker();
         await this._refreshAndSchedule();
@@ -304,7 +331,7 @@ class TodoAlarmSystem {
         // (체크 완료된 항목의 알람을 즉시 제거하기 위함)
         import('../services/sync.js').then(({ syncService, SYNC_DATA_TYPES }) => {
             syncService.addListener(SYNC_DATA_TYPES.TODO_DATA_UPDATE, () => {
-
+                console.log('[TodoAlarm] 실시간 데이터 변경 감지: 알람 스케줄 재구성');
                 this._refreshAndSchedule();
             });
         });
@@ -317,7 +344,7 @@ class TodoAlarmSystem {
         if (this._timers.has(id)) {
             clearTimeout(this._timers.get(id));
             this._timers.delete(id);
-
+            console.log(`[TodoAlarm] 로컬 알람 취소됨: ID ${id}`);
         }
         
         // 2. SW IndexedDB에서 제거 요청
@@ -371,7 +398,7 @@ class TodoAlarmSystem {
                 // 할 일이 완료되었거나 알람 시간이 없으면 기존 예약된 알람이 있을 경우 취소
                 if (!todo.alarm_time || todo.is_completed) {
                     if (this._timers.has(id)) {
-    
+                        console.log(`[TodoAlarm] 완료/삭제된 항목 알람 제거: ID ${id}`);
                         this.cancelAlarm(id);
                     }
                     continue;
@@ -393,7 +420,7 @@ class TodoAlarmSystem {
                         continue;
                     } else {
                         // 미래 알람인데 로컬에만 기록이 있다? -> Snooze 등으로 시각이 갱신된 경우이므로 기록 삭제
-
+                        console.log(`[TodoAlarm] 연장된 알람 감지: ID ${id} 기록 초기화 및 재예약`);
                         unmarkAlarmSent(id);
                     }
                 }
@@ -422,7 +449,7 @@ class TodoAlarmSystem {
                         }, delay);
 
                         this._timers.set(id, timerId);
-
+                        console.log(`[TodoAlarm] 알람 스케줄: "${todo.task}" → ${Math.round(delay / 1000)}초 후`);
                     }
 
                     // SW가 백그라운드에서도 울릴 수 있도록 알람 정보를 추가

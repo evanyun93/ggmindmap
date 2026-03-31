@@ -55,6 +55,7 @@ export async function initTodo(el, widgetData) {
     const widgetId = el.dataset.id;
 
     // 1. 초기 UI 상태 설정 (비동기) - SyncService에서 로컬 캐시 먼저 확인
+    // 블로킹을 피하기 위해 await를 제거하고 즉시 이벤트 바인딩으로 넘어갑니다.
     syncService.getData(SYNC_DATA_TYPES.TODO_COLLAPSED, widgetId).then(collapsedValue => {
         if (collapsedValue === 'true') el.classList.add('collapsed');
     });
@@ -171,6 +172,7 @@ export async function initTodo(el, widgetData) {
     // 다른 기기/탭에서 데이터가 변경되었을 때 즉시 전파 (범용 아키텍처 적용)
     // 알람 해제(dismiss) 등 백그라운드 액션 후의 UI 갱신을 위해 필수적입니다.
     syncService.watchWidget(widgetId, async () => {
+        console.log(`[Todo] 실시간 데이터 업데이트 감지 (Widget ${widgetId}) - 리스트 및 알람 갱신`);
         loadTodoList(el, true);
         
         // 알람 스케줄도 함께 갱신 (중요: 해제 처리된 알람의 타이머를 즉시 Kill 하기 위함)
@@ -227,6 +229,7 @@ function setupCrossDeviceSync(el) {
     // 브라우저 탭 활성화 (visbility 상태 변경) 시 즉시 갱신
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && document.body.contains(el)) {
+            console.log('[Todo Sync] 탭 활성화: 투두 목록 갱신');
             loadTodoList(el, true); // true: 백그라운드 무음 갱신 (애니메이션 끄기용, 선택사항)
         }
     });
@@ -234,6 +237,7 @@ function setupCrossDeviceSync(el) {
     // 창에 포커스가 돌아올 때 갱신 (다른 모니터/앱에서 돌아올 때)
     window.addEventListener('focus', () => {
         if (document.body.contains(el)) {
+            console.log('[Todo Sync] 창 포커스: 투두 목록 갱신');
             loadTodoList(el, true);
         }
     });
@@ -389,6 +393,7 @@ async function loadTodoList(el, isBackgroundSync = false) {
         // 낙관적 UI 진행 중(임시 노드가 존재)일 때는 백그라운드 갱신 무시
         // 그렇지 않으면 입력 직후 서버 통신 전에 화면이 깜빡이거나 임시 노드가 사라짐 
         if (isBackgroundSync && container && container.querySelector('.todo-item[style*="opacity: 0.5"]')) {
+            console.log('[Todo] 낙관적 UI 처리 중: 백그라운드 갱신 보류');
             return;
         }
 
@@ -401,6 +406,7 @@ async function loadTodoList(el, isBackgroundSync = false) {
         
         // 데이터를 가져오는 사이에 새 임시 노드가 생겼을 수 있으므로 다시 체크
         if (container && container.querySelector('.todo-item[style*="opacity: 0.5"]')) {
+            console.log('[Todo] 낙관적 UI 처리 중: 렌더링 보류');
             return;
         }
 
