@@ -549,6 +549,18 @@ async function saveCurrentLayout(name, icon, platform, overwriteIndex = -1) {
 }
 
 /**
+ * 현재 활성화된 PC 레이아웃 데이터를 반환합니다.
+ */
+export function getActivePCLayout() {
+    const idx = activeLayoutIndex['pc'];
+    const layouts = currentLayouts['pc'] || [];
+    if (idx >= 0 && idx < layouts.length) {
+        return layouts[idx];
+    }
+    return null;
+}
+
+/**
  * 현재 활성화된 모바일 레이아웃 데이터를 반환합니다.
  * widget-manager.js의 loadWidgets 완료 후 호출하여 새로 그려진 DOM에 즉시 적용합니다.
  */
@@ -567,6 +579,7 @@ export function getActiveMobileLayout() {
 export function applyLayoutSilent(layout) {
     if (!layout) return;
 
+    const isMobile = window.innerWidth <= 768;
     const grid = document.getElementById('widgetGrid');
     if (!grid) return;
 
@@ -574,17 +587,34 @@ export function applyLayoutSilent(layout) {
 
     const widgetElements = Array.from(grid.querySelectorAll('.draggable-widget'));
 
-    if (layout.widgets && layout.widgets.length > 0) {
-        const fragment = document.createDocumentFragment();
-        layout.widgets.forEach(wData => {
-            const el = widgetElements.find(e => e.dataset.id == wData.id);
-            if (el) {
-                if (wData.collapsed) el.classList.add('collapsed');
-                else el.classList.remove('collapsed');
-                fragment.appendChild(el);
-            }
-        });
-        grid.appendChild(fragment);
+    if (isMobile) {
+        // 모바일: 순서 및 접힘 상태 적용
+        if (layout.widgets && layout.widgets.length > 0) {
+            const fragment = document.createDocumentFragment();
+            layout.widgets.forEach(wData => {
+                const el = widgetElements.find(e => e.dataset.id == wData.id);
+                if (el) {
+                    if (wData.collapsed) el.classList.add('collapsed');
+                    else el.classList.remove('collapsed');
+                    fragment.appendChild(el);
+                }
+            });
+            grid.appendChild(fragment);
+        }
+    } else {
+        // PC: 좌표와 크기 적용
+        if (layout.widgets && layout.widgets.length > 0) {
+            layout.widgets.forEach(wData => {
+                const el = widgetElements.find(e => e.dataset.id == wData.id);
+                if (el) {
+                    el.style.left = `${wData.x}px`;
+                    el.style.top = `${wData.y}px`;
+                    el.style.width = `${wData.w}px`;
+                    el.style.height = `${wData.h}px`;
+                    el.style.zIndex = wData.z;
+                }
+            });
+        }
     }
 
     // 모두 접기 버튼 텍스트 동기화
@@ -594,6 +624,9 @@ export function applyLayoutSilent(layout) {
         const anyExpanded = widgets.some(w => !w.classList.contains('collapsed'));
         collapseAllBtn.textContent = anyExpanded ? '모두 접기' : '모두 펴기';
     }
+
+    // 그리드 높이 조정 및 상태 초기화
+    adjustGridHeight();
 
     setTimeout(() => {
         isApplyingLayout = false;
