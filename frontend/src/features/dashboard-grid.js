@@ -36,7 +36,8 @@ export function initDashboardGrid() {
     isMoveModeActive = false;
 
     // 글로벌 mousedown 캡처: 편집 모드 시 모든 외부 클릭 차단 및 경고
-    if (!grid._hasGlobalEditBlocker) {
+    // [WebView 대응] 모바일 기기에서는 mousedown 방지가 click 이벤트를 완전히 죽일 수 있으므로 PC에서만 동작하게 제한합니다.
+    if (!grid._hasGlobalEditBlocker && window.innerWidth > 768) {
         document.addEventListener('mousedown', (e) => {
             const editingElements = document.querySelectorAll('.is-editing, .is-editing-task');
             if (editingElements.length === 0) return;
@@ -1186,6 +1187,10 @@ function initScrollBounceEffect(container, grid) {
 
     container.addEventListener('touchmove', (e) => {
         if (!isAtTop && !isAtBottom) return;
+
+        // [WebView 대응] 데이터가 없거나 로딩 중일 때는 바운스 효과를 무시하여 전체 스크롤이 잠기는 현상을 방지합니다.
+        const widgetCount = grid.querySelectorAll('.draggable-widget:not(.widget-ghost)').length;
+        if (widgetCount === 0) return;
 
         const touchY = e.touches[0].clientY;
         const diff = touchStartY - touchY; // 위로 올리면 diff > 0 (하단 바운스), 아래로 내리면 diff < 0 (상단 바운스)

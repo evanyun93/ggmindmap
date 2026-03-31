@@ -79,13 +79,22 @@ export class WidgetManager {
             m.applyLayoutSilent?.(layout);
           }
         });
-      } else {
-        console.error('[WidgetManager] 위젯 API 응답 오류:', data.message);
+        } else {
+          console.error('[WidgetManager] 위젯 API 응답 오류:', data.message);
+          // 데이터가 없더라도 레이아웃 시스테은 동작하도록 기본 초기화 유도 가능
+          if (grid.querySelectorAll('.draggable-widget').length === 0) {
+              console.warn('[WidgetManager] 데이터 오류로 인해 기본 위젯 배치를 시도합니다.');
+              await this.createInitialWidgets();
+          }
+        }
+      } catch (err) {
+        console.error('[WidgetManager] 위젯 로드 도중 예외 발생:', err);
+        // [WebView 대응] API 자체가 차단되거나 실패할 경우, 무한 대기 방지를 위해 기본 위젯이라도 띄움
+        if (grid.querySelectorAll('.draggable-widget').length === 0) {
+            console.warn('[WidgetManager] API 실패로 인해 오프라인/기본 모드로 위젯을 생성합니다.');
+            await this.createInitialWidgets();
+        }
       }
-    } catch (err) {
-      console.error('[WidgetManager] 위젯 로드 도중 예외 발생:', err);
-      // window.appAlert('대시보드 위젯 로딩 중 오류가 발생했습니다. 콘솔을 확인해주세요.');
-    }
   }
 
   /**

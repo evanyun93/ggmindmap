@@ -114,7 +114,6 @@ function isAlarmSent(id) {
 async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     try {
-<<<<<<< HEAD
         // [WebView 호환성] 'type: module'은 많은 인앱 브라우저에서 지원되지 않아 제거합니다.
         const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/' });
         
@@ -133,27 +132,11 @@ async function registerServiceWorker() {
                     const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
                     if (status.state === 'granted') {
                         await readyReg.periodicSync.register('ggmind-alarm-check', { minInterval: 60 * 1000 });
+                        console.log('[TodoAlarm] Periodic Background Sync 등록 완료');
                     }
                 } catch (e) {
-                    // console.warn('[TodoAlarm] Periodic Sync 등록 실패:', e);
+                    console.warn('[TodoAlarm] Periodic Sync 등록 실패:', e);
                 }
-=======
-        const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/', type: 'module' });
-        await navigator.serviceWorker.ready;
-        swRegistration = reg;
-        console.log('[TodoAlarm] Service Worker 등록 및 활성화 완료');
-        
-        // Periodic Background Sync 등록 (Chrome/Edge 전용)
-        if ('periodicSync' in reg) {
-            try {
-                const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
-                if (status.state === 'granted') {
-                    await reg.periodicSync.register('ggmind-alarm-check', { minInterval: 60 * 1000 });
-                    console.log('[TodoAlarm] Periodic Background Sync 등록 완료');
-                }
-            } catch (e) {
-                console.warn('[TodoAlarm] Periodic Background Sync 등록 실패:', e);
->>>>>>> parent of 421c0c0 (v2.0.0 코드 리팩토링)
             }
 
             // FCM 토큰 갱신 및 구독

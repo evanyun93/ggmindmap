@@ -29,14 +29,22 @@ export function initWelcomeSection() {
     const dontShowCheckbox = document.getElementById('dontShowAgainCheckbox');
 
     if (closeBtn) {
-        closeBtn.onclick = () => {
+        const closeAction = () => {
             // 체크박스 상태 확인
             if (dontShowCheckbox && dontShowCheckbox.checked) {
                 safeLocalStorage.setItem('hide_welcome_forever', 'true');
             }
             welcomeSection.style.display = 'none';
+            if (window.navigator.vibrate) window.navigator.vibrate(10);
             showLogo();
         };
+
+        closeBtn.onclick = closeAction;
+        // [WebView 대응] 클릭이 지연되거나 무시되는 환경을 위해 터치 시작 시 즉시 반응
+        closeBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            closeAction();
+        }, { passive: false });
     }
 }
 
