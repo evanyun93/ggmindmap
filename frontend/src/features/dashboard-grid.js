@@ -3,13 +3,13 @@
  * @description 대시보드 위젯의 자유로운 절대 좌표 드래그, 리사이즈 및 계층(Z-Index) 관리를 담당합니다.
  */
 
-// 현재 대시보드 내에서 가장 높은 Z-Index를 추적
-let maxZIndex = 100;
-
 import { contextMenu } from '../utils/context-menu.js';
 import { initWelcomeSection, initTheme } from './dashboard-grid-ui.js';
 import { API_BASE, apiFetch } from '../services/api.js';
 import { safeLocalStorage } from '../utils/storage.js';
+
+// 현재 대시보드 내에서 가장 높은 Z-Index를 추적
+let maxZIndex = 100;
 
 // 모바일 이동 모드 상태
 let isMoveModeActive = false;
