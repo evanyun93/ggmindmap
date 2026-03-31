@@ -25,8 +25,14 @@ export async function initDashboardFeatures(user) {
         window.checkNotificationPermissionAndWarn();
     }
 
-    // 0. 동기화 서비스 초기화 및 데이터 로딩 대기
-    await syncService.init();
+    // 0. 동기화 서비스 초기화 (네트워크 지연 시 최대 4초 대기 후 강제 진행)
+    await Promise.race([
+        syncService.init(),
+        new Promise(resolve => setTimeout(() => {
+            console.warn('[Dashboard] 동기화 서비스 초기화 타임아웃(4s). 오프라인 모드로 전환합니다.');
+            resolve(null);
+        }, 4000))
+    ]);
 
     // 1. UI 및 시각 효과 레이어 초기화
     initVisualEffects();

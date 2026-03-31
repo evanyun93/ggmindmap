@@ -4,6 +4,7 @@
  */
 
 import { API_BASE } from './config.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 export { API_BASE };
 
 /**
@@ -12,8 +13,8 @@ export { API_BASE };
  * @param {object} options - fatch 옵션
  */
 export async function apiFetch(endpoint, options = {}) {
-    const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-        sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+    const token = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('mindmap_token') ||
+        safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
 
     const headers = {
         'Content-Type': 'application/json',
