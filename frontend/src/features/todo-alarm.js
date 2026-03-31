@@ -9,6 +9,7 @@
  */
 
 import { apiFetch } from '../services/api.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 
 // Firebase SDK (FCM 연동)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.9.0/firebase-app.js";
@@ -66,7 +67,7 @@ const SENT_ALARMS_KEY = 'ggmind_sent_alarms';
 /** 발송된 알람 ID 목록 로드 */
 function loadSentAlarms() {
     try {
-        const raw = localStorage.getItem(SENT_ALARMS_KEY);
+        const raw = safeLocalStorage.getItem(SENT_ALARMS_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw);
         if (Array.isArray(parsed)) return parsed;
@@ -87,7 +88,7 @@ function markAlarmSent(id) {
         if (ids.length > 500) {
             ids.splice(0, ids.length - 500);
         }
-        localStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(ids));
+        safeLocalStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(ids));
     }
 }
 
@@ -97,7 +98,7 @@ function unmarkAlarmSent(id) {
     const strId = String(id);
     if (ids.includes(strId)) {
         ids = ids.filter(i => i !== strId);
-        localStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(ids));
+        safeLocalStorage.setItem(SENT_ALARMS_KEY, JSON.stringify(ids));
     }
 }
 
@@ -113,6 +114,30 @@ function isAlarmSent(id) {
 async function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return null;
     try {
+<<<<<<< HEAD
+        // [WebView 호환성] 'type: module'은 많은 인앱 브라우저에서 지원되지 않아 제거합니다.
+        const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/' });
+        
+        // [비차단형 초기화] 서비스 워커가 준비될 때까지 무한 대기하지 않도록 2초 타임아웃을 적용합니다.
+        const swReadyPromise = navigator.serviceWorker.ready;
+        const timeoutPromise = new Promise(resolve => setTimeout(() => resolve(null), 2000));
+        
+        const readyReg = await Promise.race([swReadyPromise, timeoutPromise]);
+        
+        if (readyReg) {
+            swRegistration = readyReg;
+            
+            // Periodic Background Sync 등록 (Chrome/Edge 전용)
+            if ('periodicSync' in readyReg) {
+                try {
+                    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+                    if (status.state === 'granted') {
+                        await readyReg.periodicSync.register('ggmind-alarm-check', { minInterval: 60 * 1000 });
+                    }
+                } catch (e) {
+                    // console.warn('[TodoAlarm] Periodic Sync 등록 실패:', e);
+                }
+=======
         const reg = await navigator.serviceWorker.register('/sw-v2.js', { scope: '/', type: 'module' });
         await navigator.serviceWorker.ready;
         swRegistration = reg;
@@ -128,11 +153,14 @@ async function registerServiceWorker() {
                 }
             } catch (e) {
                 console.warn('[TodoAlarm] Periodic Background Sync 등록 실패:', e);
+>>>>>>> parent of 421c0c0 (v2.0.0 코드 리팩토링)
             }
-        }
 
-        // FCM 토큰 갱신 및 구독
-        await subscribeWebPush(reg);
+            // FCM 토큰 갱신 및 구독
+            await subscribeWebPush(readyReg);
+        } else {
+            console.warn('[TodoAlarm] 서비스 워커가 2초 내에 준비되지 않았습니다. 백그라운드 알림 없이 계속 진행합니다.');
+        }
         
         return reg;
     } catch (err) {
@@ -147,10 +175,10 @@ async function syncTokenToSW(reg) {
     const sw = reg.active || reg.waiting || reg.installing;
     if (!sw) return;
 
-    const tokenSource = localStorage.getItem('mindmap_token') ? 'localStorage' : 
-                        sessionStorage.getItem('mindmap_token') ? 'sessionStorage' : 'none';
-    const jwtToken = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-                     sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+    const tokenSource = safeLocalStorage.getItem('mindmap_token') ? 'localStorage' : 
+                        safeSessionStorage.getItem('mindmap_token') ? 'sessionStorage' : 'none';
+    const jwtToken = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('mindmap_token') ||
+                     safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
     
     if (jwtToken) {
         console.log(`[TodoAlarm] JWT 토큰 발견 (출처: ${tokenSource}, 길이: ${jwtToken.length}) → SW로 전송 시도`);
@@ -219,7 +247,10 @@ async function subscribeWebPush(reg) {
  * 탭이 닫혀도 SW가 알람을 기억하게 합니다.
  */
 async function syncAlarmsToSW(pendingAlarms) {
-    const sw = swRegistration?.active ?? (await navigator.serviceWorker?.ready.then(r => r.active).catch(() => null));
+    const sw = swRegistration?.active ?? (await Promise.race([
+        navigator.serviceWorker?.ready.then(r => r.active),
+        new Promise(resolve => setTimeout(() => resolve(null), 1000))
+    ]).catch(() => null));
     if (!sw || pendingAlarms.length === 0) return;
 
     sw.postMessage({
@@ -245,7 +276,10 @@ async function sendNotification(todo, alarmDate) {
     const notifTag = `todo-alarm-${todo.id}`;
 
     // Service Worker 경유 (PC/모바일 네이티브 알람 발송)
-    const sw = swRegistration?.active ?? (await navigator.serviceWorker?.ready.then(r => r.active).catch(() => null));
+    const sw = swRegistration?.active ?? (await Promise.race([
+        navigator.serviceWorker?.ready.then(r => r.active),
+        new Promise(resolve => setTimeout(() => resolve(null), 1000))
+    ]).catch(() => null));
     if (sw) {
         sw.postMessage({ 
             type: 'SHOW_ALARM', 

@@ -3,7 +3,13 @@
  * @description GGMIND 알림 서비스 워커 - 백그라운드에서도 알람이 울리도록 IndexedDB에 알람 일정을 저장합니다.
  * 주의: 이 파일은 반드시 /frontend/ 루트(또는 서빙 루트)에 위치해야 합니다.
  */
-import { API_BASE } from './src/services/config.js';
+// import { API_BASE } from './src/services/config.js';
+
+// WebView 호환성을 위해 ESM 대신 고전적 방식으로 API_BASE 정의
+const isVercel = self.location.hostname === 'ggmindmap.vercel.app';
+const API_BASE = isVercel
+    ? 'https://unperturbable-fatherless-annamae.ngrok-free.dev'
+    : self.location.origin;
 
 const CACHE_NAME = 'ggmind-sw-v2';
 const DB_NAME = 'ggmind-alarms';

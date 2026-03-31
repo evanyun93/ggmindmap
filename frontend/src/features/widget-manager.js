@@ -4,6 +4,7 @@
  */
 
 import { apiFetch } from '../services/api.js';
+import { safeLocalStorage, safeSessionStorage } from '../utils/storage.js';
 
 export class WidgetManager {
   constructor() {
@@ -42,8 +43,8 @@ export class WidgetManager {
       return;
     }
 
-    const token = localStorage.getItem('token') || localStorage.getItem('mindmap_token') ||
-      sessionStorage.getItem('token') || sessionStorage.getItem('mindmap_token');
+    const token = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('mindmap_token') ||
+      safeSessionStorage.getItem('token') || safeSessionStorage.getItem('mindmap_token');
 
     try {
       const res = await apiFetch('/api/widgets');
@@ -69,17 +70,15 @@ export class WidgetManager {
           this.renderWidget(w);
         });
 
-        // 모바일 환경이면 렌더링 완료 직후 저장된 모바일 레이아웃(순서/접힘상태)을 즉시 적용
-        // (서버 DB 기반 PC 기본 좌표로 그려진 뒤, 모바일용 상태로 덮어씀)
-        if (window.innerWidth <= 768) {
-          import('./dashboard-layout-manager.js').then(m => {
-            const layout = m.getActiveMobileLayout?.();
-            if (layout && layout.widgets && layout.widgets.length > 0) {
-              // 초기 로드 시에는 토스트/햅틱 없이 조용히 적용
-              m.applyLayoutSilent?.(layout);
-            }
-          });
-        }
+        // 렌더링 완료 직후 저장된 레이아웃(PC: 좌표/크기, 모바일: 순서/접힘상태)을 즉시 적용
+        const isMobile = window.innerWidth <= 768;
+        import('./dashboard-layout-manager.js').then(m => {
+          const layout = isMobile ? m.getActiveMobileLayout?.() : m.getActivePCLayout?.();
+          if (layout && layout.widgets && layout.widgets.length > 0) {
+            // 초기 로드 시에는 토스트/햅틱 없이 조용히 적용
+            m.applyLayoutSilent?.(layout);
+          }
+        });
       } else {
         console.error('[WidgetManager] 위젯 API 응답 오류:', data.message);
       }
@@ -160,7 +159,7 @@ export class WidgetManager {
     const platform = isMobile ? 'mobile' : 'pc';
     const widgetId = widgetData.id;
     // 플랫폼별 독립적인 접힘 상태 저장
-    const isCollapsed = localStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true';
+    const isCollapsed = safeLocalStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true';
 
     const widget = document.createElement('div');
     widget.className = `draggable-widget dashboard-card premium-glass-card widget-${widgetData.widget_type}`;

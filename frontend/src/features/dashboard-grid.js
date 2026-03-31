@@ -9,6 +9,7 @@ let maxZIndex = 100;
 import { contextMenu } from '../utils/context-menu.js';
 import { initWelcomeSection, initTheme } from './dashboard-grid-ui.js';
 import { API_BASE, apiFetch } from '../services/api.js';
+import { safeLocalStorage } from '../utils/storage.js';
 
 // 모바일 이동 모드 상태
 let isMoveModeActive = false;
@@ -215,7 +216,7 @@ export function initDashboardGrid() {
                             await apiFetch('/api/widgets/all', {
                                 method: 'DELETE'
                             });
-                            localStorage.removeItem('dashboard_layout_free_v1');
+                            safeLocalStorage.removeItem('dashboard_layout_free_v1');
                             location.reload();
                         } catch (err) {
                             console.error('초기화 실패:', err);
