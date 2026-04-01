@@ -1,4 +1,5 @@
 import { apiFetch } from '../services/api.js';
+import { syncService } from '../services/sync.js';
 
 // ───────── API Mock Data (분석용은 아직 백엔드가 없으므로 유지) ─────────
 // MOCK_DB는 제거되었습니다. 이제 실제 API에서 검색 결과를 가져옵니다.
@@ -95,7 +96,49 @@ class SupplementWidget {
     // 타임아웃
     this.debounceTimer = null;
 
+    this.initCollapse(el);
     this.render();
+  }
+
+  // 💡 [V6 추가] 접기/펼치기 기능 및 초기 상태 로드
+  initCollapse(el) {
+    const header = el.querySelector('.supplement-header');
+    if (!header) return;
+
+    const widgetId = el.dataset.id;
+
+    // 초기 상태 로드 (기기별 독립 저장 V6)
+    syncService.getData('SUPPLEMENT_COLLAPSED', widgetId).then(val => {
+      if (val === true || val === 'true') {
+        el.classList.add('collapsed');
+      }
+    });
+
+    // 헤더 클릭 시 접기 토글
+    header.addEventListener('mousedown', (e) => {
+      // 버튼 클릭 시에는 무시
+      if (e.target.closest('button, input, .supplement-widget-title')) return;
+
+      let isDragging = false;
+      const startY = e.clientY;
+      const onMove = (m) => { if (Math.abs(m.clientY - startY) > 5) isDragging = true; };
+      const onUp = () => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        if (!isDragging) {
+          const collapsed = el.classList.toggle('collapsed');
+          // 기기별 상태 자동 분리 저장
+          syncService.setData('SUPPLEMENT_COLLAPSED', widgetId, collapsed);
+
+          // 레이아웃 동기화 트리거
+          import('./dashboard-grid.js').then(m => {
+            if (m.saveLayout) m.saveLayout();
+          });
+        }
+      };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
   }
 
   // 전체 프레임 렌더링

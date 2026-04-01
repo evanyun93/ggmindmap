@@ -174,7 +174,7 @@ export async function initTodo(el, widgetData) {
     syncService.watchWidget(widgetId, async () => {
         console.log(`[Todo] 실시간 데이터 업데이트 감지 (Widget ${widgetId}) - 리스트 및 알람 갱신`);
         loadTodoList(el, true);
-        
+
         // 알람 스케줄도 함께 갱신 (중요: 해제 처리된 알람의 타이머를 즉시 Kill 하기 위함)
         const { todoAlarmSystem } = await import('./todo-alarm.js');
         todoAlarmSystem._refreshAndSchedule();
@@ -196,7 +196,7 @@ export async function initTodo(el, widgetData) {
  */
 function setupDailyReset(el) {
     let lastDate = new Date().toDateString();
-    
+
     // 1분마다 날짜 변경 확인
     const interval = setInterval(() => {
         if (!document.body.contains(el)) {
@@ -229,7 +229,7 @@ function setupCrossDeviceSync(el) {
     // 브라우저 탭 활성화 (visbility 상태 변경) 시 즉시 갱신
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible' && document.body.contains(el)) {
-            console.log('[Todo Sync] 탭 활성화: 투두 목록 갱신');
+            // console.log('[Todo Sync] 탭 활성화: 투두 목록 갱신');
             loadTodoList(el, true); // true: 백그라운드 무음 갱신 (애니메이션 끄기용, 선택사항)
         }
     });
@@ -237,7 +237,7 @@ function setupCrossDeviceSync(el) {
     // 창에 포커스가 돌아올 때 갱신 (다른 모니터/앱에서 돌아올 때)
     window.addEventListener('focus', () => {
         if (document.body.contains(el)) {
-            console.log('[Todo Sync] 창 포커스: 투두 목록 갱신');
+            // console.log('[Todo Sync] 창 포커스: 투두 목록 갱신');
             loadTodoList(el, true);
         }
     });
@@ -305,7 +305,7 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
             cancelBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
             cancelBtn.title = "취소";
             cancelBtn.style.cssText = "background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px; position:relative; z-index:9999; pointer-events:auto;";
-            
+
             // 모바일 터치 및 블러 충돌 방지 차원에서 mousedown 선점
             cancelBtn.onmousedown = (ev) => {
                 ev.preventDefault();
@@ -314,7 +314,7 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
                 exitEditMode(current);
             };
             cancelBtn.ontouchstart = cancelBtn.onmousedown; // 터치 환경 즉각 대응
-            
+
             editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
 
             titleEl.replaceWith(input);
@@ -334,7 +334,7 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
             if (input) {
                 const newTitle = input.value.trim() || '나의 To-Do';
                 await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
-                
+
                 // 위젯 자체 설정(settings.title)에도 저장하여 다음 로드 시 즉시 반영되도록 함
                 try {
                     // 1. 위젯 전용 title 컬럼 업데이트 (최적화된 방식)
@@ -342,7 +342,7 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
                         method: 'PATCH',
                         body: JSON.stringify({ title: newTitle })
                     });
-                    
+
                     // 2. 실시간 동기화를 위한 브로드캐스트 (백엔드에서는 더 이상 tba_widget_settings에 중복 저장하지 않음)
                     await syncService.setData(SYNC_DATA_TYPES.TODO_TITLE, widgetId, newTitle);
 
@@ -389,7 +389,7 @@ async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
 async function loadTodoList(el, isBackgroundSync = false) {
     try {
         const container = el.querySelector('.todo-list-container');
-        
+
         // 낙관적 UI 진행 중(임시 노드가 존재)일 때는 백그라운드 갱신 무시
         // 그렇지 않으면 입력 직후 서버 통신 전에 화면이 깜빡이거나 임시 노드가 사라짐 
         if (isBackgroundSync && container && container.querySelector('.todo-item[style*="opacity: 0.5"]')) {
@@ -403,7 +403,7 @@ async function loadTodoList(el, isBackgroundSync = false) {
 
         const res = await apiFetch(`/api/todos${query}`);
         const result = await res.json();
-        
+
         // 데이터를 가져오는 사이에 새 임시 노드가 생겼을 수 있으므로 다시 체크
         if (container && container.querySelector('.todo-item[style*="opacity: 0.5"]')) {
             console.log('[Todo] 낙관적 UI 처리 중: 렌더링 보류');
@@ -463,7 +463,7 @@ async function addTodo(el) {
             })
         });
         const result = await res.json();
-        
+
         if (result.success) {
             // 서버 응답이 오면 리스트 전체를 갱신하지 않고, 임시 노드만 즉시 실제 노드로 확정 (물리적 지연 시간 체감 0)
             const newId = result.id;
@@ -471,19 +471,19 @@ async function addTodo(el) {
             if (tempEl) {
                 tempEl.dataset.id = newId;
                 tempEl.style.opacity = '1';
-                
+
                 const checkInput = tempEl.querySelector('.todo-check');
                 if (checkInput) checkInput.dataset.id = newId;
-                
+
                 const editBtn = tempEl.querySelector('.todo-edit-btn');
                 if (editBtn) editBtn.dataset.id = newId;
-                
+
                 const delBtn = tempEl.querySelector('.todo-del-btn');
                 if (delBtn) delBtn.dataset.id = newId;
 
                 // 새 이벤트 리스너 바인딩
                 bindTodoEventsToElement(el, tempEl, newId, color);
-                
+
                 // 4. 실시간 동기화 전파 (다른 기기/탭)
                 syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
             } else {
@@ -554,7 +554,7 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 // 실시간 동기화 전파
                 const widgetId = widgetEl.dataset.id;
                 syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
-            } catch (err) {}
+            } catch (err) { }
         });
     }
 
@@ -588,7 +588,7 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             cancelBtn.title = "취소";
             cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
             cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1); position:relative; z-index:9999; pointer-events:auto;`;
-            
+
             cancelBtn.onmousedown = (ev) => {
                 ev.preventDefault();
                 ev.stopPropagation();
@@ -620,13 +620,13 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 textEl.textContent = newTask;
                 textEl.classList.remove('hidden');
                 inputEl.classList.add('hidden');
-                
+
                 try {
                     await apiFetch(`/api/todos/${id}`, {
                         method: 'PATCH',
                         body: JSON.stringify({ task: newTask })
                     });
-                    
+
                     const { alarmTime: newAlarmTime } = parseTimeFromTask(newTask);
                     if (newAlarmTime && newAlarmTime !== textEl._lastAlarm) {
                         textEl._lastAlarm = newAlarmTime;
@@ -675,7 +675,7 @@ function parseTimeFromTask(taskContent) {
             const year = parseInt(getV('year'), 10);
             const month = parseInt(getV('month'), 10) - 1; // 0-indexed
             const day = parseInt(getV('day'), 10);
-            
+
             let currentHour = parseInt(getV('hour'), 10);
             if (currentHour === 24) currentHour = 0;
             const currentMinute = parseInt(getV('minute'), 10);
@@ -783,7 +783,7 @@ function renderTodos(el, todos) {
     if (noDataMsg) noDataMsg.remove();
 
     const sortedTodos = [...todos].sort((a, b) => b.id - a.id);
-    
+
     // 현재 DOM에 있는 아이템들을 Map으로 캐싱
     const existingItems = new Map();
     container.querySelectorAll('.todo-item').forEach(itemEl => {
@@ -799,7 +799,7 @@ function renderTodos(el, todos) {
         const color = todo.color || DEFAULT_CHECKBOX_COLOR;
         const checked = todo.is_completed;
         const newHtml = generateTodoHtml(todo).trim();
-        
+
         // 템플릿 노드 생성 헬퍼
         const createNode = (htmlStr) => {
             const div = document.createElement('div');
@@ -815,10 +815,10 @@ function renderTodos(el, todos) {
 
             // 내용이 다르다면 교체 (낙관적 UI 렌더링 중인 노드는 건드리지 않음)
             if (itemEl.style.opacity !== '0.5') {
-                const needsUpdate = (chk && chk.checked !== checked) || 
-                                    (textEl && textEl.textContent !== todo.task) || 
-                                    (chk && chk.dataset.color !== color);
-                                    
+                const needsUpdate = (chk && chk.checked !== checked) ||
+                    (textEl && textEl.textContent !== todo.task) ||
+                    (chk && chk.dataset.color !== color);
+
                 if (needsUpdate && !itemEl.classList.contains('is-editing-task')) {
                     const newNode = createNode(newHtml);
                     itemEl.replaceWith(newNode);

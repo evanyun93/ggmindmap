@@ -37,12 +37,14 @@
 .widget-milestone.collapsed,
 .widget-todo.collapsed,
 .widget-recipe.collapsed,
+.widget-supplement.collapsed,
 .widget-mindmap.collapsed {
   max-height: 64px !important;
   /* 헤더 높이와 일치 */
   min-height: 0 !important;
   height: auto !important;
   overflow: hidden !important;
+  padding-top: 0 !important;
   padding-bottom: 0 !important;
   transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s;
 }
@@ -52,6 +54,7 @@
 .widget-milestone.collapsed .milestone-collapsible-wrapper,
 .widget-todo.collapsed .todo-collapsible-wrapper,
 .widget-recipe.collapsed .recipe-content-wrapper,
+.widget-supplement.collapsed .supplement-content-wrapper,
 .widget-mindmap.collapsed .cta-content-wrapper {
   max-height: 0 !important;
   opacity: 0 !important;
