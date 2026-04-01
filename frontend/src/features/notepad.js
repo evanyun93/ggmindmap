@@ -228,10 +228,45 @@ export async function initNotepad(el, widgetData) {
                 document.execCommand(command, false, null);
             }
 
+            updateToolbarActiveState();
             editor.focus();
             triggerSave();
         });
     }
+
+    // 💡 [V6 추가] 툴바 버튼 활성화 상태 업데이트 로직
+    const updateToolbarActiveState = () => {
+        if (!toolbar) return;
+        const btns = toolbar.querySelectorAll('.toolbar-btn');
+        btns.forEach(btn => {
+            const command = btn.dataset.command;
+            const value = btn.dataset.value;
+            let isActive = false;
+
+            try {
+                if (command === 'fontSize') {
+                    //fontSize는 문자열(1~7)을 반환하므로 값과 비교
+                    isActive = document.queryCommandValue('fontSize') === value;
+                } else if (command && !['insertCheckbox', 'insertUnorderedList'].includes(command)) {
+                    isActive = document.queryCommandState(command);
+                }
+            } catch (e) {
+                isActive = false;
+            }
+
+            if (isActive) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    };
+
+    // 편집기 이동/입력 시 상태 업데이트
+    editor.addEventListener('keyup', updateToolbarActiveState);
+    editor.addEventListener('mouseup', updateToolbarActiveState);
+    // 초기 로딩 시 한 번 호출
+    setTimeout(updateToolbarActiveState, 500);
 
     // 간단한 HTML 필터링 함수 (XSS 방지용)
     const sanitizeHTML = (html) => {

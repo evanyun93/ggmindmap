@@ -447,16 +447,28 @@ export class WidgetManager {
         </div>
         <div class="notepad-content-wrapper">
           <div class="notepad-toolbar">
-            <button class="toolbar-btn" data-command="bold" title="굵게 (Ctrl+B)"><b>B</b></button>
-            <button class="toolbar-btn" data-command="underline" title="밑줄 (Ctrl+U)"><u>U</u></button>
-            <button class="toolbar-btn" data-command="strikeThrough" title="취소선"><s>S</s></button>
+            <button class="toolbar-btn" data-command="bold" title="굵게 (Ctrl+B)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"></path></svg>
+            </button>
+            <button class="toolbar-btn" data-command="underline" title="밑줄 (Ctrl+U)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v7a6 6 0 0 0 6 6 6 6 0 0 0 6-6V3"></path><line x1="4" y1="21" x2="20" y2="21"></line></svg>
+            </button>
+            <button class="toolbar-btn" data-command="strikeThrough" title="취소선">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4H9a3 3 0 0 0-2.83 4"></path><path d="M14 12a4 4 0 0 1 0 8H6"></path><line x1="4" y1="12" x2="20" y2="12"></line></svg>
+            </button>
             <span class="toolbar-separator"></span>
-            <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="3" title="보통 글씨">A</button>
-            <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="5" title="큰 글씨" style="font-size: 1.1em;">A</button>
-            <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="6" title="매우 큰 글씨" style="font-size: 1.2em;">A</button>
+            <div class="font-size-group">
+              <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="3" title="보통 크기" style="font-size: 0.85rem; padding: 0 10px;">A</button>
+              <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="5" title="크게" style="font-size: 1.05rem; padding: 0 10px;">A</button>
+              <button class="toolbar-btn font-size-btn" data-command="fontSize" data-value="6" title="매우 크게" style="font-size: 1.25rem; padding: 0 10px;">A</button>
+            </div>
             <span class="toolbar-separator"></span>
-            <button class="toolbar-btn" data-command="insertUnorderedList" title="글머리 기호">•</button>
-            <button class="toolbar-btn" data-command="insertCheckbox" title="체크박스 삽입 ([ ])">☑</button>
+            <button class="toolbar-btn" data-command="insertUnorderedList" title="글머리 기호">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+            </button>
+            <button class="toolbar-btn" data-command="insertCheckbox" title="체크박스 삽입 ([ ])">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 11 12 14 22 4"></polyline></svg>
+            </button>
           </div>
           <div class="notepad-editor" contenteditable="true" placeholder="자유롭게 아이디어를 적어보세요...">${data.settings?.content || ''}</div>
           <div class="notepad-status-bar">
