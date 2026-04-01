@@ -156,11 +156,26 @@ export function showFatalError(msg) {
         padding: 20px; font-family: sans-serif;
     `;
 
+    const ua = navigator.userAgent || "";
+    const isWebView = /KAKAOTALK|FB_IAB|FBAN|FBAV|Instagram|Line|NAVER|Daum/i.test(ua) || (/(iPhone|iPad|iPod)/i.test(ua) && !/Safari/i.test(ua));
+
     overlay.innerHTML = `
-        <h2 style="font-size: 24px; margin-bottom: 10px;">⚠️ 치명적 오류 발생</h2>
-        <p style="margin-bottom: 20px; opacity: 0.8; text-align: center;">어플리케이션이 예기치 않게 중단되었습니다.<br>아래 내용을 캡쳐하여 문의해주세요.</p>
+        <h2 style="font-size: 24px; margin-bottom: 10px; text-align: center;">⚠️ 치명적 오류 발생</h2>
+        <p style="margin-bottom: 20px; opacity: 0.8; text-align: center; line-height: 1.5;">
+            ${isWebView 
+                ? '현재 환경(인앱 브라우저)에서 앱이 불안정할 수 있습니다.<br><b>전용 앱 설치</b> 또는 <b>외부 브라우저</b> 이용을 강력 권장합니다.' 
+                : '어플리케이션이 예기치 않게 중단되었습니다.<br>아래 내용을 캡쳐하여 문의해주세요.'}
+        </p>
         <div id="fatal-error-msg" style="width: 100%; max-width: 500px; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all;">${msg}</div>
-        <button onclick="window.location.reload()" style="margin-top: 30px; padding: 12px 24px; background: white; color: #7f1d1d; border: none; border-radius: 8px; font-weight: bold; cursor: pointer;">페이지 새로고침</button>
+        <div style="display:flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; justify-content: center;">
+            <button onclick="window.location.reload()" style="padding: 12px 24px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 8px; font-weight: bold; cursor: pointer;">새로고침</button>
+            ${isWebView ? `
+                <button onclick="window.location.href='https://ggmindmap.vercel.app/install-guide'" 
+                        style="padding: 12px 28px; background: white; color: #7f1d1d; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+                    앱 설치 가이드 및 브라우저 탈출
+                </button>
+            ` : ''}
+        </div>
     `;
 
     document.body.appendChild(overlay);
