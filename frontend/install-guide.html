@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>앱 설치 및 브라우저 탈출 가이드 | MindMap</title>
+  <style>
+    :root {
+      --primary: #8b5cf6;
+      --secondary: #6d28d9;
+      --bg: #0f172a;
+      --surface: rgba(30, 41, 59, 0.7);
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --border: rgba(255, 255, 255, 0.1);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(circle at 20% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+        radial-gradient(circle at 80% 80%, rgba(6, 182, 212, 0.1) 0%, transparent 40%);
+      color: var(--text);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      line-height: 1.6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 500px;
+      animation: fadeIn 0.6s ease-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-radius: 16px;
+      margin: 0 auto 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(139, 92, 246, 0.3);
+    }
+
+    h1 { font-size: 24px; font-weight: 700; margin-bottom: 10px; letter-spacing: -0.5px; }
+    .subtitle { color: var(--text-muted); font-size: 15px; }
+
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 30px;
+      margin-bottom: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .step-badge {
+      background: var(--primary);
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    h2 { font-size: 18px; font-weight: 600; }
+
+    .guide-content { background: rgba(0,0,0,0.2); border-radius: 16px; padding: 20px; margin-bottom: 15px; }
+    .guide-item { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 12px; }
+    .guide-item:last-child { margin-bottom: 0; }
+    .guide-item span { font-size: 14px; }
+    .icon-small { font-size: 18px; flex-shrink: 0; }
+
+    .btn-exit {
+      width: 100%;
+      padding: 16px;
+      background: white;
+      color: var(--bg);
+      border: none;
+      border-radius: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+      margin-top: 20px;
+      text-decoration: none;
+    }
+
+    .btn-exit:hover { transform: scale(1.02); box-shadow: 0 10px 20px rgba(255,255,255,0.1); }
+
+    .platform-tabs { display: flex; gap: 8px; margin-bottom: 20px; background: rgba(0,0,0,0.3); padding: 4px; border-radius: 12px; }
+    .tab { flex: 1; text-align: center; padding: 10px; border-radius: 8px; font-size: 14px; cursor: pointer; color: var(--text-muted); transition: all 0.2s; }
+    .tab.active { background: var(--primary); color: white; font-weight: 600; }
+
+    .footer { text-align: center; margin-top: auto; color: var(--text-muted); font-size: 13px; }
+
+    #ios-guide, #android-guide { display: none; }
+    .visible { display: block !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v8M12 14v8M2 12h8M14 12h8M4.93 4.93l5.66 5.66M13.41 13.41l5.66 5.66M4.93 19.07l5.66-5.66M13.41 10.59l5.66-5.66"/></svg>
+      </div>
+      <h1>브라우저 탈출 가이드</h1>
+      <p class="subtitle">인앱 브라우저는 앱 이용이 불안정할 수 있습니다.</p>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <div class="step-badge">추천</div>
+        <h2>브라우저 밖으로 나가기</h2>
+      </div>
+      <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
+        우측 상단 <b>더보기(⋮ 또는 •••)</b> 메뉴를 통해 외부 브라우저(Safari, Chrome 등)에서 열어주세요.
+      </p>
+      <a href="https://ggmindmap.vercel.app" class="btn-exit">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
+        외부 브라우저로 이동
+      </a>
+    </div>
+
+    <div class="card">
+      <div class="step-header">
+        <div class="step-badge">고급</div>
+        <h2>홈 화면에 앱으로 추가</h2>
+      </div>
+      
+      <div class="platform-tabs">
+        <div class="tab active" onclick="showGuide('ios', this)">iOS (사파리)</div>
+        <div class="tab" onclick="showGuide('android', this)">Android (크롬)</div>
+      </div>
+
+      <div id="ios-guide" class="guide-content visible">
+        <div class="guide-item">
+          <div class="icon-small">📤</div>
+          <span>Safari 브라우저 하단의 <b>공유</b> 버튼 선택</span>
+        </div>
+        <div class="guide-item">
+          <div class="icon-small">➕</div>
+          <span>목록에서 <b>[홈 화면에 추가]</b> 선택</span>
+        </div>
+        <div class="guide-item">
+          <div class="icon-small">✨</div>
+          <span>홈 화면의 앱 아이콘을 통해 재접속</span>
+        </div>
+      </div>
+
+      <div id="android-guide" class="guide-content">
+        <div class="guide-item">
+          <div class="icon-small">⋮</div>
+          <span>브라우저 우측 상단 <b>메뉴</b> 선택</span>
+        </div>
+        <div class="guide-item">
+          <div class="icon-small">📥</div>
+          <span><b>[앱 설치]</b> 또는 <b>[홈 화면에 추가]</b> 선택</span>
+        </div>
+        <div class="guide-item">
+          <div class="icon-small">🚀</div>
+          <span>설치된 전용 앱으로 쾌적하게 이용</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      &copy; 2026 MindMap. 생각을 시각화하는 가장 빠른 방법.
+    </div>
+  </div>
+
+  <script>
+    function showGuide(platform, el) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      el.classList.add('active');
+      
+      document.getElementById('ios-guide').classList.remove('visible');
+      document.getElementById('android-guide').classList.remove('visible');
+      document.getElementById(platform + '-guide').classList.add('visible');
+    }
+
+    // 인앱 브라우저 감지 시 자동 안내 문구 변경 가능
+    const ua = navigator.userAgent || "";
+    if (/KAKAOTALK/i.test(ua)) {
+      document.querySelector('.subtitle').textContent = "카카오톡은 외부 브라우저 접속을 권장합니다.";
+    }
+  </script>
+</body>
+</html>
