@@ -170,7 +170,7 @@ export function showFatalError(msg) {
         <div style="display:flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; justify-content: center;">
             <button onclick="window.location.reload()" style="padding: 12px 24px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 8px; font-weight: bold; cursor: pointer;">새로고침</button>
             ${isWebView ? `
-                <button onclick="window.location.href='https://ggmindmap.vercel.app/install-guide'" 
+                <button onclick="window.location.href='install-guide.html'" 
                         style="padding: 12px 28px; background: white; color: #7f1d1d; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
                     앱 설치 가이드 및 브라우저 탈출
                 </button>
