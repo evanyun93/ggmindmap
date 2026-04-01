@@ -149,34 +149,93 @@ export function showFatalError(msg) {
 
     const overlay = document.createElement('div');
     overlay.id = 'fatal-error-overlay';
+    overlay.id = 'fatal-error-overlay';
     overlay.style.cssText = `
         position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-        background: rgba(127, 29, 29, 0.98); color: white; z-index: 10000000;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        padding: 20px; font-family: sans-serif;
+        background: radial-gradient(circle at center, #1e1b4b 0%, #0f172a 100%);
+        color: white; z-index: 99999999; display: flex; flex-direction: column;
+        align-items: center; justify-content: center; padding: 20px;
+        font-family: 'Inter', sans-serif; text-align: center;
+        animation: fadeInError 0.5s ease-out;
     `;
 
     const ua = navigator.userAgent || "";
     const isWebView = /KAKAOTALK|FB_IAB|FBAN|FBAV|Instagram|Line|NAVER|Daum/i.test(ua) || (/(iPhone|iPad|iPod)/i.test(ua) && !/Safari/i.test(ua));
 
     overlay.innerHTML = `
-        <h2 style="font-size: 24px; margin-bottom: 10px; text-align: center;">⚠️ 치명적 오류 발생</h2>
-        <p style="margin-bottom: 20px; opacity: 0.8; text-align: center; line-height: 1.5;">
-            ${isWebView 
-                ? '현재 환경(인앱 브라우저)에서 앱이 불안정할 수 있습니다.<br><b>전용 앱 설치</b> 또는 <b>외부 브라우저</b> 이용을 강력 권장합니다.' 
-                : '어플리케이션이 예기치 않게 중단되었습니다.<br>아래 내용을 캡쳐하여 문의해주세요.'}
-        </p>
-        <div id="fatal-error-msg" style="width: 100%; max-width: 500px; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.5); padding: 15px; border-radius: 8px; font-family: monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all;">${msg}</div>
-        <div style="display:flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; justify-content: center;">
-            <button onclick="window.location.reload()" style="padding: 12px 24px; background: rgba(255,255,255,0.2); color: white; border: 1px solid white; border-radius: 8px; font-weight: bold; cursor: pointer;">새로고침</button>
-            ${isWebView ? `
-                <button onclick="window.location.href='install-guide.html'" 
-                        style="padding: 12px 28px; background: white; color: #7f1d1d; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
-                    앱 설치 가이드 및 브라우저 탈출
+        <div style="background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 32px; padding: 40px; max-width: 450px; width: 100%; box-shadow: 0 25px 50px rgba(0,0,0,0.5);">
+            <div style="font-size: 64px; margin-bottom: 20px;">🚀</div>
+            <h2 style="font-size: 26px; margin-bottom: 12px; font-weight: 700; color: #f8fafc; letter-spacing: -0.5px;">더 쾌적한 환경으로 안내합니다</h2>
+            <p style="margin-bottom: 30px; color: #94a3b8; line-height: 1.6; font-size: 15px;">
+                ${isWebView 
+                    ? '현재 인앱 브라우저는 최신 기능 사용이 제한될 수 있습니다.<br>더 강력한 성능의 외부 브라우저를 열어드릴까요?' 
+                    : '어플리케이션 최적화 중 환경 설정이 필요합니다.<br>더 나은 경험을 위해 잠시만 기다려 주세요.'}
+            </p>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                ${isWebView ? `
+                    <button id="btn-escape-error" style="padding: 16px 24px; background: #8b5cf6; color: white; border: none; border-radius: 16px; font-weight: 700; font-size: 16px; cursor: pointer; box-shadow: 0 10px 20px rgba(139,92,246,0.3); transition: all 0.3s;">
+                        외부 브라우저로 열기 (추천)
+                    </button>
+                ` : ''}
+                <button onclick="window.location.reload()" style="padding: 14px 24px; background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 16px; font-weight: 600; font-size: 14px; cursor: pointer;">
+                    현재 페이지 새로고침
                 </button>
-            ` : ''}
+            </div>
+            
+            <div id="toggle-error-logs" style="margin-top: 40px; color: rgba(255, 255, 255, 0.3); font-size: 12px; cursor: pointer; text-decoration: underline;">
+                기술적 상세 내용 보기 ▼
+            </div>
+            <div id="fatal-error-msg" style="display: none; margin-top: 20px; width: 100%; max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.3); padding: 15px; border-radius: 12px; font-family: monospace; font-size: 11px; color: #94a3b8; white-space: pre-wrap; word-break: break-all; text-align: left; border: 1px solid rgba(255,255,255,0.05);">
+                ${msg}
+            </div>
         </div>
+        <style>
+            @keyframes fadeInError { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+            @keyframes errorBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        </style>
     `;
+
+    document.body.appendChild(overlay);
+
+    // 로그 토글 이벤트 바인딩
+    const toggleBtn = overlay.querySelector('#toggle-error-logs');
+    const msgDiv = overlay.querySelector('#fatal-error-msg');
+    toggleBtn.onclick = () => {
+        const isHidden = msgDiv.style.display === 'none';
+        msgDiv.style.display = isHidden ? 'block' : 'none';
+        toggleBtn.textContent = isHidden ? '상세 내용 접기 ▲' : '기술적 상세 내용 보기 ▼';
+    };
+
+    // 탈출 버튼 이벤트 바인딩
+    if (isWebView) {
+        const escapeBtn = overlay.querySelector('#btn-escape-error');
+        escapeBtn.onclick = () => {
+            const url = "https://ggmindmap.vercel.app";
+            if (document.getElementById('manual-guide-overlay')) return;
+            
+            const guideOverlay = document.createElement('div');
+            guideOverlay.id = 'manual-guide-overlay';
+            guideOverlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,23,42,0.9);z-index:100000000;display:flex;flex-direction:column;align-items:flex-end;padding:20px;color:white;font-weight:bold;text-align:right;backdrop-filter:blur(10px);';
+            guideOverlay.innerHTML = `
+                <div style="font-size:40px;margin-bottom:10px;animation:errorBounce 1.5s infinite;">↗️</div>
+                <div style="font-size:20px;line-height:1.4;">여기 메뉴 버튼을 눌러<br><span style="color:#a78bfa;">[다른 브라우저로 열기]</span>를<br>선택해 주세요!</div>
+                <button onclick="this.parentElement.remove()" style="margin-top:40px;background:white;color:black;border:none;padding:12px 24px;border-radius:12px;font-weight:bold;cursor:pointer;">안내 닫기</button>
+            `;
+            document.body.appendChild(guideOverlay);
+
+            const isIOS = /iPhone|iPad|iPod/i.test(ua);
+            const isAndroid = /Android/i.test(ua);
+            if (/KAKAOTALK/i.test(ua)) {
+                setTimeout(() => { window.location.href = 'kakaotalk://web/openExternalApp?url=' + encodeURIComponent(url); }, 100);
+                if (isIOS) setTimeout(() => { window.location.href = 'kakaoweb://openExternalApp?url=' + encodeURIComponent(url); }, 500);
+            }
+            if (isAndroid) {
+                const intentUrl = 'intent://' + url.replace(/https?:\/\//i, '') + '#Intent;scheme=https;package=com.android.chrome;end';
+                setTimeout(() => { window.location.href = intentUrl; }, 300);
+            }
+            setTimeout(() => { window.location.href = url; }, 1000);
+        };
+    }
 
     document.body.appendChild(overlay);
     if (window.navigator?.vibrate) window.navigator.vibrate([100, 50, 100]);
