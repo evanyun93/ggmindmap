@@ -148,10 +148,10 @@
       <p style="font-size: 14px; color: var(--text-muted); margin-bottom: 20px;">
         우측 상단 <b>더보기(⋮ 또는 •••)</b> 메뉴를 통해 외부 브라우저(Safari, Chrome 등)에서 열어주세요.
       </p>
-      <a href="https://ggmindmap.vercel.app" class="btn-exit">
+      <button onclick="forceExternalBrowser()" class="btn-exit" style="background: white; color: var(--bg); border: none; font-weight: 700; width: 100%; padding: 16px; border-radius: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></svg>
-        외부 브라우저로 이동
-      </a>
+        강제로 외부 브라우저로 열기
+      </button>
     </div>
 
     <div class="card">
@@ -211,10 +211,24 @@
       document.getElementById(platform + '-guide').classList.add('visible');
     }
 
-    // 인앱 브라우저 감지 시 자동 안내 문구 변경 가능
-    const ua = navigator.userAgent || "";
-    if (/KAKAOTALK/i.test(ua)) {
-      document.querySelector('.subtitle').textContent = "카카오톡은 외부 브라우저 접속을 권장합니다.";
+    // 💡 [V6 고도화] 인앱 브라우저 강제 탈출 로직
+    function forceExternalBrowser() {
+      const url = "https://ggmindmap.vercel.app";
+      const ua = navigator.userAgent || "";
+      
+      // 1. 카카오톡 강제 탈출 (전용 스키마)
+      if (/KAKAOTALK/i.test(ua)) {
+        window.location.href = 'kakaotalk://web/openExternalApp?url=' + encodeURIComponent(url);
+      } 
+      // 2. 안드로이드 범용 인텐트 (크롬 브라우저 강제 실행)
+      else if (/Android/i.test(ua)) {
+        const cleanUrl = url.replace(/https?:\/\//i, '');
+        window.location.href = 'intent://' + cleanUrl + '#Intent;scheme=https;package=com.android.chrome;end';
+      }
+      // 3. 기타 (기본 리다이렉트 시도)
+      else {
+        window.location.href = url;
+      }
     }
   </script>
 </body>
