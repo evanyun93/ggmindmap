@@ -212,23 +212,71 @@
     }
 
     // 💡 [V6 고도화] 인앱 브라우저 강제 탈출 로직
+    // 💡 [V6 고도화] 인앱 브라우저 강제 탈출 (기본 브라우저 호출)
     function forceExternalBrowser() {
       const url = "https://ggmindmap.vercel.app";
       const ua = navigator.userAgent || "";
-      
-      // 1. 카카오톡 강제 탈출 (전용 스키마)
-      if (/KAKAOTALK/i.test(ua)) {
-        window.location.href = 'kakaotalk://web/openExternalApp?url=' + encodeURIComponent(url);
+      const isIOS = /iPhone|iPad|iPod/i.test(ua);
+      const isAndroid = /Android/i.test(ua);
+      const isKakao = /KAKAOTALK/i.test(ua);
+
+      // 1. 시각적 안내 지원 (버튼이 반응하지 않을 때를 대비)
+      const btn = document.querySelector('.btn-exit');
+      btn.textContent = "브라우저로 이동 중...";
+      btn.style.background = "#e2e8f0";
+
+      // 2. 수동 탈출 안내 레이어 자동 표시 (메뉴 유도)
+      showManualGuideLayer();
+
+      // 3. 강제 탈출 스키마 순차 시도
+      if (isKakao) {
+        // 카카오톡 전용 (iOS/Android 공통 1차 주소)
+        setTimeout(() => { window.location.href = 'kakaotalk://web/openExternalApp?url=' + encodeURIComponent(url); }, 100);
+        
+        // 아이폰 전용 (2차 주소)
+        if (isIOS) {
+          setTimeout(() => { window.location.href = 'kakaoweb://openExternalApp?url=' + encodeURIComponent(url); }, 500);
+        }
       } 
-      // 2. 안드로이드 범용 인텐트 (크롬 브라우저 강제 실행)
-      else if (/Android/i.test(ua)) {
+      
+      // 안드로이드 범용 (크롬 패키지 직접 호출 - 100% 성공률 목표)
+      if (isAndroid) {
         const cleanUrl = url.replace(/https?:\/\//i, '');
-        window.location.href = 'intent://' + cleanUrl + '#Intent;scheme=https;package=com.android.chrome;end';
+        const intentUrl = 'intent://' + cleanUrl + '#Intent;scheme=https;package=com.android.chrome;end';
+        setTimeout(() => { window.location.href = intentUrl; }, 300);
       }
-      // 3. 기타 (기본 리다이렉트 시도)
-      else {
-        window.location.href = url;
-      }
+
+      // 4. 일반 모바일 (기본 리다이렉트)
+      setTimeout(() => { window.location.href = url; }, 1000);
+    }
+
+    function showManualGuideLayer() {
+      if (document.getElementById('manual-guide-overlay')) return;
+      
+      const overlay = document.createElement('div');
+      overlay.id = 'manual-guide-overlay';
+      overlay.style.cssText = `
+        position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(15, 23, 42, 0.9); z-index: 10000;
+        display: flex; flex-direction: column; align-items: flex-end; padding: 20px;
+        color: white; font-weight: bold; text-align: right;
+      `;
+      
+      overlay.innerHTML = `
+        <div style="font-size: 40px; margin-bottom: 10px; animation: bounce 1s infinite;">↗️</div>
+        <div style="font-size: 20px; line-height: 1.4;">
+          여기 버튼(⋮ 또는 •••)을 눌러<br>
+          <span style="color: #8b5cf6;">[다른 브라우저로 열기]</span>를<br>
+          선택하여 탈출해 주세요!
+        </div>
+        <button onclick="this.parentElement.remove()" style="margin-top: 40px; background: white; color: black; border: none; padding: 12px 24px; border-radius: 8px; font-weight: bold; cursor: pointer;">
+          이 안내 닫기
+        </button>
+        <style>
+          @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-15px); } }
+        </style>
+      `;
+      document.body.appendChild(overlay);
     }
   </script>
 </body>
