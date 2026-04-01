@@ -33,8 +33,9 @@ export async function initNotepad(el, widgetData) {
             document.removeEventListener('mouseup', onUp);
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
-                const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
-                safeLocalStorage.setItem(`notepad_collapsed_${platform}_${widgetId}`, collapsed);
+                // syncService를 사용하여 기기별 자동 분리 및 서버 동기화 처리 (V6)
+                syncService.setData('NOTEPAD_COLLAPSED', widgetId, collapsed);
+                
                 import('./dashboard-grid.js').then(m => {
                     if (m.saveLayout) m.saveLayout();
                 });
@@ -44,10 +45,12 @@ export async function initNotepad(el, widgetData) {
         document.addEventListener('mouseup', onUp);
     });
 
-    const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
-    if (safeLocalStorage.getItem(`notepad_collapsed_${platform}_${widgetId}`) === 'true') {
-        el.classList.add('collapsed');
-    }
+    // 초기 로딩 시 기기에 맞는 접힘 상태 복원
+    syncService.getData('NOTEPAD_COLLAPSED', widgetId).then(val => {
+        if (val === true || val === 'true') {
+            el.classList.add('collapsed');
+        }
+    });
 
     // 2. 제목 수정 기능
     const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;

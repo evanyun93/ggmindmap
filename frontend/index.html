@@ -49,8 +49,8 @@
     <div class="auth-container" id="authContainer" style="display: none;">
       
       <!-- 인앱 브라우저 전용 안내 배너 (웹뷰 감재 시 활성화) -->
-      <div id="inAppBrowserBanner" style="display: none; background: rgba(139, 92, 246, 0.15); border: 2px solid rgba(139, 92, 246, 0.4); border-radius: 12px; margin: 10px; padding: 15px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: slideDown 0.5s ease-out;">
-          <div style="display: flex; align-items: flex-start; gap: 12px;">
+      <div id="inAppBrowserBanner" style="display: none; background: rgba(139, 92, 246, 0.15); border: 2px solid rgba(139, 92, 246, 0.4); border-radius: 12px; margin: 0 10px 20px 10px; padding: 15px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); animation: slideDown 0.5s ease-out; width: auto; max-width: 440px; align-self: center;">
+          <div style="display: flex; align-items: flex-start; gap: 12px; text-align: left;">
               <span style="font-size: 24px;">🌐</span>
               <div style="flex: 1;">
                   <h4 style="margin: 0 0 4px 0; color: #8b5cf6; font-size: 15px;">이 환경에서는 앱 설치가 어렵습니다</h4>
@@ -61,8 +61,6 @@
               </div>
           </div>
       </div>
-      <!-- ... (중략: 기존 로그인/회원가입 카드 내용들) ... -->
-      <!-- (기존 view_file에서 확인한 대로 모든 카드를 포함하도록 감쌉니다) -->
 
       <!-- ═══ 로그인 폼 ═══ -->
       <div class="auth-card" id="loginCard">

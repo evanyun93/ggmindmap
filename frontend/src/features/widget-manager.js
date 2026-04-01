@@ -167,15 +167,23 @@ export class WidgetManager {
     const isMobile = window.innerWidth <= 768;
     const platform = isMobile ? 'mobile' : 'pc';
     const widgetId = widgetData.id;
-    // 플랫폼별 독립적인 접힘 상태 저장
-    const isCollapsed = safeLocalStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true';
+    
+    // 플랫폼별 독립적인 접힘 상태 판별 (V6 표준화)
+    // 주의: renderWidget은 동기 함수이므로, 이미 syncService에 로드된 캐시를 참조하거나 
+    // 이후 initWidgetLogic에서 비동기로 처리하도록 위임합니다.
+    const widgetTypeKey = widgetData.widget_type.toUpperCase();
+    const collapsedKey = `${widgetTypeKey}_COLLAPSED_${platform}`;
+    
+    // 로컬 스토리지 레거시 지원 및 캐시 확인
+    const isCollapsed = safeLocalStorage.getItem(`${widgetData.widget_type}_collapsed_${platform}_${widgetId}`) === 'true' ||
+                        safeLocalStorage.getItem(`${collapsedKey}_${widgetId}`) === 'true';
 
     const widget = document.createElement('div');
     widget.className = `draggable-widget dashboard-card premium-glass-card widget-${widgetData.widget_type}`;
     widget.dataset.id = widgetData.id;
     if (isCollapsed) widget.classList.add('collapsed');
 
-    // 기기 및 상태별 레이아웃 키 결정
+    // 기기 및 상태별 레이아웃 키 결정 (V6)
     const state = isCollapsed ? 'collapsed' : 'expanded';
     const layoutKey = `${platform}_${state}`;
 

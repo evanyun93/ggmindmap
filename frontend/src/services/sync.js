@@ -262,12 +262,30 @@ class SyncService {
     }
 
     /**
+     * 중앙 집중식 기기 판정 로직
+     */
+    static isMobile() {
+        return window.innerWidth <= 768;
+    }
+
+    /**
      * 특정 플랫폼별로 캐시 키와 서버 동기화 Type을 분리하기 위한 도우미 메서드
      */
     resolveType(type) {
-        if (type === SYNC_DATA_TYPES.TODO_COLLAPSED ||
-            type === SYNC_DATA_TYPES.MILESTONE_COLLAPSED) {
-            const platform = window.innerWidth <= 768 ? 'mobile' : 'pc';
+        // 플랫폼별로 완전히 독립적으로 관리해야 하는 데이터 타입들
+        const platformSpecificTypes = [
+            SYNC_DATA_TYPES.DASHBOARD_LAYOUTS,
+            'TODO_COLLAPSED',
+            'MILESTONE_COLLAPSED',
+            'NOTEPAD_COLLAPSED',
+            'SUPPLEMENT_COLLAPSED'
+        ];
+
+        // 접힘 상태(_collapsed)나 명시적으로 지정된 타입은 기기별로 키 분리
+        const isCollapsedKey = typeof type === 'string' && type.toLowerCase().endsWith('_collapsed');
+        
+        if (platformSpecificTypes.includes(type) || isCollapsedKey) {
+            const platform = SyncService.isMobile() ? 'mobile' : 'pc';
             return `${type}_${platform}`;
         }
         return type;

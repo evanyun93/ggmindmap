@@ -1070,6 +1070,12 @@ export function saveLayout(targetWidget = null) {
                         zIndex: currentLayout.z
                     })
                 });
+                
+                // 실시간 동기화 시스템에도 반영하여 기기별 분리 및 브로드캐스트 수행 (V6)
+                import('../services/sync.js').then(m => {
+                    m.syncService.setData('DASHBOARD_LAYOUTS', id, currentLayout);
+                });
+
                 console.log(`[saveLayout] 위젯 ${id} (${layoutKey}) 저장 완료`);
             }
         } catch (err) {

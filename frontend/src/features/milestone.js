@@ -51,7 +51,8 @@ export async function initMilestone(el, widgetData) {
             document.removeEventListener('mouseup', onUp);
             if (!isDragging) {
                 const collapsed = el.classList.toggle('collapsed');
-                safeLocalStorage.setItem(`milestone_collapsed_${widgetId}`, collapsed);
+                // syncService를 사용하여 기기별 자동 분리 및 서버 동기화 처리 (V6)
+                syncService.setData(SYNC_DATA_TYPES.MILESTONE_COLLAPSED, widgetId, collapsed);
 
                 // 접기/펴기 상태에 따른 레이아웃 독립 저장 트리거
                 import('./dashboard-grid.js').then(m => m.saveLayout());
