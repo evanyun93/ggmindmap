@@ -221,7 +221,7 @@ async function subscribeWebPush(reg) {
             console.warn('[TodoAlarm] FCM 토큰을 가져올 수 없습니다. 알림 권한을 요청해야 합니다.');
         }
     } catch (err) {
-        if (Notification.permission === 'denied') {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
             console.warn('[TodoAlarm] FCM 구독 실패: 사용자가 알림 권한을 거부했습니다.');
         } else {
             console.error('[TodoAlarm] FCM 구독 중 오류 발생:', err);
@@ -363,6 +363,7 @@ class TodoAlarmSystem {
 
     /** 알림 권한 상태 체크용 헬퍼 (상태만 반환) */
     getPermissionStatus() {
+        if (typeof Notification === 'undefined') return 'unsupported';
         return Notification.permission;
     }
 

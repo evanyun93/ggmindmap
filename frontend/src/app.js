@@ -244,7 +244,8 @@ window.updateNotifStatusUI = () => {
 
     if (!section) return;
 
-    const permission = Notification.permission;
+    // [WebView 대응] Notification API 존재 여부 선행 확인
+    const permission = (typeof Notification !== 'undefined') ? Notification.permission : 'default';
     // 앱으로 실행 중인지 확인 (Standalone 모드)
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
@@ -345,7 +346,7 @@ window.checkNotificationPermissionAndWarn = () => {
     safeSessionStorage.setItem('notif_prompt_shown', 'true');
 
     const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-    const isDenied = Notification.permission === 'denied';
+    const isDenied = (typeof Notification !== 'undefined') && Notification.permission === 'denied';
 
     // UI 분기: default(아직 안 물어봄) vs denied(거부됨)
     let guideHtml = '';
@@ -480,7 +481,8 @@ window.checkNotificationPermissionAndWarn = () => {
     if (reqBtn) {
         reqBtn.onclick = async () => {
             reqBtn.textContent = '권한 요청 중...';
-            const perm = await Notification.requestPermission();
+            // [WebView 대응] Notification API 존재 시에만 요청
+            const perm = (typeof Notification !== 'undefined') ? await Notification.requestPermission() : 'denied';
 
             document.getElementById('notifWarnModal').remove();
 
