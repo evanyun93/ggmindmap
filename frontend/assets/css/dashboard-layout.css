@@ -229,15 +229,15 @@
         align-items: center;
         gap: 12px;
         padding: 10px 16px;
-        background: rgba(255, 255, 255, 0.05);
+        background: rgba(17, 17, 40, 0.95);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-    }
-
-    .mobile-layout-bar::-webkit-scrollbar {
-        display: none;
+        overflow: hidden;
+        position: sticky;
+        top: 0;
+        z-index: 200;
+        flex-shrink: 0;
     }
 
     .mobile-save-layout-btn {

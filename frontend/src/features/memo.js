@@ -20,6 +20,11 @@ export async function initMemo() {
 
     if (!fab || !popup) return;
 
+    // 이전에 숨겼으면 FAB 숨김 유지
+    if (localStorage.getItem('fab_hidden') === '1') {
+        fab.style.display = 'none';
+    }
+
     // 스프레드시트 초기화
     new Spreadsheet('spreadsheet-widget', { rows: 5, cols: 5 });
 
@@ -112,6 +117,12 @@ async function setupFabDrag(fab, popup) {
     let initialX, initialY;
     let deltaX = 0, deltaY = 0;
 
+    // 삭제 존 생성
+    const deleteZone = document.createElement('div');
+    deleteZone.id = 'fabDeleteZone';
+    deleteZone.textContent = '✕';
+    document.body.appendChild(deleteZone);
+
     // SyncService에서 FAB 위치 가져오기
     const savedPos = await syncService.getData(SYNC_DATA_TYPES.FAB_POS);
     if (savedPos) {
@@ -122,6 +133,48 @@ async function setupFabDrag(fab, popup) {
         fab.style.bottom = 'auto';
     }
 
+    function getDeleteZoneCenter() {
+        const zoneBottom = 40 + 30; // bottom: 40px + half of 60px height
+        return {
+            x: window.innerWidth / 2,
+            y: window.innerHeight - zoneBottom,
+        };
+    }
+
+    function updateDeleteZone(fabX, fabY) {
+        const fabCenterX = fabX + fab.offsetWidth / 2;
+        const fabCenterY = fabY + fab.offsetHeight / 2;
+        const isNearBottom = fabCenterY > window.innerHeight * 0.65;
+
+        if (isNearBottom) {
+            deleteZone.style.display = 'flex';
+            const zone = getDeleteZoneCenter();
+            const dist = Math.sqrt(Math.pow(fabCenterX - zone.x, 2) + Math.pow(fabCenterY - zone.y, 2));
+            if (dist < 55) {
+                deleteZone.classList.add('active');
+                fab.classList.add('drag-to-delete');
+            } else {
+                deleteZone.classList.remove('active');
+                fab.classList.remove('drag-to-delete');
+            }
+        } else {
+            deleteZone.style.display = 'none';
+            deleteZone.classList.remove('active');
+            fab.classList.remove('drag-to-delete');
+        }
+    }
+
+    function hideDeleteZone() {
+        deleteZone.style.display = 'none';
+        deleteZone.classList.remove('active');
+        fab.classList.remove('drag-to-delete');
+    }
+
+    function hideFab() {
+        fab.style.display = 'none';
+        popup.classList.add('hidden');
+        localStorage.setItem('fab_hidden', '1');
+    }
 
     // 마우스 드래그
     fab.addEventListener('mousedown', (e) => {
@@ -149,6 +202,7 @@ async function setupFabDrag(fab, popup) {
         const y = Math.min(Math.max(0, e.clientY - initialY), window.innerHeight - fab.offsetHeight);
         fab.style.left = `${x}px`;
         fab.style.top = `${y}px`;
+        updateDeleteZone(x, y);
         if (!popup.classList.contains('hidden')) {
             popup.style.left = `${x + deltaX}px`;
             popup.style.top = `${y + deltaY}px`;
@@ -160,6 +214,12 @@ async function setupFabDrag(fab, popup) {
         isFabDragging = false;
         fab.style.cursor = 'grab';
         fab.style.transition = '';
+        if (deleteZone.classList.contains('active')) {
+            hideFab();
+            hideDeleteZone();
+            return;
+        }
+        hideDeleteZone();
         // 로컬 + 서버 동기화
         await syncService.setData(SYNC_DATA_TYPES.FAB_POS, null, JSON.stringify({ left: fab.style.left, top: fab.style.top }));
     });
@@ -191,6 +251,7 @@ async function setupFabDrag(fab, popup) {
         const y = Math.min(Math.max(0, touch.clientY - initialY), window.innerHeight - fab.offsetHeight);
         fab.style.left = `${x}px`;
         fab.style.top = `${y}px`;
+        updateDeleteZone(x, y);
         if (!popup.classList.contains('hidden')) {
             popup.style.left = `${x + deltaX}px`;
             popup.style.top = `${y + deltaY}px`;
@@ -201,6 +262,12 @@ async function setupFabDrag(fab, popup) {
         if (!isFabDragging) return;
         isFabDragging = false;
         fab.style.transition = '';
+        if (deleteZone.classList.contains('active')) {
+            hideFab();
+            hideDeleteZone();
+            return;
+        }
+        hideDeleteZone();
         // 로컬 + 서버 동기화
         await syncService.setData(SYNC_DATA_TYPES.FAB_POS, null, JSON.stringify({ left: fab.style.left, top: fab.style.top }));
     });

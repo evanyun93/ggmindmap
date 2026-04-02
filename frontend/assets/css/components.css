@@ -1255,6 +1255,40 @@
   box-shadow: 0 8px 20px rgba(139, 92, 246, 0.6);
 }
 
+/* FAB 삭제 존 */
+#fabDeleteZone {
+  display: none;
+  position: fixed;
+  bottom: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.75);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  backdrop-filter: blur(6px);
+  transition: transform 0.2s, background 0.2s;
+  pointer-events: none;
+}
+
+#fabDeleteZone.active {
+  transform: translateX(-50%) scale(1.3);
+  background: rgba(239, 68, 68, 1);
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.7);
+}
+
+.memo-fab.drag-to-delete {
+  opacity: 0.6;
+  transform: scale(0.9);
+}
+
 .memo-popup {
   position: fixed;
   top: 90px;

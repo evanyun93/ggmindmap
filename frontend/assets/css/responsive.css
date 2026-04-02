@@ -12,6 +12,7 @@
   /* 루트 변수 조정 */
   :root {
     --header-height: 64px;
+    --mobile-header-full-height: 100px; /* 2줄 헤더 실제 높이 (로고행 + nav-actions행) */
   }
 
   /* 배경 및 바디 설정 */
@@ -537,9 +538,9 @@
     line-height: 1.5 !important;
   }
 
-  /* 중앙 로고 제목 최적화 */
-  .central-logo-content h1 {
-    font-size: clamp(1.4rem, 6vw, 1.8rem) !important;
+  /* 모바일에서 중앙 로고 섹션 숨김 */
+  .central-logo-section {
+    display: none !important;
   }
 
   /* 인증 카드 타이포그래피 */
