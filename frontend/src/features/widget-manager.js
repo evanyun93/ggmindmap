@@ -374,10 +374,10 @@ export class WidgetManager {
     }
     if (data.widget_type === 'mindmap') {
       return `
-                <div class="widget-header clickable-header mindmap-cta-header">
+                <div class="widget-header clickable-header mindmap-widget-header">
                   <div class="header-main">
                     <div class="card-icon">🧠</div>
-                    <h3 class="mindmap-widget-title">생각 그리기</h3>
+                    <h3 class="mindmap-widget-title">마인드맵</h3>
                   </div>
                   <div class="header-actions">
                     <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">
@@ -385,11 +385,27 @@ export class WidgetManager {
                     </button>
                   </div>
                 </div>
-                <div class="cta-content-wrapper">
-                  <div class="cta-text">
-                    <p>마인드맵으로 아이디어를 시각화하세요.</p>
+                <div class="mindmap-widget-body">
+                  <div class="mw-toolbar">
+                    <button class="mw-btn-add-node" title="노드 추가">＋ 노드</button>
+                    <button class="mw-btn-fit" title="화면 맞추기">⊡ 맞추기</button>
+                    <span class="mw-hint-text">더블클릭: 추가 · Shift+클릭: 연결 · Delete: 삭제</span>
+                    <button class="btn-mindmap-fullscreen mw-btn-fullscreen" title="전체화면으로 열기">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
+                      전체화면
+                    </button>
                   </div>
-                  <button class="cta-button-premium mindmap-start-btn">시작하기</button>
+                  <svg class="mindmap-widget-svg" xmlns="http://www.w3.org/2000/svg" tabindex="0">
+                    <defs>
+                      <marker id="mw-arrow-${data.id}" markerWidth="8" markerHeight="6" refX="8" refY="3" orientation="auto">
+                        <polygon points="0 0, 8 3, 0 6" fill="rgba(139,92,246,0.7)"/>
+                      </marker>
+                    </defs>
+                    <g class="mw-pan-group">
+                      <g class="mw-links-group"></g>
+                      <g class="mw-nodes-group"></g>
+                    </g>
+                  </svg>
                 </div>
             `;
     }
@@ -518,8 +534,8 @@ export class WidgetManager {
       });
     }
     if (data.widget_type === 'mindmap') {
-      import('./mindmap-cta.js').then(m => {
-        if (m.initMindmapCTA) m.initMindmapCTA(el);
+      import('./mindmap-widget.js').then(m => {
+        if (m.initMindmapWidget) m.initMindmapWidget(el, data);
       });
     }
     if (data.widget_type === 'notepad') {

@@ -200,6 +200,20 @@ export function initDashboardGrid() {
                     });
                 }
             },
+            {
+                label: '마인드맵 추가',
+                icon: '🧠',
+                action: () => {
+                    console.log('[DashboardGrid] 마인드맵 추가 요청');
+                    import('./widget-manager.js').then(m => {
+                        const zoom = window.dashboardZoom || 1.0;
+                        const rect = grid.getBoundingClientRect();
+                        const x = Math.max(0, (clientX - rect.left) / zoom - 100);
+                        const y = Math.max(0, (clientY - rect.top) / zoom - 10);
+                        m.widgetManager.createWidget('mindmap', x, y, 600, 400);
+                    });
+                }
+            },
             { type: 'separator' },
             {
                 label: '가지런히 정리',

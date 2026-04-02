@@ -43,6 +43,9 @@ export async function initDashboardFeatures(user) {
             // 브라우저는 온라인이지만 서버 응답이 없는 경우
             dot.className = 'network-status-dot offline';
             dot.title = '주의: 서버 응답 지연으로 인해 오프라인 환경으로 전환됨';
+            if (window.appToast) {
+                window.appToast('서버 응답이 늦어 오프라인 모드로 전환되었습니다.');
+            }
         } else if (window.updateNetworkStatus) {
             // 그 외의 경우 (성공 혹은 브라우저 자체가 오프라인인 경우)
             window.updateNetworkStatus();

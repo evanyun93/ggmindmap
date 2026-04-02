@@ -238,13 +238,25 @@ window.updateNetworkStatus = () => {
     const dot = document.getElementById('networkStatusDot');
     if (!dot) return;
 
-    if (navigator.onLine) {
+    const isOnline = navigator.onLine;
+    const prevStatus = dot.getAttribute('data-status');
+
+    if (isOnline) {
         dot.className = 'network-status-dot online';
         dot.title = '온라인: 서버와 연결됨 (실시간 동기화 활성)';
+        // 상태가 변했을 때만(오프라인 -> 온라인) 알림 표시
+        if (prevStatus === 'offline' && window.appToast) {
+            window.appToast('연결이 복구되었습니다. 실시간 동기화를 시작합니다.');
+        }
     } else {
         dot.className = 'network-status-dot offline';
         dot.title = '오프라인: 서버 연결 끊김 (로컬 저장소 이용 중)';
+        // 오프라인으로 변했을 때 알림 표시
+        if (prevStatus !== 'offline' && window.appToast) {
+            window.appToast('현재 오프라인 상태입니다. 작업은 기기에 안전하게 저장됩니다.');
+        }
     }
+    dot.setAttribute('data-status', isOnline ? 'online' : 'offline');
 };
 
 window.addEventListener('online', window.updateNetworkStatus);
