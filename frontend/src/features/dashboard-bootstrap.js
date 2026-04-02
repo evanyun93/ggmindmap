@@ -28,13 +28,26 @@ export async function initDashboardFeatures(user) {
     }
 
     // 0. 동기화 서비스 초기화 (네트워크 지연 시 최대 4초 대기 후 강제 진행)
-    await Promise.race([
-        syncService.init(),
+    const syncStatus = await Promise.race([
+        syncService.init().then(() => 'success'),
         new Promise(resolve => setTimeout(() => {
             console.warn('[Dashboard] 동기화 서비스 초기화 타임아웃(4s). 오프라인 모드로 전환합니다.');
-            resolve(null);
+            resolve('timeout');
         }, 4000))
     ]);
+
+    // [네트워크 상태등 최종 업데이트]
+    const dot = document.getElementById('networkStatusDot');
+    if (dot) {
+        if (syncStatus === 'timeout' && navigator.onLine) {
+            // 브라우저는 온라인이지만 서버 응답이 없는 경우
+            dot.className = 'network-status-dot offline';
+            dot.title = '주의: 서버 응답 지연으로 인해 오프라인 환경으로 전환됨';
+        } else if (window.updateNetworkStatus) {
+            // 그 외의 경우 (성공 혹은 브라우저 자체가 오프라인인 경우)
+            window.updateNetworkStatus();
+        }
+    }
 
     // 1. UI 및 시각 효과 레이어 초기화
     initVisualEffects();

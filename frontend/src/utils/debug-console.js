@@ -108,7 +108,7 @@ function createDebugUI() {
     panel.innerHTML = `
         <div style="padding: 8px 12px; background: rgba(139,92,246,0.2); border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between;">
             <b style="color: #a78bfa;">Debug Logs</b>
-            <span onclick="document.getElementById('app-debug-panel').innerHTML=''; logs.length=0;" style="cursor:pointer; opacity: 0.6;">Clear</span>
+            <span onclick="window.clearDebugLogs && window.clearDebugLogs()" style="cursor:pointer; opacity: 0.8; font-weight: bold; color: #f87171; background: rgba(239, 68, 68, 0.15); padding: 2px 8px; border-radius: 4px; transition: all 0.2s;">Clear</span>
         </div>
         <div id="app-debug-logs" style="overflow-y: scroll; flex: 1; padding: 4px;"></div>
     `;
@@ -240,6 +240,14 @@ export function showFatalError(msg) {
     document.body.appendChild(overlay);
     if (window.navigator?.vibrate) window.navigator.vibrate([100, 50, 100]);
 }
+
+// 디버그 로그 초기화 전역 노출
+window.clearDebugLogs = () => {
+    logs.length = 0;
+    const list = document.getElementById('app-debug-logs');
+    if (list) list.innerHTML = '';
+    console.log('[Debug] 콘솔 로그가 초기화되었습니다.');
+};
 
 // 초기 로딩 에러를 가로채기 위해 전역 노출
 window.showFatalError = showFatalError;

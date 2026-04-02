@@ -234,6 +234,29 @@ window.addEventListener('appinstalled', () => {
 /**
  * 알림 권한 상태 UI 업데이트 (설정 모달용)
  */
+window.updateNetworkStatus = () => {
+    const dot = document.getElementById('networkStatusDot');
+    if (!dot) return;
+
+    if (navigator.onLine) {
+        dot.className = 'network-status-dot online';
+        dot.title = '온라인: 서버와 연결됨 (실시간 동기화 활성)';
+    } else {
+        dot.className = 'network-status-dot offline';
+        dot.title = '오프라인: 서버 연결 끊김 (로컬 저장소 이용 중)';
+    }
+};
+
+window.addEventListener('online', window.updateNetworkStatus);
+window.addEventListener('offline', window.updateNetworkStatus);
+
+// 초기화 시 실행 (페이지 로드 즉시 시도)
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', window.updateNetworkStatus);
+} else {
+    window.updateNetworkStatus();
+}
+
 window.updateNotifStatusUI = () => {
     const section = document.getElementById('notifStatusSection');
     const icon = document.getElementById('notifStatusIcon');
