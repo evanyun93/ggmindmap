@@ -346,6 +346,20 @@ export function getDashboardHTML(user) {
           ${getLogoSVG()}
           <h2>MindMap</h2>
         </div>
+        <div class="header-center-title mobile-hide" style="position: absolute; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; color: #f8fafc; font-size: 15px; font-weight: 600; pointer-events: none; opacity: 0.9;">
+          <div style="width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">
+            <svg width="20" height="20" viewBox="0 0 48 48" fill="none">
+              <circle cx="24" cy="24" r="8" fill="url(#grad1)" />
+              <circle cx="24" cy="8" r="4" fill="url(#grad2)" />
+              <circle cx="38" cy="16" r="4" fill="url(#grad2)" />
+              <circle cx="38" cy="32" r="4" fill="url(#grad2)" />
+              <circle cx="24" cy="40" r="4" fill="url(#grad2)" />
+              <circle cx="10" cy="32" r="4" fill="url(#grad2)" />
+              <circle cx="10" cy="16" r="4" fill="url(#grad2)" />
+            </svg>
+          </div>
+          ${user.displayName || user.login_id}'s MindMap
+        </div>
         <div class="user-section">
           <div class="user-profile-btn" id="userProfileBtn" title="내 정보 / 설정" style="order: 1; cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 6px 16px 6px 8px; border-radius: 30px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; user-select: none;">
             <div class="avatar" style="width: 32px; height: 32px; background: linear-gradient(135deg, #8B5CF6, #06B6D4); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
@@ -527,15 +541,7 @@ export function getMainDashboardContentHTML(user) {
             </div>
           </div>
 
-          <!-- 상단: 중앙 로고 섹션 (환영 메시지 숨김 시 노출) -->
-          <div class="central-logo-section hidden" id="centralLogoSection">
-            <div class="central-logo-content">
-              <div class="mega-logo">
-                ${getLogoSVG()}
-              </div>
-              <h1>${user.displayName || user.login_id}'s MindMap</h1>
-            </div>
-          </div>
+          <!-- 상단: 중앙 로고 섹션 제거됨 (헤더로 이동) -->
 
           <!-- 하단: 위젯 섹션 (Wide Whiteboard) -->
           <div class="widgets-section wide-layout" style="position: relative;">

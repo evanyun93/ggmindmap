@@ -1461,51 +1461,6 @@
   width: 100%;
 }
 
-.central-logo-section {
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 0px 0 10px 0;
-
-  animation: fadeIn 1s ease-out;
-}
-
-.central-logo-section.hidden {
-  display: none;
-}
-
-.central-logo-content {
-  display: flex;
-  flex-direction: row;
-
-  align-items: center;
-  gap: 15px;
-  background: rgba(255, 255, 255, 0.02);
-  padding: 6px 10px;
-  border-radius: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.mega-logo svg {
-  width: 32px;
-
-  height: 32px;
-  filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.3));
-}
-
-.central-logo-content h1 {
-  font-size: 1.2rem;
-
-  font-weight: 700;
-  background: linear-gradient(135deg, #fff 0%, rgba(255, 255, 255, 0.8) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: #ffffff !important;
-
-  letter-spacing: -0.3px;
-  forced-color-adjust: none !important;
-}
 
 .welcome-card-premium {
   padding: 24px 35px;

@@ -62,6 +62,7 @@
 
 /* ─── 상단 네비게이션 헤더 ──────────────────────────────────── */
 .dashboard-header {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;

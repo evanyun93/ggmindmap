@@ -10,18 +10,12 @@ import { safeLocalStorage } from '../utils/storage.js';
  */
 export function initWelcomeSection() {
     const welcomeSection = document.getElementById('welcomeSection');
-    const centralLogoSection = document.getElementById('centralLogoSection');
     if (!welcomeSection) return;
-
-    const showLogo = () => {
-        if (centralLogoSection) centralLogoSection.classList.remove('hidden');
-    };
 
     // '다시는 보지 않기' 설정 확인
     const isHiddenForever = safeLocalStorage.getItem('hide_welcome_forever') === 'true';
     if (isHiddenForever) {
         welcomeSection.style.display = 'none';
-        showLogo();
         return;
     }
 
@@ -34,9 +28,10 @@ export function initWelcomeSection() {
             if (dontShowCheckbox && dontShowCheckbox.checked) {
                 safeLocalStorage.setItem('hide_welcome_forever', 'true');
             }
-            welcomeSection.style.display = 'none';
+            setTimeout(() => {
+                welcomeSection.style.display = 'none';
+            }, 500);
             if (window.navigator.vibrate) window.navigator.vibrate(10);
-            showLogo();
         };
 
         closeBtn.onclick = closeAction;
