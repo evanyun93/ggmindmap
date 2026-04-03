@@ -77,11 +77,12 @@ export function getMindmapHTML() {
                             <polygon points="0 0, 8 3, 0 6" fill="rgba(139,92,246,0.55)"/>
                         </marker>
                     </defs>
-                    <g id="linksGroup"></g>
-                    <g id="nodesGroup"></g>
-                    <g id="resizeOverlay"></g>
+                    <g id="mm-pan-group">
+                        <g id="linksGroup"></g>
+                        <g id="nodesGroup"></g>
+                        <g id="resizeOverlay"></g>
+                    </g>
                 </svg>
-                <canvas id="drawingCanvas" class="mm-drawing-canvas"></canvas>
             </div>
 
             <!-- ── 노드 인라인 편집기 ────────────────────────── -->
@@ -103,12 +104,15 @@ export function getMindmapHTML() {
                     </div>
                     <div class="mm-help-sections">
                         <div class="mm-help-section">
-                            <div class="mm-help-section-title">✏️ 도형 그리기</div>
+                            <div class="mm-help-section-title">➕ 도형 추가</div>
                             <div class="mm-help-rows">
-                                <div class="mm-help-row"><kbd>드래그</kbd><span>빈 캔버스에서 드래그하면 원·사각형·삼각형 자동 인식</span></div>
-                                <div class="mm-help-row"><kbd>원형</kbd><span>둥글게 닫힌 궤적 → 원(Circle) 생성</span></div>
-                                <div class="mm-help-row"><kbd>사각형</kbd><span>각진 닫힌 궤적 → 사각형(Rect) 생성</span></div>
-                                <div class="mm-help-row"><kbd>삼각형</kbd><span>세 변의 열린 궤적 → 삼각형 생성</span></div>
+                                <div class="mm-help-row"><kbd>우클릭</kbd><span>빈 캔버스에서 우클릭 → 원·사각형·삼각형 메뉴에서 선택</span></div>
+                            </div>
+                        </div>
+                        <div class="mm-help-section">
+                            <div class="mm-help-section-title">🖱️ 캔버스 이동</div>
+                            <div class="mm-help-rows">
+                                <div class="mm-help-row"><kbd>드래그</kbd><span>빈 캔버스에서 좌클릭 드래그하면 화면이 이동됩니다</span></div>
                             </div>
                         </div>
                         <div class="mm-help-section">
@@ -141,7 +145,9 @@ export function getMindmapHTML() {
 
             <!-- ── 하단 힌트 바 ───────────────────────────────── -->
             <div class="mm-hint-bar" id="mindmapGuide">
-                <span class="mm-hint-item"><kbd>드래그</kbd> 도형 그리기</span>
+                <span class="mm-hint-item"><kbd>우클릭</kbd> 도형 추가</span>
+                <span class="mm-hint-sep">·</span>
+                <span class="mm-hint-item"><kbd>드래그</kbd> 화면 이동</span>
                 <span class="mm-hint-sep">·</span>
                 <span class="mm-hint-item"><kbd>더블클릭</kbd> 편집</span>
                 <span class="mm-hint-sep">·</span>

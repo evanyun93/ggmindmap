@@ -1,6 +1,5 @@
 import { apiFetch } from '../services/api.js';
 import { getMindmapHTML } from '../components/mindmap.js';
-import { mindmapEngine } from './mindmap-engine.js';
 import { contextMenu } from '../utils/context-menu.js';
 import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
 
@@ -26,14 +25,16 @@ function getNodeColor(node) {
 
 let nodes = [];
 let links = [];
-let ctx   = null;
 let selectedNodeId = null;
 
 // ── 상태 ────────────────────────────────────────────────────────
 let draggingNodeId = null;
 let dragOffsetX = 0, dragOffsetY = 0;
-let isDrawing = false;
 let connectSourceId = null;
+
+// ── 캔버스 팬 상태 ───────────────────────────────────────────────
+let canvasPanX = 0, canvasPanY = 0;
+let isPanning = false, panSX = 0, panSY = 0;
 
 // 더블클릭 감지
 let lastClickNodeId = null;
@@ -52,11 +53,6 @@ let _hintBarOrigHTML    = null; // 리사이즈 모드 전 힌트바 복원용
 export async function initMindmap() {
     const appRoot = document.getElementById('app-root');
     appRoot.innerHTML = getMindmapHTML();
-
-    const canvas = document.getElementById('drawingCanvas');
-    ctx = canvas.getContext('2d');
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
 
     await loadMindmapData();
 
@@ -160,12 +156,33 @@ function openEditor(nodeId) {
     requestAnimationFrame(() => { input.focus(); input.select(); });
 }
 
-// ── 렌더링 ──────────────────────────────────────────────────────
-function resizeCanvas() {
-    const c = document.getElementById('drawingCanvas');
-    if (c) { c.width = window.innerWidth; c.height = window.innerHeight; }
+// ── 캔버스 팬 헬퍼 ───────────────────────────────────────────────
+function applyCanvasPan() {
+    const g = document.getElementById('mm-pan-group');
+    if (g) g.setAttribute('transform', `translate(${canvasPanX},${canvasPanY})`);
 }
 
+// ── 노드 추가 ────────────────────────────────────────────────────
+function addNode(type, clientX, clientY) {
+    const svg = document.getElementById('mindmapSVG');
+    const rect = svg.getBoundingClientRect();
+    nodeColorIndex = (nodeColorIndex + 1) % NODE_COLORS.length;
+    const newNode = {
+        id: Date.now(), text: '',
+        x: clientX - rect.left - canvasPanX,
+        y: clientY - rect.top  - canvasPanY,
+        type,
+        radius: type === 'circle'   ? 50  : undefined,
+        width:  type !== 'circle'   ? 120 : undefined,
+        height: type === 'rect'     ? 60  : type === 'triangle' ? 100 : undefined,
+        colorIdx: nodeColorIndex
+    };
+    nodes.push(newNode);
+    renderMindmap();
+    openEditor(newNode.id);
+}
+
+// ── 렌더링 ──────────────────────────────────────────────────────
 async function loadMindmapData() {
     try {
         // SyncService에서 마인드맵 데이터 가져오기
@@ -265,33 +282,41 @@ function setupEvents() {
     const svg = document.getElementById('mindmapSVG');
     // canvas는 pointer-events:none 유지 → SVG가 항상 이벤트 수신
 
-    // ─ 빈 곳 mousedown → 리사이즈 완료 or 그리기 시작 ─
+    // ─ 빈 곳 좌클릭 mousedown → 팬 시작 ─
+    svg.style.cursor = 'grab';
     svg.addEventListener('mousedown', e => {
-        // 리사이즈 핸들 클릭은 _resizeHandleDown이 처리
+        if (e.button !== 0) return; // 좌클릭만
         if (e.target.classList.contains('resize-handle')) return;
-        // 리사이즈 모드 중 빈 곳 클릭 → 완료
         if (resizingNodeId) { exitResizeMode(false); return; }
-        if (e.target.closest('.node-group')) return;  // 노드 클릭은 _nodeMouseDown이 처리
+        if (e.target.closest('.node-group')) return;
         if (window._editNodeId != null) { closeEditor(); return; }
-        if (connectSourceId != null) return; // 연결 대기 중엔 그리기 무시
+        if (connectSourceId != null) return;
 
-        selectedNodeId = null; // 빈 곳 클릭 시 선택 해제
+        selectedNodeId = null;
         renderMindmap();
 
-        isDrawing = true;
-        mindmapEngine.clearPoints();
-        ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-        ctx.beginPath();
-        ctx.lineWidth = 3; ctx.strokeStyle = '#8B5CF6';
-        ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-        ctx.moveTo(e.clientX, e.clientY);
-        mindmapEngine.addPoint(e.clientX, e.clientY);
+        isPanning = true;
+        panSX = e.clientX - canvasPanX;
+        panSY = e.clientY - canvasPanY;
+        svg.style.cursor = 'grabbing';
     });
 
-    // ─ mousemove: 드래그 이동 or 그리기 ─
-    // document에 등록해야 SVG 범위 밖으로 이동해도 작동
+    // ─ 빈 곳 우클릭 → 도형 추가 메뉴 ─
+    svg.addEventListener('contextmenu', e => {
+        if (e.target.closest('.node-group')) return; // 노드 우클릭은 _nodeContextMenu가 처리
+        e.preventDefault();
+        e.stopPropagation(); // document의 contextmenu 리스너가 메뉴를 hide()하는 것을 방지
+        if (resizingNodeId) return;
+        const cx = e.clientX, cy = e.clientY;
+        contextMenu.show(cx, cy, [
+            { label: '⭕ 원 추가',    action: () => addNode('circle',   cx, cy) },
+            { label: '▭ 사각형 추가', action: () => addNode('rect',     cx, cy) },
+            { label: '△ 삼각형 추가', action: () => addNode('triangle', cx, cy) },
+        ]);
+    });
+
+    // ─ mousemove: 노드 드래그 or 리사이즈 or 팬 ─
     document.addEventListener('mousemove', e => {
-        // 리사이즈 핸들 드래그 중
         if (resizingNodeId && resizeDragHandle) {
             const node = nodes.find(n => n.id === resizingNodeId);
             if (node) {
@@ -304,48 +329,31 @@ function setupEvents() {
         if (draggingNodeId) {
             const node = nodes.find(n => n.id === draggingNodeId);
             if (node) {
-                node.x = e.clientX - dragOffsetX;
-                node.y = e.clientY - dragOffsetY;
+                node.x = e.clientX - canvasPanX - dragOffsetX;
+                node.y = e.clientY - canvasPanY - dragOffsetY;
                 renderMindmap();
             }
-        } else if (isDrawing) {
-            ctx.lineTo(e.clientX, e.clientY);
-            ctx.stroke();
-            mindmapEngine.addPoint(e.clientX, e.clientY);
+        } else if (isPanning) {
+            canvasPanX = e.clientX - panSX;
+            canvasPanY = e.clientY - panSY;
+            applyCanvasPan();
         }
     });
 
-    // ─ mouseup: 드래그 종료 or 도형 인식 ─
-    document.addEventListener('mouseup', e => {
-        // 핸들 드래그 종료 (리사이즈 모드는 유지, 핸들 드래그만 끝냄)
+    // ─ mouseup: 드래그 / 팬 종료 ─
+    document.addEventListener('mouseup', () => {
         if (resizeDragHandle) {
             resizeDragHandle    = null;
             resizeDragStartDims = null;
             return;
         }
-
         if (draggingNodeId) {
             draggingNodeId = null;
             saveMindmap();
         }
-
-        if (isDrawing) {
-            isDrawing = false;
-            const shape = mindmapEngine.recognizeShape();
-            if (shape) {
-                nodeColorIndex = (nodeColorIndex + 1) % NODE_COLORS.length;
-                const newNode = {
-                    id: Date.now(), text: '',
-                    x: shape.x, y: shape.y,
-                    type: shape.type, radius: shape.radius,
-                    width: shape.width, height: shape.height,
-                    colorIdx: nodeColorIndex
-                };
-                nodes.push(newNode);
-                renderMindmap();
-                openEditor(newNode.id);
-            }
-            setTimeout(() => ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height), 300);
+        if (isPanning) {
+            isPanning = false;
+            svg.style.cursor = 'grab';
         }
     });
 
