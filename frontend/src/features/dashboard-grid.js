@@ -500,6 +500,11 @@ export function setupDraggable(widget, grid) {
             return;
         }
 
+        // 메모장 편집 모드 중에는 드래그 차단
+        if (widget.classList.contains('is-editing-notepad')) {
+            return;
+        }
+
         // 우클릭 제외 (마우스인 경우)
         if (e.type === 'mousedown' && e.button !== 0) return;
 
