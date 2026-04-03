@@ -264,7 +264,8 @@
     position: fixed;
     z-index: 2300;
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    align-items: stretch;
     justify-content: center;
     border-radius: 14px;
     border: 2px solid rgba(139, 92, 246, 0.75);
@@ -276,9 +277,10 @@
         0 0 24px rgba(139, 92, 246, 0.4),
         0 8px 32px rgba(0,0,0,0.5);
     pointer-events: auto;
+    overflow: hidden;
 }
 
-.mm-node-editor input {
+.mm-node-editor textarea {
     background: transparent;
     border: none;
     outline: none;
@@ -287,16 +289,49 @@
     font-weight: 600;
     font-family: inherit;
     caret-color: #a78bfa;
-    padding: 0 12px;
+    padding: 12px 12px 8px;
     width: 100%;
-    height: 100%;
+    flex: 1;
+    min-height: 0;
     font-size: 14px;
+    resize: none;
+    overflow: hidden;
+    line-height: 1.5;
+    display: block;
+    box-sizing: border-box;
 }
 
-.mm-node-editor input::placeholder {
+.mm-node-editor textarea::placeholder {
     color: rgba(255,255,255,0.3);
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 400;
+    line-height: 1.4;
+}
+
+/* 편집기 하단 힙트 바 */
+.mm-editor-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 4px 8px 6px;
+    font-size: 10.5px;
+    color: rgba(167, 139, 250, 0.55);
+    border-top: 1px solid rgba(139, 92, 246, 0.18);
+    white-space: nowrap;
+    pointer-events: none;
+    user-select: none;
+}
+
+.mm-editor-hint kbd {
+    background: rgba(139, 92, 246, 0.15);
+    border: 1px solid rgba(139, 92, 246, 0.3);
+    border-radius: 4px;
+    padding: 0px 5px;
+    font-size: 10px;
+    font-weight: 700;
+    color: rgba(167, 139, 250, 0.85);
+    font-family: inherit;
 }
 
 /* ── 하단 힌트 바 ────────────────────────────────────────── */
@@ -449,33 +484,31 @@
     cursor: default !important;
 }
 
-/* ── 도움말 모달 ────────────────────────────────────────── */
+/* ── 도움말 모달 (모달리스 · 드래그 가능) ────── */
 .mm-help-modal {
     position: fixed;
-    inset: 0;
+    /* 모달리스: 전체 화면 오버레이 없음, 카드만 표시 */
+    top: 80px;
+    right: 24px;
     z-index: 3000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    width: 400px;
+    max-width: calc(100vw - 32px);
     animation: mm-fadein 0.2s ease;
+    /* background/backdrop 없음 */
 }
 
 .mm-help-card {
-    background: rgba(8, 12, 30, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(8, 12, 30, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 22px;
-    padding: 28px 32px 32px;
-    max-width: 540px;
-    width: calc(100% - 40px);
+    padding: 0 0 24px;
+    width: 100%;
     max-height: 80vh;
     overflow-y: auto;
     box-shadow:
-        0 0 0 1px rgba(139, 92, 246, 0.15),
+        0 0 0 1px rgba(139, 92, 246, 0.2),
         0 0 60px rgba(139, 92, 246, 0.18),
-        0 24px 80px rgba(0, 0, 0, 0.7);
+        0 24px 80px rgba(0, 0, 0, 0.8);
     scrollbar-width: none;
 }
 
@@ -485,7 +518,23 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 24px;
+    padding: 20px 24px 16px;
+    margin-bottom: 0;
+    cursor: grab;
+    border-radius: 22px 22px 0 0;
+    user-select: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mm-help-header:active {
+    cursor: grabbing;
+}
+
+.mm-help-sections {
+    padding: 16px 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
 }
 
 .mm-help-title {
@@ -521,12 +570,6 @@
     background: rgba(244, 63, 94, 0.15);
     border-color: rgba(244, 63, 94, 0.3);
     color: #fb7185;
-}
-
-.mm-help-sections {
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
 }
 
 .mm-help-section {

@@ -93,14 +93,15 @@ export function getMindmapHTML() {
 
             <!-- ── 노드 인라인 편집기 ────────────────────────── -->
             <div id="nodeEditor" class="mm-node-editor hidden">
-                <input type="text" id="nodeTextInput" placeholder="이름 입력 후 Enter…"
-                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <textarea id="nodeTextInput" placeholder="이름 입력…"
+                    autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" rows="1"></textarea>
+                <div class="mm-editor-hint">⌨ <kbd>Shift+Enter</kbd> 편집 완료</div>
             </div>
 
-            <!-- ── 도움말 모달 ────────────────────────────────── -->
+            <!-- ── 도움말 모달 (모달리스 · 드래그 가능) ──────── -->
             <div id="mmHelpModal" class="mm-help-modal hidden">
                 <div class="mm-help-card">
-                    <div class="mm-help-header">
+                    <div class="mm-help-header" id="mmHelpDragHandle">
                         <h3 class="mm-help-title">
                             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0">
                                 <circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>

@@ -116,10 +116,16 @@ function initEditorEvents() {
     };
 
     input.addEventListener('keydown', e => {
-        if (e.key === 'Enter')  { e.preventDefault(); applyEdit(); }
+        // Shift+Enter → 편집 완료
+        if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); applyEdit(); return; }
+        // Enter 단독 → 개행 (기본 textarea 동작, 높이 자동 조정)
+        if (e.key === 'Enter') {
+            requestAnimationFrame(() => autoResizeTextarea(input));
+            return;
+        }
         if (e.key === 'Escape') { e.preventDefault(); closeEditor(); }
-        // Delete: 입력 비어있을 때만 노드 삭제
-        if (e.key === 'Delete' && input.value === '') {
+        // Backspace: 완전히 비어있을 때만 노드 삭제
+        if ((e.key === 'Delete' || e.key === 'Backspace') && input.value === '') {
             const id = window._editNodeId;
             if (id == null) return;
             const node = nodes.find(n => n.id === id);
@@ -129,6 +135,9 @@ function initEditorEvents() {
             renderMindmap(); saveMindmap(); closeEditor();
         }
     });
+
+    // textarea 높이 자동 조정
+    input.addEventListener('input', () => autoResizeTextarea(input));
 
     // 조작 안지지(pointer-events 다운)  → 외부 클릭 시 저장 후 닫기
     input.addEventListener('blur', () => {
@@ -174,13 +183,28 @@ function openEditor(nodeId) {
         left:      `${clampL}px`,
         top:       `${clampT}px`,
         width:     `${edW}px`,
-        height:    `${edH}px`,
+        minHeight: `${edH}px`,
+        height:    'auto',
         transform: 'none',
     });
 
     input.style.fontSize = node.isMain ? '17px' : '14px';
     input.value = node.text || '';
-    requestAnimationFrame(() => { input.focus(); input.select(); });
+    requestAnimationFrame(() => {
+        autoResizeTextarea(input);
+        input.focus();
+        input.select();
+    });
+}
+
+// ── 유틸 ────────────────────────────────────────────────────────
+function escapeHtml(str) {
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function autoResizeTextarea(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = ta.scrollHeight + 'px';
 }
 
 // ── 캔버스 팬 / 줌 헬퍼 ─────────────────────────────────────────
@@ -321,6 +345,56 @@ function edgePoint(from, to) {
     return { x: from.x + nx * r, y: from.y + ny * r };
 }
 
+function renderNodeText(node) {
+    let maxW = 100, maxH = 50;
+    if (node.type === 'rect') {
+        maxW = (node.width || 120) - 16;
+        maxH = (node.height || 60) - 16;
+    } else if (node.type === 'circle') {
+        const r = node.radius || 50;
+        maxW = r * 1.7;
+        maxH = r * 1.7;
+    } else if (node.type === 'triangle') {
+        maxW = (node.width || 120) * 0.6;
+        maxH = (node.height || 100) * 0.6;
+    }
+
+    const CHAR_WIDTH = node.isMain ? 15 : 13;
+    const LINE_H     = node.isMain ? 22 : 18;
+
+    const MAX_CHARS  = Math.max(5, Math.floor(maxW / CHAR_WIDTH));
+    const MAX_LINES  = Math.max(2, Math.floor(maxH / LINE_H));
+
+    // \n으로 분리 후, 줄이 너무 길면 MAX_CHARS마다 자동 줄바꿈
+    const rawLines = (node.text || '').split('\n');
+    const allLines = rawLines.flatMap(line => {
+        if (line.length <= MAX_CHARS) return [line];
+        const chunks = [];
+        for (let i = 0; i < line.length; i += MAX_CHARS) chunks.push(line.slice(i, i + MAX_CHARS));
+        return chunks;
+    });
+
+    const displayLines = allLines.slice(0, MAX_LINES);
+    if (allLines.length > MAX_LINES) {
+        displayLines[MAX_LINES - 1] = displayLines[MAX_LINES - 1].slice(0, Math.max(1, MAX_CHARS - 1)) + '…';
+    }
+
+    const n = displayLines.length;
+
+    if (n <= 1) {
+        const dy = node.isMain ? 6 : 5;
+        return `<text text-anchor="middle" dy="${dy}" class="node-text">${escapeHtml(displayLines[0] ?? '')}</text>`;
+    }
+
+    // N줄 수직 중앙 정렬: 첫 줄 dy = -(N-1)/2 * LINE_H + 5
+    const startDy = -((n - 1) / 2) * LINE_H + 5;
+    const tspans = displayLines.map((line, i) =>
+        `<tspan x="0" dy="${i === 0 ? startDy : LINE_H}">${escapeHtml(line)}</tspan>`
+    ).join('');
+
+    return `<text text-anchor="middle" class="node-text">${tspans}</text>`;
+}
+
 function renderMindmap() {
     const ng = document.getElementById('nodesGroup');
     const lg = document.getElementById('linksGroup');
@@ -356,12 +430,7 @@ function renderMindmap() {
         const isConnSrc = connectSourceId === node.id;
         const cls = `node-group${node.isMain?' main':''}${isConnSrc?' connecting-source':''}${isSelected?' selected':''}`;
 
-        // 긴 텍스트 두 줄 처리
-        const txt = node.text || '';
-        const MAX = 10;
-        const textEl = txt.length > MAX
-            ? `<text text-anchor="middle" class="node-text"><tspan x="0" dy="-7">${txt.slice(0,MAX)}</tspan><tspan x="0" dy="18">${txt.slice(MAX,MAX*2)}${txt.length>MAX*2?'…':''}</tspan></text>`
-            : `<text text-anchor="middle" dy="${node.isMain?'6':'5'}" class="node-text">${txt}</text>`;
+        const textEl = renderNodeText(node);
 
         return `<g class="${cls}" data-node-id="${node.id}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}</g>`;
     }).join('');
@@ -523,16 +592,63 @@ function setupEvents() {
     document.getElementById('saveMindmapBtn').onclick        = saveMindmap;
     document.getElementById('backToDashFromMindmap').onclick = () => location.reload();
 
-    // 도움말 모달
+    // 도움말 모달 (드래그 가능)
     const helpBtn   = document.getElementById('mmHelpBtn');
     const helpModal = document.getElementById('mmHelpModal');
     const helpClose = document.getElementById('mmHelpClose');
+    const dragHandle = document.getElementById('mmHelpDragHandle');
+    
     if (helpBtn && helpModal) {
-        helpBtn.onclick = () => helpModal.classList.toggle('hidden');
-        helpClose.onclick = () => helpModal.classList.add('hidden');
-        helpModal.addEventListener('mousedown', e => {
-            if (e.target === helpModal) helpModal.classList.add('hidden');
-        });
+        helpBtn.onclick = () => {
+            helpModal.classList.toggle('hidden');
+        };
+        if (helpClose) helpClose.onclick = () => helpModal.classList.add('hidden');
+        
+        if (dragHandle) {
+            let isDraggingHelp = false;
+            let startX = 0, startY = 0;
+            let startLeft = 0, startTop = 0;
+
+            dragHandle.addEventListener('mousedown', e => {
+                if (e.target.closest('#mmHelpClose')) return; // 닫기 버튼 클릭 무시
+                isDraggingHelp = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                
+                const rect = helpModal.getBoundingClientRect();
+                helpModal.style.right = 'auto'; // CSS의 right 초기화
+                helpModal.style.left = rect.left + 'px';
+                helpModal.style.top = rect.top + 'px';
+                helpModal.style.bottom = 'auto';
+                
+                startLeft = rect.left;
+                startTop = rect.top;
+                
+                document.body.style.userSelect = 'none';
+            });
+            
+            document.addEventListener('mousemove', e => {
+                if (!isDraggingHelp) return;
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                let newLeft = startLeft + dx;
+                let newTop = startTop + dy;
+                
+                const maxX = window.innerWidth - helpModal.offsetWidth;
+                const maxY = window.innerHeight - 30; // 상단바 정도 남기기
+                
+                helpModal.style.left = Math.max(0, Math.min(newLeft, maxX)) + 'px';
+                helpModal.style.top = Math.max(0, Math.min(newTop, maxY)) + 'px';
+            });
+            
+            document.addEventListener('mouseup', () => {
+                if (isDraggingHelp) {
+                    isDraggingHelp = false;
+                    document.body.style.userSelect = '';
+                }
+            });
+        }
     }
 }
 
