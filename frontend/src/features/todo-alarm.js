@@ -422,8 +422,13 @@ class TodoAlarmSystem {
                 const delay = alarmTime - now;
 
                 if (delay < 0) {
-                    // 이미 지난 알람: 발송되지 않았다면 즉시 발송
-                    await sendNotification(todo, new Date(alarmTime));
+                    // 이미 지난 알람: 발송되지 않았다면 즉시 발송하되,
+                    // 알람 시간이 현재 시각 기준 5분(300,000ms) 이상 지난 과거 알람이면 너무 늦었으므로 무음 처리(무시)
+                    if (delay > -300000) {
+                        await sendNotification(todo, new Date(alarmTime));
+                    } else {
+                        console.log(`[TodoAlarm] 너무 오래 지난 만료된 알람 무시 처리: ID ${id}`);
+                    }
                     markAlarmSent(id);
                 } else {
                     // 미래 알람: 메인 탭 setTimeout 스케줄링

@@ -28,7 +28,7 @@ app.use(cookieParser());
 
 // 헬스체크 API
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', version: '2.0.0', time: new Date().toISOString() });
+  res.json({ status: 'ok', version: '2.1.0', time: new Date().toISOString() });
 });
 
 // DB 초기화

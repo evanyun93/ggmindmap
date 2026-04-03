@@ -11,8 +11,6 @@
     position: fixed;
     inset: 0;
     z-index: 2000;
-    display: flex;
-    flex-direction: column;
     overflow: hidden;
     background:
         radial-gradient(ellipse at 15% 15%, rgba(139, 92, 246, 0.09) 0%, transparent 55%),
@@ -23,12 +21,15 @@
 
 /* ── 상단 툴바 ──────────────────────────────────────────── */
 .mm-topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
     display: flex;
     align-items: center;
     justify-content: space-between;
     height: 54px;
     padding: 0 20px;
-    flex-shrink: 0;
     background: rgba(6, 10, 24, 0.6);
     backdrop-filter: blur(24px);
     -webkit-backdrop-filter: blur(24px);
@@ -164,8 +165,11 @@
 
 /* ── 캔버스 래퍼 ────────────────────────────────────────── */
 .mm-canvas-wrap {
-    flex: 1;
-    position: relative;
+    position: absolute;
+    top: 54px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     overflow: hidden;
     cursor: crosshair;
 }
@@ -564,7 +568,7 @@
     width: 100%;
     min-height: 0;
     display: block;
-    cursor: crosshair;
+    cursor: grab;
     background:
         radial-gradient(circle at 1px 1px, rgba(255, 255, 255, 0.04) 1px, transparent 0);
     background-size: 28px 28px;
@@ -577,12 +581,8 @@
 .mw-node-group:active { cursor: grabbing; }
 
 .mw-node-shape {
-    stroke-width: 1.5;
     transition: stroke 0.15s, stroke-width 0.15s;
 }
-
-.mw-node-group:hover .mw-node-shape { stroke-width: 2; }
-.mw-node-group.main .mw-node-shape  { stroke-width: 2.5; }
 
 .mw-node-group.selected .mw-node-shape {
     filter: drop-shadow(0 0 8px rgba(139, 92, 246, 0.55));

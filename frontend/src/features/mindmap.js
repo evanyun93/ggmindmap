@@ -519,63 +519,83 @@ function updateResizeOverlay() {
     if (!node) { rog.innerHTML = ''; return; }
 
     const { x, y } = node;
-    const PAD = 8; // 핸들 박스와 도형 사이 여백
-    let border = '';
-    let handleDefs = [];
+    const PAD        = 8;  // 도형과 border 사이 여백
+    const SIDE_HIT   = 16; // 변 전체 히트 두께
+    const CORNER_HIT = 14; // 모서리 히트 반경 (총 28×28)
+    const VIS        = 6;  // 보이는 핸들 반경 (총 12×12)
+
+    // 모서리 핸들 생성 헬퍼
+    const cornerEl = (key, cx, cy, cur) =>
+        `<rect x="${cx-CORNER_HIT}" y="${cy-CORNER_HIT}" width="${CORNER_HIT*2}" height="${CORNER_HIT*2}" fill="transparent" style="cursor:${cur}" onmousedown="window._resizeHandleDown(event,'${key}')"/>` +
+        `<rect x="${cx-VIS}" y="${cy-VIS}" width="${VIS*2}" height="${VIS*2}" rx="3" class="resize-handle" pointer-events="none"/>`;
+
+    // 변(side) 히트 라인 생성 헬퍼 (투명 두꺼운 선)
+    const sideEl = (key, x1, y1, x2, y2, cur) =>
+        `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="transparent" stroke-width="${SIDE_HIT}" stroke-linecap="square" style="cursor:${cur}" onmousedown="window._resizeHandleDown(event,'${key}')"/>`;
+
+    let svgContent = '';
 
     if (node.type === 'rect') {
-        const hw = (node.width || 120) / 2;
-        const hh = (node.height || 60) / 2;
-        // border는 도형 외곽 기준 (핸들은 border 위에 위치)
-        border = `<rect x="${x-hw-PAD}" y="${y-hh-PAD}" width="${hw*2+PAD*2}" height="${hh*2+PAD*2}" rx="16" class="resize-border"/>`;
-        handleDefs = [
-            { key: 'nw', cx: x-hw-PAD, cy: y-hh-PAD, cur: 'nw-resize' },
-            { key: 'n',  cx: x,        cy: y-hh-PAD, cur: 'n-resize'  },
-            { key: 'ne', cx: x+hw+PAD, cy: y-hh-PAD, cur: 'ne-resize' },
-            { key: 'w',  cx: x-hw-PAD, cy: y,         cur: 'w-resize'  },
-            { key: 'e',  cx: x+hw+PAD, cy: y,         cur: 'e-resize'  },
-            { key: 'sw', cx: x-hw-PAD, cy: y+hh+PAD, cur: 'sw-resize' },
-            { key: 's',  cx: x,        cy: y+hh+PAD, cur: 's-resize'  },
-            { key: 'se', cx: x+hw+PAD, cy: y+hh+PAD, cur: 'se-resize' },
-        ];
+        const hw = (node.width  || 120) / 2;
+        const hh = (node.height || 60)  / 2;
+        const bx  = x - hw - PAD, by  = y - hh - PAD;
+        const bx2 = x + hw + PAD, by2 = y + hh + PAD;
+        const bw  = bx2 - bx,     bh  = by2 - by;
+
+        // 점선 border (시각)
+        svgContent += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" rx="16" class="resize-border"/>`;
+
+        // 4개 변 히트 영역 (모서리보다 먼저 렌더 → 모서리가 위에 표시됨)
+        svgContent += sideEl('n', bx, by,  bx2, by,  'n-resize');
+        svgContent += sideEl('s', bx, by2, bx2, by2, 's-resize');
+        svgContent += sideEl('w', bx, by,  bx,  by2, 'w-resize');
+        svgContent += sideEl('e', bx2, by, bx2, by2, 'e-resize');
+
+        // 4개 모서리 핸들 (변 히트보다 위에 렌더 → 클릭 우선)
+        svgContent += cornerEl('nw', bx,  by,  'nw-resize');
+        svgContent += cornerEl('ne', bx2, by,  'ne-resize');
+        svgContent += cornerEl('sw', bx,  by2, 'sw-resize');
+        svgContent += cornerEl('se', bx2, by2, 'se-resize');
+
     } else if (node.type === 'circle') {
-        const r = node.radius || 50;
-        const rp = r + PAD; // 핸들을 원 바깥쪽으로 PAD만큼 밀어냄
-        border = `<circle cx="${x}" cy="${y}" r="${rp}" class="resize-border"/>`;
-        handleDefs = [
-            { key: 'n', cx: x,    cy: y-rp, cur: 'n-resize' },
-            { key: 's', cx: x,    cy: y+rp, cur: 's-resize' },
-            { key: 'w', cx: x-rp, cy: y,    cur: 'w-resize' },
-            { key: 'e', cx: x+rp, cy: y,    cur: 'e-resize' },
-        ];
+        const r  = node.radius || 50;
+        const rp = r + PAD;
+
+        // 점선 border (시각, pointer-events:none)
+        svgContent += `<circle cx="${x}" cy="${y}" r="${rp}" class="resize-border"/>`;
+
+        // 전체 원 둘레 히트 영역 (두꺼운 투명 stroke)
+        // 드래그 중 마우스-중심 거리로 반지름 직접 계산 → key='radial'
+        svgContent += `<circle cx="${x}" cy="${y}" r="${rp}" fill="none" stroke="transparent" stroke-width="${SIDE_HIT}" style="cursor:nwse-resize" onmousedown="window._resizeHandleDown(event,'radial')"/>`;
+
+        // 4방향 시각적 핸들 (이벤트 없음)
+        [{ cx: x, cy: y-rp }, { cx: x, cy: y+rp }, { cx: x-rp, cy: y }, { cx: x+rp, cy: y }]
+            .forEach(h => {
+                svgContent += `<rect x="${h.cx-VIS}" y="${h.cy-VIS}" width="${VIS*2}" height="${VIS*2}" rx="3" class="resize-handle" pointer-events="none"/>`;
+            });
+
     } else { // triangle
-        const hw = (node.width || 120) / 2;
-        const hh = (node.height || 100) / 2;
-        border = `<rect x="${x-hw-PAD}" y="${y-hh-PAD}" width="${hw*2+PAD*2}" height="${hh*2+PAD*2}" rx="8" class="resize-border"/>`;
-        handleDefs = [
-            { key: 'n',  cx: x,        cy: y-hh-PAD, cur: 'n-resize'  },
-            { key: 's',  cx: x,        cy: y+hh+PAD, cur: 's-resize'  },
-            { key: 'w',  cx: x-hw-PAD, cy: y,         cur: 'w-resize'  },
-            { key: 'e',  cx: x+hw+PAD, cy: y,         cur: 'e-resize'  },
-            { key: 'sw', cx: x-hw-PAD, cy: y+hh+PAD, cur: 'sw-resize' },
-            { key: 'se', cx: x+hw+PAD, cy: y+hh+PAD, cur: 'se-resize' },
-        ];
+        const hw  = (node.width  || 120) / 2;
+        const hh  = (node.height || 100) / 2;
+        const tpX = x,         tpY = y - hh - PAD; // 꼭대기
+        const blX = x - hw - PAD, blY = y + hh + PAD; // 왼쪽 아래
+        const brX = x + hw + PAD, brY = y + hh + PAD; // 오른쪽 아래
+
+        // 점선 border (삼각형 모양)
+        svgContent += `<polygon points="${tpX},${tpY} ${blX},${blY} ${brX},${brY}" class="resize-border"/>`;
+
+        // 3개 변 히트 영역
+        svgContent += sideEl('w', tpX, tpY, blX, blY, 'w-resize');  // 왼쪽 변
+        svgContent += sideEl('e', tpX, tpY, brX, brY, 'e-resize');  // 오른쪽 변
+        svgContent += sideEl('s', blX, blY, brX, brY, 's-resize');  // 아래 변
+
+        // 3개 꼭짓점 핸들
+        svgContent += cornerEl('n',  tpX, tpY, 'n-resize');
+        svgContent += cornerEl('sw', blX, blY, 'sw-resize');
+        svgContent += cornerEl('se', brX, brY, 'se-resize');
     }
 
-    // 핸들 = 투명한 큰 히트 영역(28×28) + 보이는 작은 사각형(12×12)
-    const HIT = 14; // 히트 영역 반경 (총 28×28)
-    const VIS = 6;  // 보이는 핸들 반경 (총 12×12)
-    const handles = handleDefs.map(h =>
-        // ① 투명 히트 영역 - 실제 이벤트를 받음
-        `<rect x="${h.cx-HIT}" y="${h.cy-HIT}" width="${HIT*2}" height="${HIT*2}"` +
-        ` fill="transparent" style="cursor:${h.cur}"` +
-        ` onmousedown="window._resizeHandleDown(event,'${h.key}')"/>` +
-        // ② 보이는 핸들 - pointer-events 없음
-        `<rect x="${h.cx-VIS}" y="${h.cy-VIS}" width="${VIS*2}" height="${VIS*2}" rx="3"` +
-        ` class="resize-handle" pointer-events="none"/>`
-    ).join('');
-
-    rog.innerHTML = border + handles;
+    rog.innerHTML = svgContent;
 }
 
 function applyResize(node, handle, dx, dy) {
@@ -584,8 +604,12 @@ function applyResize(node, handle, dx, dy) {
     if (!d) return;
 
     if (node.type === 'circle') {
-        // 각 방향 핸들이 반지름을 독립적으로 제어
-        if (handle === 'e') node.radius = Math.max(MIN_R, d.radius + dx);
+        if (handle === 'radial') {
+            // 마우스-중심 거리를 반지름으로 직접 사용
+            const mx = resizeDragStartX + dx;
+            const my = resizeDragStartY + dy;
+            node.radius = Math.max(MIN_R, Math.hypot(mx - node.x, my - node.y));
+        } else if (handle === 'e') node.radius = Math.max(MIN_R, d.radius + dx);
         else if (handle === 'w') node.radius = Math.max(MIN_R, d.radius - dx);
         else if (handle === 's') node.radius = Math.max(MIN_R, d.radius + dy);
         else if (handle === 'n') node.radius = Math.max(MIN_R, d.radius - dy);

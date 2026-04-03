@@ -387,12 +387,10 @@ export class WidgetManager {
                 </div>
                 <div class="mindmap-widget-body">
                   <div class="mw-toolbar">
-                    <button class="mw-btn-add-node" title="노드 추가">＋ 노드</button>
-                    <button class="mw-btn-fit" title="화면 맞추기">⊡ 맞추기</button>
-                    <span class="mw-hint-text">더블클릭: 추가 · Shift+클릭: 연결 · Delete: 삭제</span>
-                    <button class="btn-mindmap-fullscreen mw-btn-fullscreen" title="전체화면으로 열기">
-                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>
-                      전체화면
+                    <span class="mw-hint-text">스크롤: 확대/축소 · 드래그: 이동</span>
+                    <button class="btn-mindmap-fullscreen mw-btn-fullscreen" title="편집 모드로 열기">
+                      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      편집 모드
                     </button>
                   </div>
                   <svg class="mindmap-widget-svg" xmlns="http://www.w3.org/2000/svg" tabindex="0">
