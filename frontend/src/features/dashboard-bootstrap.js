@@ -898,10 +898,8 @@ function initCollapseAll() {
  * 대시보드 배율(Zoom) 모듈 초기화
  */
 async function initZoomControl() {
-    const desktopControl = document.getElementById('desktopZoomControl');
-    const mobileBtn = document.getElementById('mobileZoomBtn');
-    const mobilePopup = document.getElementById('mobileZoomPopup');
-    if (!desktopControl && !mobileBtn) return;
+    const zoomContainer = document.getElementById('desktopZoomControl');
+    if (!zoomContainer) return;
 
     let zoomLevel = 1.0;
     const ZOOM_STEP = 0.1;
@@ -911,17 +909,11 @@ async function initZoomControl() {
     const contentArea = document.getElementById('dashboardContent') || document.querySelector('.dashboard-content');
     if (!contentArea) return;
 
-    // UI 요소 캐싱
+    // UI 요소 캐싱 (푸터 내 요소들)
     const dZoomIn = document.getElementById('zoomInBtn');
     const dZoomOut = document.getElementById('zoomOutBtn');
     const dZoomText = document.getElementById('zoomLevelText');
     
-    const mZoomIn = document.getElementById('mZoomInBtn');
-    const mZoomOut = document.getElementById('mZoomOutBtn');
-    const mZoomText = document.getElementById('mZoomLevelText');
-    const mZoomBtnText = document.getElementById('mobileZoomText');
-    const mZoomReset = document.getElementById('mZoomResetBtn');
-
     // 서버에 배율 상태 저장 (디바운스 적용)
     let saveTimeout;
     const saveZoomLevel = (zoom) => {
@@ -956,8 +948,6 @@ async function initZoomControl() {
         // 텍스트 업데이트
         const textValue = Math.round(zoomLevel * 100) + '%';
         if (dZoomText) dZoomText.textContent = textValue;
-        if (mZoomText) mZoomText.textContent = textValue;
-        if (mZoomBtnText) mZoomBtnText.textContent = textValue;
 
         if (doSave) saveZoomLevel(zoomLevel);
     };
@@ -981,7 +971,6 @@ async function initZoomControl() {
     await loadInitialZoom();
 
     // === 이벤트 핸들러 등록 ===
-
     const zoomIn = () => applyZoom(zoomLevel + ZOOM_STEP);
     const zoomOut = () => applyZoom(zoomLevel - ZOOM_STEP);
     const resetZoom = () => applyZoom(1.0);
@@ -989,30 +978,4 @@ async function initZoomControl() {
     if (dZoomIn) dZoomIn.onclick = zoomIn;
     if (dZoomOut) dZoomOut.onclick = zoomOut;
     if (dZoomText) dZoomText.onclick = resetZoom;
-
-    if (mZoomIn) mZoomIn.onclick = zoomIn;
-    if (mZoomOut) mZoomOut.onclick = zoomOut;
-    if (mZoomReset) mZoomReset.onclick = resetZoom;
-
-    // 모바일 팝업 토글 로직
-    if (mobileBtn && mobilePopup) {
-        mobileBtn.onclick = (e) => {
-            e.stopPropagation();
-            if (mobilePopup.style.display === 'none') {
-                mobilePopup.style.display = 'flex';
-                // 팝업이 열릴 때 버튼 위치에 맞추기 위해 약간의 트윅
-                const rect = mobileBtn.getBoundingClientRect();
-                mobilePopup.style.top = (rect.bottom + 10) + 'px';
-            } else {
-                mobilePopup.style.display = 'none';
-            }
-        };
-
-        // 바깥 클릭 시 닫기
-        document.addEventListener('click', (e) => {
-            if (mobilePopup.style.display === 'flex' && !mobilePopup.contains(e.target) && !mobileBtn.contains(e.target)) {
-                mobilePopup.style.display = 'none';
-            }
-        });
-    }
 }

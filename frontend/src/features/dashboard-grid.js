@@ -712,12 +712,15 @@ export function setupDraggable(widget, grid) {
                 }
             } else {
                 // PC용 자유 좌표 이동
-                const offsetX = touch.clientX - rect.left;
-                const offsetY = touch.clientY - rect.top;
-                let left = currentTouch.clientX - gridRect.left - offsetX;
-                let top = currentTouch.clientY - gridRect.top - offsetY;
+                // CSS zoom이 적용된 경우, getBoundingClientRect()는 뷰포트 픽셀을 반환하지만
+                // style.left/top은 CSS 픽셀 기준이므로 줌 비율로 나눠야 함
+                const zoom = window.dashboardZoom || 1;
+                const offsetX = (touch.clientX - rect.left) / zoom;
+                const offsetY = (touch.clientY - rect.top) / zoom;
+                let left = (currentTouch.clientX - gridRect.left) / zoom - offsetX;
+                let top = (currentTouch.clientY - gridRect.top) / zoom - offsetY;
 
-                const maxLeft = gridRect.width - widget.offsetWidth;
+                const maxLeft = gridRect.width / zoom - widget.offsetWidth;
                 left = Math.max(0, Math.min(maxLeft, left));
                 top = Math.max(0, top);
 

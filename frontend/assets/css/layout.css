@@ -59,6 +59,71 @@
   background: rgba(139, 92, 246, 0.1);
 }
 
+/* ─── 푸터 우측 액션 (확대/축소 등) ─────────────────────── */
+.footer-right-actions {
+  position: absolute;
+  right: 45px; /* D 버튼(10px) 옆에 배치 */
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  transition: all 0.3s ease;
+}
+
+.footer-right-actions:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.footer-zoom-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 18px;
+  font-weight: 500;
+  cursor: pointer;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.footer-zoom-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.footer-zoom-btn:active {
+  transform: scale(0.9);
+}
+
+.footer-zoom-text {
+  color: var(--text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  min-width: 38px;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  opacity: 0.8;
+}
+
+.footer-zoom-text:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
 
 /* ─── 상단 네비게이션 헤더 ──────────────────────────────────── */
 .dashboard-header {
