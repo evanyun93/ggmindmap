@@ -295,11 +295,13 @@ function initUtilities() {
             const nChangeView = document.getElementById('nicknameChangeSubView');
             const tChangeView = document.getElementById('themeChangeSubView');
             const hInfoView = document.getElementById('healthInfoSubView');
+            const aInfoView = document.getElementById('appInfoSubView');
             if (mainView) mainView.style.display = 'block';
             if (pResetView) pResetView.style.display = 'none';
             if (nChangeView) nChangeView.style.display = 'none';
             if (tChangeView) tChangeView.style.display = 'none';
             if (hInfoView) hInfoView.style.display = 'none';
+            if (aInfoView) aInfoView.style.display = 'none';
         }
     };
 
@@ -347,6 +349,25 @@ function initUtilities() {
     if (closeThemeChangeSubBtn && mainSettingsView && themeChangeSubView) {
         closeThemeChangeSubBtn.addEventListener('click', () => {
             themeChangeSubView.style.display = 'none';
+            mainSettingsView.style.display = 'block';
+        });
+    }
+
+    // 2.5 앱 정보 서브 뷰
+    const openAppInfoSubBtn = document.getElementById('openAppInfoSubBtn');
+    const closeAppInfoSubBtn = document.getElementById('closeAppInfoSubBtn');
+    const appInfoSubView = document.getElementById('appInfoSubView');
+
+    if (openAppInfoSubBtn && mainSettingsView && appInfoSubView) {
+        openAppInfoSubBtn.addEventListener('click', () => {
+            mainSettingsView.style.display = 'none';
+            appInfoSubView.style.display = 'block';
+        });
+    }
+
+    if (closeAppInfoSubBtn && mainSettingsView && appInfoSubView) {
+        closeAppInfoSubBtn.addEventListener('click', () => {
+            appInfoSubView.style.display = 'none';
             mainSettingsView.style.display = 'block';
         });
     }

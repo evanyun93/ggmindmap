@@ -554,16 +554,16 @@
 
   /* 모바일 푸터 슬림화 */
   .app-footer-fixed {
-    padding: 6px 0 !important;
+    padding: 6px 12px !important;
     background: rgba(15, 23, 42, 0.8) !important;
   }
 
-  .footer-content {
+  .footer-left-actions {
     gap: 8px !important;
     font-size: 0.75rem !important;
   }
 
-  .footer-content .divider {
+  .footer-left-actions .divider {
     display: none; /* 공간 절약을 위해 구분선 제거 */
   }
 

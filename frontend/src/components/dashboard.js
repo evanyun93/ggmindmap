@@ -220,6 +220,36 @@ export function getDashboardHTML(user) {
     </div>
   `;
 
+  const appInfoSection = `
+    <div style="margin-top: 24px; border-top: 1px solid #eee; padding-top: 16px;">
+        <h4 style="margin: 0 0 12px 0; color: #495057; font-size: 14px;">앱 정보</h4>
+        <button id="openAppInfoSubBtn" style="width: 100%; padding: 10px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px;">ℹ️ 만든이 및 앱 정보</button>
+    </div>
+  `;
+
+  // --- Sub-View for App Info ---
+  const appInfoSubView = `
+    <div id="appInfoSubView" style="display: none; margin-top: 16px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <h4 style="margin: 0; color: #333; font-size: 16px;">앱 정보</h4>
+            <button id="closeAppInfoSubBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
+        </div>
+        <div style="background: #f8f9fa; padding: 24px; border-radius: 12px; border: 1px solid #eee; text-align: center;">
+            <h5 style="margin: 0 0 8px 0; font-size: 20px; color: #8B5CF6;">MindMap</h5>
+            <p style="margin: 0 0 24px 0; font-size: 14px; color: #6c757d;">Version 2.1.0</p>
+            <p style="margin: 0 0 12px 0; font-size: 13px; color: #adb5bd; font-weight: 600;">만든이</p>
+            <a href="https://www.instagram.com/yun.boy" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; color: #E1306C; text-decoration: none; font-weight: bold; background: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #f1f3f5; transition: transform 0.2s;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                    <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                    <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                </svg>
+                @yun.boy
+            </a>
+        </div>
+    </div>
+  `;
+
   // --- Sub-View for Theme Change ---
   const themeChangeSubView = `
     <div id="themeChangeSubView" style="display: none; margin-top: 16px;">
@@ -316,6 +346,7 @@ export function getDashboardHTML(user) {
             ${healthInfoSection}
             ${securitySection}
             ${displaySection}
+            ${appInfoSection}
             <button id="modalFeedbackBtn" class="mobile-only-btn" style="width: 100%; padding: 10px; margin-top: 16px; background: #f8f9fa; color: #495057; border: 1px solid #ddd; border-radius: 6px; cursor: pointer; text-align: left; font-weight: 500; font-size: 14px; display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 16px;">📢</span> 고객의 소리함 (Q&A)
             </button>
@@ -333,6 +364,7 @@ export function getDashboardHTML(user) {
         ${nicknameChangeSubView}
         ${passwordResetSubView}
         ${healthInfoSubView}
+        ${appInfoSubView}
 
       </div>
     </div>

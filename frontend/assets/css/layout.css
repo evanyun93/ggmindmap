@@ -59,12 +59,15 @@
   background: rgba(139, 92, 246, 0.1);
 }
 
+/* ─── 푸터 좌측 액션 (상태등/버전) ─────────────────────── */
+.footer-left-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* ─── 푸터 우측 액션 (확대/축소 등) ─────────────────────── */
 .footer-right-actions {
-  position: absolute;
-  right: 45px; /* D 버튼(10px) 옆에 배치 */
-  top: 50%;
-  transform: translateY(-50%);
   display: flex;
   align-items: center;
   gap: 4px;
