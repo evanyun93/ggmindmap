@@ -343,6 +343,82 @@
     font-size: 13px;
 }
 
+/* ── 색상 선택기 ────────────────────────────────────────── */
+.mm-color-picker {
+    position: fixed;
+    z-index: 3100;
+    background: rgba(8, 12, 30, 0.97);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 12px 14px 14px;
+    box-shadow:
+        0 0 0 1px rgba(139, 92, 246, 0.15),
+        0 12px 40px rgba(0, 0, 0, 0.6),
+        0 0 30px rgba(139, 92, 246, 0.1);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    animation: mm-fadein 0.15s ease;
+}
+
+.mm-color-picker-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: rgba(167, 139, 250, 0.7);
+    margin-bottom: 10px;
+}
+
+.mm-color-swatches {
+    display: flex;
+    gap: 8px;
+}
+
+.mm-color-swatch {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    border: 2px solid;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    flex-shrink: 0;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.mm-color-swatch:hover {
+    transform: scale(1.18);
+    box-shadow: 0 0 14px var(--swatch-glow, rgba(139,92,246,0.6));
+}
+
+.mm-color-swatch.active {
+    transform: scale(1.1);
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.25), 0 0 12px var(--swatch-glow, rgba(139,92,246,0.5));
+}
+
+.mm-color-swatch:active {
+    transform: scale(0.95);
+}
+
+/* 모바일: 스와치 크기·간격 조정 (7개 × 36px + 6 × 8px + 28px 패딩 = 342px, 375px 화면에 적합) */
+@media (max-width: 768px) {
+    .mm-color-picker {
+        padding: 10px 12px 12px;
+    }
+
+    .mm-color-swatches {
+        gap: 8px;
+    }
+
+    .mm-color-swatch {
+        width: 36px;
+        height: 36px;
+    }
+}
+
 /* ── 유틸 ───────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
@@ -511,6 +587,232 @@
     to   { opacity: 1; }
 }
 
+
+/* ═══════════════════════════════════════════════════════════
+   모바일 하단 액션 바
+═══════════════════════════════════════════════════════════ */
+
+.mm-mobile-bar {
+    display: none;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 2200;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px 14px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+    background: rgba(4, 8, 20, 0.96);
+    backdrop-filter: blur(28px);
+    -webkit-backdrop-filter: blur(28px);
+    border-top: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* JS에서 .mm-mobile-bar--visible 추가 시 표시 (모바일에서만) */
+@media (max-width: 768px) {
+    .mm-mobile-bar {
+        display: flex;
+    }
+
+    /* 힌트바는 모바일에서 숨김 */
+    .mm-hint-bar {
+        display: none !important;
+    }
+
+    /* 상단 툴바 높이 축소 */
+    .mm-topbar {
+        height: 48px;
+        padding: 0 12px;
+    }
+
+    /* 캔버스 영역 조정 */
+    .mm-canvas-wrap {
+        top: 48px;
+        bottom: 122px; /* 모바일 바 높이 */
+    }
+
+    /* 타이틀 크기 축소 */
+    .mm-title {
+        font-size: 0.9rem;
+    }
+
+    .mm-brand {
+        gap: 6px;
+    }
+
+    .mm-brand-icon {
+        width: 16px;
+        height: 16px;
+    }
+
+    /* 저장 인디케이터 최소화 */
+    .mm-save-indicator {
+        min-width: 0;
+        font-size: 11px;
+    }
+
+    /* 저장 버튼 축소 */
+    .mm-save-btn {
+        padding: 6px 12px;
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    /* 도움말 버튼 */
+    .mm-help-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* 뒤로가기 버튼 */
+    .mm-back-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    /* 노드 텍스트 크기 (터치 환경) */
+    .node-group {
+        touch-action: none;
+    }
+
+    /* 도움말 카드 모바일 최적화 */
+    .mm-help-card {
+        padding: 20px 16px 24px;
+        border-radius: 18px;
+    }
+}
+
+/* 모바일/PC 전용 도움말 섹션 제어 */
+.mm-mobile-only { display: none; }
+.mm-desktop-only { display: block; }
+
+@media (max-width: 768px) {
+    .mm-mobile-only { display: block; }
+    .mm-desktop-only { display: none; }
+}
+
+/* 도형 추가 버튼 행 */
+.mm-mob-shapes {
+    display: flex;
+    gap: 8px;
+}
+
+.mm-mob-shape-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 9px 8px;
+    border-radius: 12px;
+    border: 1px solid rgba(139, 92, 246, 0.28);
+    background: rgba(139, 92, 246, 0.08);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.mm-mob-shape-btn:active {
+    background: rgba(139, 92, 246, 0.28);
+    transform: scale(0.95);
+}
+
+/* 컨트롤 버튼 행 */
+.mm-mob-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.mm-mob-ctrl-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    padding: 6px 10px;
+    min-width: 44px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.mm-mob-ctrl-btn span {
+    line-height: 1;
+}
+
+.mm-mob-ctrl-btn:active {
+    transform: scale(0.93);
+}
+
+.mm-mob-ctrl-btn.active {
+    background: rgba(139, 92, 246, 0.22);
+    border-color: rgba(139, 92, 246, 0.55);
+    color: #c4b5fd;
+}
+
+/* 줌 컨트롤 */
+.mm-mob-zoom {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 3px 5px;
+    flex-shrink: 0;
+}
+
+.mm-mob-zoom-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    border: none;
+    background: rgba(255, 255, 255, 0.07);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    transition: background 0.15s, transform 0.1s;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.mm-mob-zoom-btn:active {
+    background: rgba(139, 92, 246, 0.3);
+    transform: scale(0.9);
+}
+
+.mm-zoom-level {
+    font-size: 11px;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    min-width: 36px;
+    text-align: center;
+    letter-spacing: -0.02em;
+}
 
 /* ═══════════════════════════════════════════════════════════
    임베디드 마인드맵 위젯

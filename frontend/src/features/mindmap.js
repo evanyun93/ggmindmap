@@ -18,7 +18,7 @@ const MAIN_COLOR = { fill: 'rgba(139,92,246,0.22)', stroke: '#8B5CF6', glow: 'rg
 let nodeColorIndex = 0;
 
 function getNodeColor(node) {
-    if (node.isMain) return MAIN_COLOR;
+    if (node.isMain && node.colorIdx == null) return MAIN_COLOR;
     const idx = node.colorIdx ?? (node.id % NODE_COLORS.length);
     return NODE_COLORS[idx % NODE_COLORS.length];
 }
@@ -49,6 +49,20 @@ let resizeDragStartDims = null; // 핸들 드래그 시작 시점 치수
 let resizeOriginalDims  = null; // ESC 취소용 원래 치수
 let _hintBarOrigHTML    = null; // 리사이즈 모드 전 힌트바 복원용
 
+// ── 줌 상태 ──────────────────────────────────────────────────────
+let canvasZoom = 1;
+const MIN_ZOOM = 0.15;
+const MAX_ZOOM = 4;
+
+// ── 터치 상태 ────────────────────────────────────────────────────
+let touchNodeDragId  = null, touchNodeOffX = 0, touchNodeOffY = 0;
+let touchPanActive   = false, touchPanStartX = 0, touchPanStartY = 0;
+let touchPanCanvasX  = 0, touchPanCanvasY = 0;
+let pinchActive      = false, pinchStartDist = 0, pinchStartZoom = 1;
+let pinchStartMidX   = 0, pinchStartMidY = 0;
+let pinchStartPanX   = 0, pinchStartPanY = 0;
+let mobileConnectMode = false;
+
 // ── 초기화 ──────────────────────────────────────────────────────
 export async function initMindmap() {
     const appRoot = document.getElementById('app-root');
@@ -71,6 +85,14 @@ export async function initMindmap() {
     // 마인드맵 컨테이너에 맞게 컨텍스트 메뉴 초기화
     contextMenu.init();
     contextMenu.bindGlobalListeners('#mindmapCanvasContainer');
+
+    // 모바일: 힌트바 숨기고 모바일 바 표시, 화면에 노드 맞추기
+    if (window.innerWidth <= 768) {
+        document.getElementById('mindmapGuide')?.classList.add('hidden');
+        document.getElementById('mmMobileBar')?.classList.add('mm-mobile-bar--visible');
+        fitView();
+        updateZoomIndicator();
+    }
 
     // 실시간 동기화 리스너 (범용 아키텍처 적용 - 전역 마인드맵은 ID 0 사용)
     syncService.watchWidget(0, async () => {
@@ -132,20 +154,25 @@ function openEditor(nodeId) {
 
     const svg     = document.getElementById('mindmapSVG');
     const svgRect = svg.getBoundingClientRect();
-    const sx = svgRect.left + node.x;
-    const sy = svgRect.top  + node.y;
+    const sx = svgRect.left + canvasPanX + node.x * canvasZoom;
+    const sy = svgRect.top  + canvasPanY + node.y * canvasZoom;
 
     const nW = node.type === 'rect' || node.type === 'triangle' ? (node.width  || 120) : (node.radius || 50) * 2;
     const nH = node.type === 'rect' || node.type === 'triangle' ? (node.height || 60)  : (node.radius || 50) * 2;
 
-    const edW = Math.max(nW + 24, 160);
-    const edH = Math.max(nH, 44);
+    const isMob = window.innerWidth <= 768;
+    const edW   = Math.min(Math.max(nW * canvasZoom + 24, isMob ? 200 : 160), window.innerWidth - 16);
+    const edH   = Math.max(nH * canvasZoom, isMob ? 52 : 44);
+    const topH  = isMob ? 48 : 54;
+    const botH  = isMob ? 130 : 0;
+    const clampL = Math.max(8, Math.min(sx - edW / 2, window.innerWidth  - edW - 8));
+    const clampT = Math.max(topH + 8, Math.min(sy - edH / 2, window.innerHeight - edH - botH - 8));
 
     editor.classList.remove('hidden');
     Object.assign(editor.style, {
         position:  'fixed',
-        left:      `${sx - edW / 2}px`,
-        top:       `${sy - edH / 2}px`,
+        left:      `${clampL}px`,
+        top:       `${clampT}px`,
         width:     `${edW}px`,
         height:    `${edH}px`,
         transform: 'none',
@@ -156,10 +183,73 @@ function openEditor(nodeId) {
     requestAnimationFrame(() => { input.focus(); input.select(); });
 }
 
-// ── 캔버스 팬 헬퍼 ───────────────────────────────────────────────
+// ── 캔버스 팬 / 줌 헬퍼 ─────────────────────────────────────────
 function applyCanvasPan() {
     const g = document.getElementById('mm-pan-group');
-    if (g) g.setAttribute('transform', `translate(${canvasPanX},${canvasPanY})`);
+    if (g) g.setAttribute('transform', `translate(${canvasPanX},${canvasPanY}) scale(${canvasZoom})`);
+    updateZoomIndicator();
+}
+
+function updateZoomIndicator() {
+    const el = document.getElementById('mmZoomLevel');
+    if (el) el.textContent = `${Math.round(canvasZoom * 100)}%`;
+}
+
+function fitView() {
+    if (nodes.length === 0) return;
+    const PADDING = 80;
+    const topbarH  = window.innerWidth <= 768 ? 48 : 54;
+    const bottomH  = window.innerWidth <= 768 ? 122 : 0;
+    const canvasW  = window.innerWidth;
+    const canvasH  = window.innerHeight - topbarH - bottomH;
+
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    nodes.forEach(n => {
+        const hw = n.type === 'circle' ? (n.radius || 50) : (n.width  || 120) / 2;
+        const hh = n.type === 'circle' ? (n.radius || 50) : (n.height || 80)  / 2;
+        minX = Math.min(minX, n.x - hw);
+        maxX = Math.max(maxX, n.x + hw);
+        minY = Math.min(minY, n.y - hh);
+        maxY = Math.max(maxY, n.y + hh);
+    });
+
+    const contentW = maxX - minX + PADDING * 2;
+    const contentH = maxY - minY + PADDING * 2;
+    const newZoom  = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Math.min(canvasW / contentW, canvasH / contentH)));
+
+    canvasZoom = newZoom;
+    canvasPanX = canvasW / 2 - ((minX + maxX) / 2) * newZoom;
+    canvasPanY = canvasH / 2 - ((minY + maxY) / 2) * newZoom;
+    applyCanvasPan();
+}
+
+function zoomAt(factor, screenX, screenY) {
+    const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, canvasZoom * factor));
+    canvasPanX = screenX - (screenX - canvasPanX) * (newZoom / canvasZoom);
+    canvasPanY = screenY - (screenY - canvasPanY) * (newZoom / canvasZoom);
+    canvasZoom = newZoom;
+    applyCanvasPan();
+}
+
+function addNodeAtCenter(type) {
+    const topbarH = window.innerWidth <= 768 ? 48 : 54;
+    const bottomH = window.innerWidth <= 768 ? 122 : 0;
+    const cx = window.innerWidth  / 2;
+    const cy = topbarH + (window.innerHeight - topbarH - bottomH) / 2;
+    addNode(type, cx, cy);
+}
+
+function toggleMobileConnect() {
+    mobileConnectMode = !mobileConnectMode;
+    if (!mobileConnectMode) { connectSourceId = null; renderMindmap(); }
+    document.getElementById('mmMobConnect')?.classList.toggle('active', mobileConnectMode);
+}
+
+function mobileDeleteSelected() {
+    if (selectedNodeId == null) return;
+    const node = nodes.find(n => n.id === selectedNodeId);
+    if (!node || node.isMain) { if (node?.isMain) window.appAlert('중심 노드는 삭제할 수 없습니다.'); return; }
+    deleteNode(selectedNodeId);
 }
 
 // ── 노드 추가 ────────────────────────────────────────────────────
@@ -169,8 +259,8 @@ function addNode(type, clientX, clientY) {
     nodeColorIndex = (nodeColorIndex + 1) % NODE_COLORS.length;
     const newNode = {
         id: Date.now(), text: '',
-        x: clientX - rect.left - canvasPanX,
-        y: clientY - rect.top  - canvasPanY,
+        x: (clientX - rect.left - canvasPanX) / canvasZoom,
+        y: (clientY - rect.top  - canvasPanY) / canvasZoom,
         type,
         radius: type === 'circle'   ? 50  : undefined,
         width:  type !== 'circle'   ? 120 : undefined,
@@ -273,7 +363,7 @@ function renderMindmap() {
             ? `<text text-anchor="middle" class="node-text"><tspan x="0" dy="-7">${txt.slice(0,MAX)}</tspan><tspan x="0" dy="18">${txt.slice(MAX,MAX*2)}${txt.length>MAX*2?'…':''}</tspan></text>`
             : `<text text-anchor="middle" dy="${node.isMain?'6':'5'}" class="node-text">${txt}</text>`;
 
-        return `<g class="${cls}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}</g>`;
+        return `<g class="${cls}" data-node-id="${node.id}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}</g>`;
     }).join('');
 }
 
@@ -320,7 +410,9 @@ function setupEvents() {
         if (resizingNodeId && resizeDragHandle) {
             const node = nodes.find(n => n.id === resizingNodeId);
             if (node) {
-                applyResize(node, resizeDragHandle, e.clientX - resizeDragStartX, e.clientY - resizeDragStartY);
+                applyResize(node, resizeDragHandle,
+                    (e.clientX - resizeDragStartX) / canvasZoom,
+                    (e.clientY - resizeDragStartY) / canvasZoom);
                 renderMindmap();
                 updateResizeOverlay();
             }
@@ -329,8 +421,8 @@ function setupEvents() {
         if (draggingNodeId) {
             const node = nodes.find(n => n.id === draggingNodeId);
             if (node) {
-                node.x = e.clientX - canvasPanX - dragOffsetX;
-                node.y = e.clientY - canvasPanY - dragOffsetY;
+                node.x = (e.clientX - canvasPanX - dragOffsetX) / canvasZoom;
+                node.y = (e.clientY - canvasPanY - dragOffsetY) / canvasZoom;
                 renderMindmap();
             }
         } else if (isPanning) {
@@ -369,10 +461,7 @@ function setupEvents() {
             if (draggingNodeId != null) {
                 draggingNodeId = null;
             }
-            if (isDrawing) {
-                isDrawing = false;
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            }
+
             if (selectedNodeId != null) {
                 selectedNodeId = null;
                 changed = true;
@@ -402,6 +491,35 @@ function setupEvents() {
         }
     });
 
+    // ─ 마우스 휠 줌 ─
+    svg.addEventListener('wheel', e => {
+        e.preventDefault();
+        const rect   = svg.getBoundingClientRect();
+        const factor = e.deltaY < 0 ? 1.12 : 0.88;
+        zoomAt(factor, e.clientX - rect.left, e.clientY - rect.top);
+    }, { passive: false });
+
+    // ─ 터치 이벤트 ─
+    setupTouchEvents(svg);
+
+    // ─ 모바일 버튼 바인딩 ─
+    document.getElementById('mmMobCircle')?.addEventListener('click',   () => addNodeAtCenter('circle'));
+    document.getElementById('mmMobRect')?.addEventListener('click',     () => addNodeAtCenter('rect'));
+    document.getElementById('mmMobTriangle')?.addEventListener('click', () => addNodeAtCenter('triangle'));
+    document.getElementById('mmMobConnect')?.addEventListener('click',  toggleMobileConnect);
+    document.getElementById('mmMobDelete')?.addEventListener('click',   mobileDeleteSelected);
+    document.getElementById('mmMobFit')?.addEventListener('click',      fitView);
+    document.getElementById('mmZoomIn')?.addEventListener('click', () => {
+        const cx = window.innerWidth / 2;
+        const cy = (window.innerHeight - (window.innerWidth <= 768 ? 48 : 54)) / 2;
+        zoomAt(1.25, cx, cy);
+    });
+    document.getElementById('mmZoomOut')?.addEventListener('click', () => {
+        const cx = window.innerWidth / 2;
+        const cy = (window.innerHeight - (window.innerWidth <= 768 ? 48 : 54)) / 2;
+        zoomAt(0.8, cx, cy);
+    });
+
     document.getElementById('saveMindmapBtn').onclick        = saveMindmap;
     document.getElementById('backToDashFromMindmap').onclick = () => location.reload();
 
@@ -412,11 +530,201 @@ function setupEvents() {
     if (helpBtn && helpModal) {
         helpBtn.onclick = () => helpModal.classList.toggle('hidden');
         helpClose.onclick = () => helpModal.classList.add('hidden');
-        // 배경 클릭 시 닫기
         helpModal.addEventListener('mousedown', e => {
             if (e.target === helpModal) helpModal.classList.add('hidden');
         });
     }
+}
+
+// ── 터치 이벤트 ──────────────────────────────────────────────────
+function setupTouchEvents(svg) {
+    const LONG_PRESS_MS  = 600;
+    const DBTAP_MS       = 350;
+    const MOVE_THRESHOLD = 8;
+    let longPressTimer   = null;
+    let lastTapNodeId    = null;
+    let lastTapTime      = 0;
+    let touchStartX      = 0, touchStartY = 0;
+
+    svg.addEventListener('touchstart', e => {
+        e.preventDefault();
+
+        if (e.touches.length === 2) {
+            // 핀치 줌 시작
+            clearTimeout(longPressTimer);
+            touchNodeDragId = null;
+            touchPanActive  = false;
+            const dx = e.touches[0].clientX - e.touches[1].clientX;
+            const dy = e.touches[0].clientY - e.touches[1].clientY;
+            pinchActive    = true;
+            pinchStartDist = Math.hypot(dx, dy);
+            pinchStartZoom = canvasZoom;
+            pinchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            pinchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            pinchStartPanX = canvasPanX;
+            pinchStartPanY = canvasPanY;
+            return;
+        }
+
+        if (e.touches.length !== 1) return;
+        pinchActive = false;
+
+        const t  = e.touches[0];
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+
+        const el        = document.elementFromPoint(t.clientX, t.clientY);
+        const nodeGroup = el?.closest('[data-node-id]');
+
+        if (nodeGroup) {
+            const nodeId = parseInt(nodeGroup.dataset.nodeId);
+
+            // 편집기 열려 있으면 닫기
+            if (window._editNodeId != null && window._editNodeId !== nodeId) {
+                closeEditor();
+                return;
+            }
+
+            // 더블탭 감지
+            const now = Date.now();
+            if (lastTapNodeId === nodeId && now - lastTapTime < DBTAP_MS) {
+                lastTapNodeId = null;
+                clearTimeout(longPressTimer);
+                openEditor(nodeId);
+                return;
+            }
+            lastTapNodeId = nodeId;
+            lastTapTime   = now;
+
+            // 연결 모드
+            if (mobileConnectMode) {
+                if (connectSourceId != null && connectSourceId !== nodeId) {
+                    const exists = links.some(l =>
+                        (l.source === connectSourceId && l.target === nodeId) ||
+                        (l.target === connectSourceId && l.source === nodeId));
+                    if (!exists) links.push({ source: connectSourceId, target: nodeId });
+                    connectSourceId = null;
+                    renderMindmap();
+                    saveMindmap();
+                    mobileConnectMode = false;
+                    document.getElementById('mmMobConnect')?.classList.remove('active');
+                } else {
+                    connectSourceId = nodeId;
+                    renderMindmap();
+                }
+                return;
+            }
+
+            // 노드 드래그 시작
+            selectedNodeId = nodeId;
+            renderMindmap();
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                touchNodeDragId = nodeId;
+                touchNodeOffX   = t.clientX - canvasPanX - node.x * canvasZoom;
+                touchNodeOffY   = t.clientY - canvasPanY - node.y * canvasZoom;
+            }
+
+            // 꾹 누르기 → 노드 컨텍스트 메뉴
+            longPressTimer = setTimeout(() => {
+                touchNodeDragId = null;
+                window._nodeContextMenu(
+                    { clientX: t.clientX, clientY: t.clientY, preventDefault: () => {}, stopPropagation: () => {} },
+                    nodeId
+                );
+            }, LONG_PRESS_MS);
+
+        } else {
+            // 빈 캔버스 터치 → 팬 시작
+            clearTimeout(longPressTimer);
+            if (window._editNodeId != null) { closeEditor(); return; }
+            if (resizingNodeId) { exitResizeMode(false); return; }
+
+            touchPanActive  = true;
+            touchNodeDragId = null;
+            touchPanStartX  = t.clientX;
+            touchPanStartY  = t.clientY;
+            touchPanCanvasX = canvasPanX;
+            touchPanCanvasY = canvasPanY;
+
+            // 꾹 누르기 → 도형 추가 메뉴
+            const cx = t.clientX, cy = t.clientY;
+            longPressTimer = setTimeout(() => {
+                touchPanActive = false;
+                contextMenu.show(cx, cy, [
+                    { label: '⭕ 원 추가',    action: () => addNode('circle',   cx, cy) },
+                    { label: '▭ 사각형 추가', action: () => addNode('rect',     cx, cy) },
+                    { label: '△ 삼각형 추가', action: () => addNode('triangle', cx, cy) },
+                ]);
+            }, LONG_PRESS_MS);
+        }
+    }, { passive: false });
+
+    svg.addEventListener('touchmove', e => {
+        e.preventDefault();
+
+        if (pinchActive && e.touches.length === 2) {
+            const dx   = e.touches[0].clientX - e.touches[1].clientX;
+            const dy   = e.touches[0].clientY - e.touches[1].clientY;
+            const dist = Math.hypot(dx, dy);
+            if (pinchStartDist === 0) return;
+
+            const midX    = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+            const midY    = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+            const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStartZoom * (dist / pinchStartDist)));
+
+            // 시작 midpoint의 캔버스 좌표를 고정
+            const startCX = (pinchStartMidX - pinchStartPanX) / pinchStartZoom;
+            const startCY = (pinchStartMidY - pinchStartPanY) / pinchStartZoom;
+            canvasPanX = midX - startCX * newZoom;
+            canvasPanY = midY - startCY * newZoom;
+            canvasZoom = newZoom;
+            applyCanvasPan();
+            return;
+        }
+
+        if (e.touches.length !== 1) return;
+        const t = e.touches[0];
+
+        // 이동 감지 → 꾹 누르기 취소
+        if (Math.abs(t.clientX - touchStartX) > MOVE_THRESHOLD ||
+            Math.abs(t.clientY - touchStartY) > MOVE_THRESHOLD) {
+            clearTimeout(longPressTimer);
+            longPressTimer = null;
+        }
+
+        if (touchNodeDragId) {
+            const node = nodes.find(n => n.id === touchNodeDragId);
+            if (node) {
+                node.x = (t.clientX - canvasPanX - touchNodeOffX) / canvasZoom;
+                node.y = (t.clientY - canvasPanY - touchNodeOffY) / canvasZoom;
+                renderMindmap();
+            }
+        } else if (touchPanActive) {
+            canvasPanX = touchPanCanvasX + (t.clientX - touchPanStartX);
+            canvasPanY = touchPanCanvasY + (t.clientY - touchPanStartY);
+            applyCanvasPan();
+        }
+    }, { passive: false });
+
+    svg.addEventListener('touchend', e => {
+        clearTimeout(longPressTimer);
+        longPressTimer = null;
+
+        if (touchNodeDragId) {
+            saveMindmap();
+            touchNodeDragId = null;
+        }
+        if (e.touches.length < 2) pinchActive = false;
+        if (e.touches.length === 0) touchPanActive = false;
+    }, { passive: false });
+
+    svg.addEventListener('touchcancel', () => {
+        clearTimeout(longPressTimer);
+        touchNodeDragId = null;
+        touchPanActive  = false;
+        pinchActive     = false;
+    }, { passive: true });
 }
 
 async function saveMindmap() {
@@ -613,10 +921,10 @@ function applyResize(node, handle, dx, dy) {
 
     if (node.type === 'circle') {
         if (handle === 'radial') {
-            // 마우스-중심 거리를 반지름으로 직접 사용
-            const mx = resizeDragStartX + dx;
-            const my = resizeDragStartY + dy;
-            node.radius = Math.max(MIN_R, Math.hypot(mx - node.x, my - node.y));
+            // dx, dy are already in canvas units; convert start point to canvas space
+            const startCX = (resizeDragStartX - canvasPanX) / canvasZoom;
+            const startCY = (resizeDragStartY - canvasPanY) / canvasZoom;
+            node.radius = Math.max(MIN_R, Math.hypot(startCX + dx - node.x, startCY + dy - node.y));
         } else if (handle === 'e') node.radius = Math.max(MIN_R, d.radius + dx);
         else if (handle === 'w') node.radius = Math.max(MIN_R, d.radius - dx);
         else if (handle === 's') node.radius = Math.max(MIN_R, d.radius + dy);
@@ -710,10 +1018,78 @@ window._nodeMouseDown = (e, id) => {
 
     const node = nodes.find(n => n.id === id);
     if (node) {
-        dragOffsetX = e.clientX - node.x;
-        dragOffsetY = e.clientY - node.y;
+        dragOffsetX = e.clientX - canvasPanX - node.x * canvasZoom;
+        dragOffsetY = e.clientY - canvasPanY - node.y * canvasZoom;
     }
 };
+
+// ── 색상 선택기 ──────────────────────────────────────────────────
+let _colorPickerHandler = null;
+
+function showColorPicker(nodeId, x, y) {
+    closeColorPicker(); // 이미 열려 있으면 먼저 닫기
+
+    const picker   = document.getElementById('mmColorPicker');
+    const swatches = document.getElementById('mmColorSwatches');
+    if (!picker || !swatches) return;
+
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    const currentIdx = node.colorIdx ?? (node.isMain ? -1 : node.id % NODE_COLORS.length);
+
+    swatches.innerHTML = NODE_COLORS.map((c, idx) => {
+        const active = idx === currentIdx;
+        return `<button class="mm-color-swatch${active ? ' active' : ''}"
+            style="background:${c.fill}; border-color:${c.stroke}; --swatch-glow:${c.glow}"
+            data-idx="${idx}" data-node="${nodeId}" title="색상 ${idx + 1}">
+            ${active ? `<svg width="11" height="11" viewBox="0 0 11 11" fill="none"><polyline points="1.5,5.5 4.5,8.5 9.5,2.5" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>` : ''}
+        </button>`;
+    }).join('');
+
+    picker.classList.remove('hidden');
+    picker.style.left = `${x}px`;
+    picker.style.top  = `${y}px`;
+
+    // 뷰포트 + 모바일 바 경계 안으로 위치 보정
+    const isMob  = window.innerWidth <= 768;
+    const topSafe = isMob ? 56 : 8;
+    const botSafe = isMob ? 134 : 8;
+    requestAnimationFrame(() => {
+        const r = picker.getBoundingClientRect();
+        if (r.right  > window.innerWidth  - 8)       picker.style.left = `${window.innerWidth  - r.width  - 8}px`;
+        if (r.bottom > window.innerHeight - botSafe)  picker.style.top  = `${window.innerHeight - r.height - botSafe}px`;
+        if (r.left < 8)      picker.style.left = '8px';
+        if (r.top < topSafe) picker.style.top  = `${topSafe}px`;
+    });
+
+    // 스와치 탭/클릭: pointerup으로 마우스·터치 통합 처리
+    swatches.querySelectorAll('.mm-color-swatch').forEach(btn => {
+        btn.addEventListener('pointerup', e => {
+            e.stopPropagation();
+            const n = nodes.find(n => n.id === parseInt(btn.dataset.node));
+            if (n) { n.colorIdx = parseInt(btn.dataset.idx); renderMindmap(); saveMindmap(); }
+            closeColorPicker();
+        });
+    });
+
+    // 외부 pointerdown 시 닫기 (picker 안쪽 탭은 제외)
+    // — 100ms 지연: 색상 변경 메뉴 클릭의 pointerdown이 리스너에 걸리지 않도록
+    setTimeout(() => {
+        _colorPickerHandler = e => {
+            if (!e.target.closest('#mmColorPicker')) closeColorPicker();
+        };
+        document.addEventListener('pointerdown', _colorPickerHandler);
+    }, 100);
+}
+
+function closeColorPicker() {
+    document.getElementById('mmColorPicker')?.classList.add('hidden');
+    if (_colorPickerHandler) {
+        document.removeEventListener('pointerdown', _colorPickerHandler);
+        _colorPickerHandler = null;
+    }
+}
 
 // ── 노드 우클릭 전역 핸들러 ─────────────────────────────────────
 window._nodeContextMenu = (e, id) => {
@@ -728,6 +1104,7 @@ window._nodeContextMenu = (e, id) => {
 
     const menuItems = [
         { label: '✏️ 이름 변경', action: () => openEditor(id) },
+        { label: '🎨 색상 변경', action: () => showColorPicker(id, e.clientX, e.clientY) },
         { label: '⇲ 크기 변경', action: () => enterResizeMode(id) },
     ];
 
