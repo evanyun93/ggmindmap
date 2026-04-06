@@ -613,6 +613,9 @@ export function applyLayoutSilent(layout) {
                     el.style.width = `${wData.w}px`;
                     el.style.height = `${wData.h}px`;
                     el.style.zIndex = wData.z;
+                    // 레이아웃별 독립 접힘 상태 복원
+                    if (wData.collapsed) el.classList.add('collapsed');
+                    else el.classList.remove('collapsed');
                 }
             });
         }
@@ -686,6 +689,9 @@ export async function applyLayout(layout) {
                     el.style.width = `${wData.w}px`;
                     el.style.height = `${wData.h}px`;
                     el.style.zIndex = wData.z;
+                    // 레이아웃별 독립 접힘 상태 복원
+                    if (wData.collapsed) el.classList.add('collapsed');
+                    else el.classList.remove('collapsed');
                 }
             });
         }
@@ -775,7 +781,8 @@ window.autoSyncActiveLayout = async function() {
             y: parseInt(w.style.top) || 0,
             w: parseInt(w.style.width) || w.offsetWidth,
             h: parseInt(w.style.height) || w.offsetHeight,
-            z: parseInt(w.style.zIndex) || 100
+            z: parseInt(w.style.zIndex) || 100,
+            collapsed: w.classList.contains('collapsed')
         }));
     } else {
         widgetData = widgets.map(w => ({
