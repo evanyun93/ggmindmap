@@ -415,10 +415,10 @@ function renderMindmap() {
 
         const selectionOverlay = isSelected
             ? (node.type === 'rect'
-                ? `<rect x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="13" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
+                ? `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="13" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
                 : (node.type === 'triangle'
-                    ? `<polygon points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
-                    : `<circle r="${(node.radius||50)+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`))
+                    ? `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
+                    : `<circle class="selection-overlay" r="${(node.radius||50)+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`))
             : '';
 
         const shape = node.type === 'rect'
@@ -436,6 +436,50 @@ function renderMindmap() {
     }).join('');
 }
 
+// ── 성능 개선을 위한 DOM 직접 업데이트 헬퍼 ────────────────────────
+function setSelectedNodeDOM(nodeId) {
+    if (selectedNodeId === nodeId) return;
+    selectedNodeId = nodeId;
+
+    document.querySelectorAll('.node-group .selection-overlay').forEach(el => el.remove());
+    document.querySelectorAll('.node-group.selected').forEach(el => el.classList.remove('selected'));
+
+    if (nodeId == null) return;
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+
+    const g = document.querySelector(`.node-group[data-node-id="${nodeId}"]`);
+    if (g) {
+        g.classList.add('selected');
+        const color = getNodeColor(node);
+        let overlay = '';
+        if (node.type === 'rect') overlay = `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="13" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
+        else if (node.type === 'triangle') overlay = `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
+        else overlay = `<circle class="selection-overlay" r="${(node.radius||50)+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
+        g.insertAdjacentHTML('afterbegin', overlay);
+    }
+}
+
+function updateNodePositionDOM(nodeId) {
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    
+    const g = document.querySelector(`.node-group[data-node-id="${nodeId}"]`);
+    if (g) g.setAttribute('transform', `translate(${node.x},${node.y})`);
+    
+    const lg = document.getElementById('linksGroup');
+    if (lg) {
+        lg.innerHTML = links.map(link => {
+            const s = nodes.find(n => n.id === link.source);
+            const t = nodes.find(n => n.id === link.target);
+            if (!s || !t) return '';
+            const sp = edgePoint(s, t), tp = edgePoint(t, s);
+            const cx = (sp.x + tp.x) / 2, cy = (sp.y + tp.y) / 2 - 30;
+            return `<path d="M${sp.x},${sp.y} Q${cx},${cy} ${tp.x},${tp.y}" class="mindmap-link" marker-end="url(#arrowhead)"/>`;
+        }).join('');
+    }
+}
+
 // ── 이벤트 설정 ──────────────────────────────────────────────────
 function setupEvents() {
     const svg = document.getElementById('mindmapSVG');
@@ -451,8 +495,7 @@ function setupEvents() {
         if (window._editNodeId != null) { closeEditor(); return; }
         if (connectSourceId != null) return;
 
-        selectedNodeId = null;
-        renderMindmap();
+        setSelectedNodeDOM(null);
 
         isPanning = true;
         panSX = e.clientX - canvasPanX;
@@ -492,7 +535,7 @@ function setupEvents() {
             if (node) {
                 node.x = (e.clientX - canvasPanX - dragOffsetX) / canvasZoom;
                 node.y = (e.clientY - canvasPanY - dragOffsetY) / canvasZoom;
-                renderMindmap();
+                updateNodePositionDOM(draggingNodeId);
             }
         } else if (isPanning) {
             canvasPanX = e.clientX - panSX;
@@ -674,11 +717,23 @@ function setupTouchEvents(svg) {
             const dy = e.touches[0].clientY - e.touches[1].clientY;
             pinchActive    = true;
             pinchStartDist = Math.hypot(dx, dy);
-            pinchStartZoom = canvasZoom;
-            pinchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            pinchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            pinchStartPanX = canvasPanX;
-            pinchStartPanY = canvasPanY;
+            
+            if (resizingNodeId) {
+                const node = nodes.find(n => n.id === resizingNodeId);
+                if (node) {
+                    resizeDragStartDims = {
+                        width:  node.width  || 120,
+                        height: node.height || (node.type === 'triangle' ? 100 : 60),
+                        radius: node.radius || 50,
+                    };
+                }
+            } else {
+                pinchStartZoom = canvasZoom;
+                pinchStartMidX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                pinchStartMidY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                pinchStartPanX = canvasPanX;
+                pinchStartPanY = canvasPanY;
+            }
             return;
         }
 
@@ -732,8 +787,7 @@ function setupTouchEvents(svg) {
             }
 
             // 노드 드래그 시작
-            selectedNodeId = nodeId;
-            renderMindmap();
+            setSelectedNodeDOM(nodeId);
             const node = nodes.find(n => n.id === nodeId);
             if (node) {
                 touchNodeDragId = nodeId;
@@ -785,17 +839,37 @@ function setupTouchEvents(svg) {
             const dist = Math.hypot(dx, dy);
             if (pinchStartDist === 0) return;
 
-            const midX    = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            const midY    = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStartZoom * (dist / pinchStartDist)));
+            if (resizingNodeId && resizeDragStartDims) {
+                // 노드 크기 조절 (캔버스 줌 대신)
+                const node = nodes.find(n => n.id === resizingNodeId);
+                if (node) {
+                    const scale = dist / pinchStartDist;
+                    const d = resizeDragStartDims;
+                    const MIN_W = 60, MIN_H = 40, MIN_R = 28;
+                    
+                    if (node.type === 'circle') {
+                        node.radius = Math.max(MIN_R, d.radius * scale);
+                    } else {
+                        node.width  = Math.max(MIN_W, d.width * scale);
+                        node.height = Math.max(MIN_H, d.height * scale);
+                    }
+                    
+                    renderMindmap();
+                    updateResizeOverlay();
+                }
+            } else {
+                const midX    = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY    = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStartZoom * (dist / pinchStartDist)));
 
-            // 시작 midpoint의 캔버스 좌표를 고정
-            const startCX = (pinchStartMidX - pinchStartPanX) / pinchStartZoom;
-            const startCY = (pinchStartMidY - pinchStartPanY) / pinchStartZoom;
-            canvasPanX = midX - startCX * newZoom;
-            canvasPanY = midY - startCY * newZoom;
-            canvasZoom = newZoom;
-            applyCanvasPan();
+                // 시작 midpoint의 캔버스 좌표를 고정
+                const startCX = (pinchStartMidX - pinchStartPanX) / pinchStartZoom;
+                const startCY = (pinchStartMidY - pinchStartPanY) / pinchStartZoom;
+                canvasPanX = midX - startCX * newZoom;
+                canvasPanY = midY - startCY * newZoom;
+                canvasZoom = newZoom;
+                applyCanvasPan();
+            }
             return;
         }
 
@@ -814,7 +888,7 @@ function setupTouchEvents(svg) {
             if (node) {
                 node.x = (t.clientX - canvasPanX - touchNodeOffX) / canvasZoom;
                 node.y = (t.clientY - canvasPanY - touchNodeOffY) / canvasZoom;
-                renderMindmap();
+                updateNodePositionDOM(touchNodeDragId);
             }
         } else if (touchPanActive) {
             canvasPanX = touchPanCanvasX + (t.clientX - touchPanStartX);
@@ -1129,8 +1203,7 @@ window._nodeMouseDown = (e, id) => {
 
     // 드래그 이동 시작
     draggingNodeId = id;
-    selectedNodeId = id; // 노드 클릭 시 선택 상태로 변경
-    renderMindmap();
+    setSelectedNodeDOM(id); // 노드 클릭 시 선택 상태로 변경
 
     const node = nodes.find(n => n.id === id);
     if (node) {

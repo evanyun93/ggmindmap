@@ -14,7 +14,7 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:3001',
     'https://ggmindmap.vercel.app',
-    'https://unperturbable-fatherless-annamae.ngrok-free.dev'
+    'https://ggmindmap.duckdns.org'
   ],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],

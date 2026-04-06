@@ -10,10 +10,10 @@ const hostname = self.location.hostname;
 const isLocal = hostname === 'localhost' || 
                 hostname === '127.0.0.1' || 
                 hostname.startsWith('192.168.');
-const isNgrokDomain = hostname.includes('ngrok-free.dev');
+const isDuckdnsDomain = hostname.includes('duckdns.org');
 
-// 로컬 망이거나 백엔드(ngrok) 도메인으로 직접 접속했다면 현재 오리진을 쓰고, 
+// 로컬 망이거나 백엔드(duckdns) 도메인으로 직접 접속했다면 현재 오리진을 쓰고, 
 // 그 외의 프론트엔드 전용 호스팅(Vercel 등)이면 하드코딩된 백엔드 주소를 사용합니다.
-export const API_BASE = (isLocal || isNgrokDomain)
+export const API_BASE = (isLocal || isDuckdnsDomain)
     ? self.location.origin
-    : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
+    : 'https://ggmindmap.duckdns.org';

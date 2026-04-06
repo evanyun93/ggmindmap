@@ -10,11 +10,11 @@ const hostname = self.location.hostname;
 const isLocal = hostname === 'localhost' || 
                 hostname === '127.0.0.1' || 
                 hostname.startsWith('192.168.');
-const isNgrokDomain = hostname.includes('ngrok-free.dev');
+const isDuckdnsDomain = hostname.includes('duckdns.org');
 
-const API_BASE = (isLocal || isNgrokDomain)
+const API_BASE = (isLocal || isDuckdnsDomain)
     ? self.location.origin
-    : 'https://unperturbable-fatherless-annamae.ngrok-free.dev';
+    : 'https://ggmindmap.duckdns.org';
 
 const CACHE_NAME = 'ggmind-sw-v2';
 const DB_NAME = 'ggmind-alarms';
