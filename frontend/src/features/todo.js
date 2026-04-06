@@ -172,12 +172,9 @@ export async function initTodo(el, widgetData) {
     // 다른 기기/탭에서 데이터가 변경되었을 때 즉시 전파 (범용 아키텍처 적용)
     // 알람 해제(dismiss) 등 백그라운드 액션 후의 UI 갱신을 위해 필수적입니다.
     syncService.watchWidget(widgetId, async () => {
-        console.log(`[Todo] 실시간 데이터 업데이트 감지 (Widget ${widgetId}) - 리스트 및 알람 갱신`);
+        console.log(`[Todo] 실시간 데이터 업데이트 감지 (Widget ${widgetId}) - 리스트 갱신`);
         loadTodoList(el, true);
-
-        // 알람 스케줄도 함께 갱신 (중요: 해제 처리된 알람의 타이머를 즉시 Kill 하기 위함)
-        const { todoAlarmSystem } = await import('./todo-alarm.js');
-        todoAlarmSystem._refreshAndSchedule();
+        // 백엔드 FCM 방식: 서버(pushScheduler)가 알람을 관리하므로 클라이언트에서 별도 갱신 불필요
     });
 
     // 3. 데이터 로딩 (비동기, 백그라운드)

@@ -1,14 +1,14 @@
 /**
- * @file sw.js (Service Worker)
- * @description GGMIND 알림 서비스 워커 - 백그라운드에서도 알람이 울리도록 IndexedDB에 알람 일정을 저장합니다.
+ * @file sw-v2.js (Service Worker)
+ * @description GGMIND 알림 서비스 워커 - 백엔드 FCM 푸시만 수신하여 알림을 표시합니다.
+ * 알람 발송은 백엔드 pushScheduler.js (FCM)가 전담합니다.
  * 주의: 이 파일은 반드시 /frontend/ 루트(또는 서빙 루트)에 위치해야 합니다.
  */
-// import { API_BASE } from './src/services/config.js';
 
 // WebView 호환성을 위해 ESM 대신 고전적 방식으로 API_BASE 정의
 const hostname = self.location.hostname;
-const isLocal = hostname === 'localhost' || 
-                hostname === '127.0.0.1' || 
+const isLocal = hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
                 hostname.startsWith('192.168.');
 const isDuckdnsDomain = hostname.includes('duckdns.org');
 
@@ -16,20 +16,20 @@ const API_BASE = (isLocal || isDuckdnsDomain)
     ? self.location.origin
     : 'https://ggmindmap.duckdns.org';
 
-const CACHE_NAME = 'ggmind-sw-v2';
+// JWT 토큰 저장을 위한 IndexedDB 설정 (알람 저장소는 제거됨)
 const DB_NAME = 'ggmind-alarms';
-const DB_VERSION = 2;
-const STORE_NAME = 'alarms';
-const TOKEN_STORE = 'auth'; // JWT 토큰 저장용
+const DB_VERSION = 3; // v3: alarms store 제거, auth store만 유지
+const TOKEN_STORE = 'auth';
 
-// ── IndexedDB 헬퍼 ─────────────────────────────────────────────
-function openAlarmDB() {
+// ── IndexedDB 헬퍼 (토큰 저장소만 유지) ─────────────────────────────────────────────
+function openTokenDB() {
     return new Promise((resolve, reject) => {
         const req = indexedDB.open(DB_NAME, DB_VERSION);
         req.onupgradeneeded = (e) => {
             const db = e.target.result;
-            if (!db.objectStoreNames.contains(STORE_NAME)) {
-                db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            // 구버전의 alarms store 정리
+            if (db.objectStoreNames.contains('alarms')) {
+                db.deleteObjectStore('alarms');
             }
             if (!db.objectStoreNames.contains(TOKEN_STORE)) {
                 db.createObjectStore(TOKEN_STORE, { keyPath: 'key' });
@@ -54,55 +54,18 @@ self.addEventListener('activate', (event) => {
 /** SW에서 저장된 JWT 토큰을 가져옵니다 */
 async function getAuthToken() {
     try {
-        const db = await openAlarmDB();
+        const db = await openTokenDB();
         const token = await new Promise((resolve) => {
             const tx = db.transaction(TOKEN_STORE, 'readonly');
             const req = tx.objectStore(TOKEN_STORE).get('jwt');
             req.onsuccess = () => resolve(req.result?.value || null);
             req.onerror = () => resolve(null);
         });
-        if (!token) console.warn('[SW] IndexedDB에서 인증 토큰을 찾지 못했습니다.');
-        else console.log('[SW] 인증 토큰 획득 성공 (IDB)');
         return token;
     } catch (e) {
         console.error('[SW] 토큰 읽기 중 DB 오류:', e);
         return null;
     }
-}
-
-async function saveAlarms(alarms) {
-    const db = await openAlarmDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        const store = tx.objectStore(STORE_NAME);
-        // 먼저 모두 지우고 새로 삽입
-        store.clear();
-        for (const alarm of alarms) {
-            store.put(alarm);
-        }
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-    });
-}
-
-async function loadAllAlarms() {
-    const db = await openAlarmDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readonly');
-        const req = tx.objectStore(STORE_NAME).getAll();
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-    });
-}
-
-async function deleteAlarm(id) {
-    const db = await openAlarmDB();
-    return new Promise((resolve, reject) => {
-        const tx = db.transaction(STORE_NAME, 'readwrite');
-        tx.objectStore(STORE_NAME).delete(String(id));
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-    });
 }
 
 // ── 기기 판별 및 알람 액션 동적 구성 ─────────────────────────────
@@ -133,109 +96,25 @@ function getAlarmBody(baseBody) {
     }
 }
 
-async function checkAndFireAlarms() {
-    // ⚠️ 로컬 개발 환경에서는 중복 알람을 방지하기 위해 로컬 알람 발송을 건너뜁니다.
-    if (isLocal) {
-        // console.log('[SW-Local] 로컬 환경이므로 알람 체크를 건너뜁니다.');
-        return;
-    }
-
-    const now = Date.now();
-    let alarms;
-    try {
-        alarms = await loadAllAlarms();
-    } catch (e) {
-        console.warn('[SW] IndexedDB 알람 로드 실패:', e);
-        return;
-    }
-
-    for (const alarm of alarms) {
-        if (alarm.alarmTime <= now) {
-            await self.registration.showNotification('GGMIND 알리미', {
-                body: getAlarmBody(alarm.body),
-                icon: '/assets/mindmap-icon-128.png',
-                badge: '/assets/mindmap-icon-128.png',
-                tag: `todo-alarm-${alarm.id}`,
-                renotify: true,
-                vibrate: [200, 100, 200],
-                requireInteraction: true,
-                actions: getAlarmActions(),
-                data: { body: alarm.body, id: alarm.id }
-            });
-            // 발송 후 DB에서 제거
-            await deleteAlarm(alarm.id);
-            //             console.log('[SW] 백업 라운드 알람 발송:', alarm.body);
-        }
-    }
-}
-
-/**
- * 메시지 형식 1: { type: 'SHOW_ALARM', title, body, tag }  → 즉시 알림
- * 메시지 형식 2: { type: 'SYNC_ALARMS', alarms: [{id, alarmTime, body},...] }  → IndexedDB에 저장
- */
+// ── message 이벤트: JWT 토큰 저장만 처리 ─────────────────────────────
 self.addEventListener('message', (event) => {
     if (!event.data) return;
-
-    if (event.data.type === 'SHOW_ALARM') {
-        const { id, title, body, tag } = event.data;
-        event.waitUntil(
-            self.registration.showNotification(title, {
-                body: getAlarmBody(body),
-                icon: '/assets/mindmap-icon-128.png',
-                badge: '/assets/mindmap-icon-128.png',
-                tag,
-                renotify: true,
-                vibrate: [200, 100, 200],
-                requireInteraction: true,
-                actions: getAlarmActions(),
-                data: { body, id }
-            })
-        );
-        return;
-    }
-
-    if (event.data.type === 'SYNC_ALARMS') {
-        event.waitUntil(
-            saveAlarms(event.data.alarms).then(() => {
-                // console.log(`[SW] 알람 ${event.data.alarms.length}개 저장 완료`);
-                // 저장하자마자 이미 지난 알람도 처리
-                return checkAndFireAlarms();
-            })
-        );
-    }
-
-    if (event.data.type === 'CANCEL_ALARM') {
-        event.waitUntil(
-            deleteAlarm(event.data.id).then(() => {
-                // console.log(`[SW] 알람 취소 완료: ID ${event.data.id}`);
-            })
-        );
-    }
 
     if (event.data.type === 'SAVE_TOKEN') {
         const jwtValue = event.data.token;
         event.waitUntil(
-            openAlarmDB().then(db => new Promise((resolve, reject) => {
+            openTokenDB().then(db => new Promise((resolve, reject) => {
                 const tx = db.transaction(TOKEN_STORE, 'readwrite');
                 tx.objectStore(TOKEN_STORE).put({ key: 'jwt', value: jwtValue });
-                tx.oncomplete = () => { console.log('[SW] JWT 토큰 IDB 저장 완료'); resolve(); };
+                tx.oncomplete = () => { console.log('[SW] JWT 토큰 저장 완료'); resolve(); };
                 tx.onerror = () => reject(tx.error);
             }))
         );
     }
 });
 
-// ── Periodic Background Sync (Chrome/Edge 전용) ───────────────
-self.addEventListener('periodicsync', (event) => {
-    if (event.tag === 'ggmind-alarm-check') {
-        event.waitUntil(checkAndFireAlarms());
-    }
-});
-
 // ── 서버에서 발송된 Web Push 수신 ─────────────────────────────
 self.addEventListener('push', (event) => {
-    //     console.log('[SW] Push 메시지 수신됨:', event.data ? event.data.text() : '빈 데이터');
-
     let data = {
         title: 'GGMIND 알리미',
         body: '새 알림이 있습니다.',
@@ -249,10 +128,9 @@ self.addEventListener('push', (event) => {
             // FCM Admin SDK로 data-only 페이로드를 보내면, 파싱된 객체 안에 한 번 더 'data' 프로퍼티로 감싸져서 옵니다.
             const pushData = parsed.data || parsed;
             data = { ...data, ...pushData };
-            //             console.log('[SW] Push 데이터 파싱 완료 (FCM 지원):', data);
         }
     } catch (e) {
-        //         console.warn('[SW] Push 데이터 파싱 실패 (일반 텍스트로 보임):', e);
+        // 파싱 실패 시 기본값 사용
     }
 
     event.waitUntil(
@@ -267,8 +145,6 @@ self.addEventListener('push', (event) => {
             actions: getAlarmActions(),
             data: { body: data.body, id: data.id }
         })
-        //             .then(() => console.log('[SW] 알림 표시 성공:', data.body))
-        //             .catch(err => console.error('[SW] 알림 표시 실패:', err))
     );
 });
 
@@ -277,7 +153,6 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const notifData = event.notification.data;
     const todoId = notifData?.id;
-    //     console.log('[SW] notificationclick - data:', JSON.stringify(notifData), '| todoId:', todoId, '| action:', event.action);
 
     // 본체 클릭 시 앱 열기 (액션 버튼 클릭 시에는 실행 안 함)
     if (!event.action) {
@@ -292,7 +167,7 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    // '해제' 또는 '5분 연장' 등 버튼 액션 처리 (v3.8: 모든 유효 액션 허용)
+    // '해제' 또는 '5분 연장' 등 버튼 액션 처리
     if (event.action && event.action !== '') {
         if (!todoId) {
             console.error('[SW] 알람 ID가 없어 액션을 처리할 수 없습니다.');
@@ -308,7 +183,6 @@ self.addEventListener('notificationclick', (event) => {
                 if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
 
                 const fetchUrl = `${API_BASE}/api/todos/${todoId}/alarm-action`;
-                //                 console.log(`[SW] 요청 시도: ${fetchUrl}`);
 
                 return fetch(fetchUrl, {
                     method: 'PATCH',
@@ -324,34 +198,15 @@ self.addEventListener('notificationclick', (event) => {
                         } catch (e) {
                             responseData = { message: responseText };
                         }
-
                         if (!response.ok) {
                             throw new Error(responseData.message || `HTTP 오류 ${response.status}`);
                         }
                         return responseData;
                     })
-                    .then(data => {
-                        //                         const availableActions = (event.notification.actions || []).map(a => a.action).join(', ');
-                        //                         console.log(`[SW] ${event.action} 처리 성공 (ID: ${todoId})`);
-                        //                         console.log(`[SW] 알림 보유 액션 목록: [${availableActions}]`);
-
-                        // // 성공 시에도 상세 진단 정보를 팝업으로 노출
-                        // self.registration.showNotification(`처리 완료 ✅`, {
-                        //     body: `신호: '${event.action}'\n보유버튼: [${availableActions}]\n[v4.9]`,
-                        //     icon: '/assets/advanced-icon.png',
-                        //     tag: 'alarm-success',
-                        //     active: true
-                        // });
-
-                        // 3. 로컬 IndexedDB에서도 해당 알람 제거
-                        return deleteAlarm(todoId);
-                    })
                     .catch(err => {
                         console.error(`[SW] 알람 액션(${event.action}) 처리 실패:`, err);
-                        const dataStr = JSON.stringify(event.notification.data || {});
-
-                        self.registration.showNotification(`알람 처리 실패 (경로 오류?) ⚠️`, {
-                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v4.9]`,
+                        self.registration.showNotification(`알람 처리 실패 ⚠️`, {
+                            body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v5.0]`,
                             icon: '/assets/mindmap-icon-128.png',
                             tag: 'alarm-error',
                             renotify: true
@@ -370,7 +225,6 @@ self.addEventListener('notificationclose', (event) => {
     // 성공/실패 진단 알림은 무시
     if (tag === 'alarm-success' || tag === 'alarm-error' || !todoId) return;
 
-    //     console.log('[SW] 알림 닫힘 (연장 처리) | ID:', todoId);
     event.waitUntil(
         getAuthToken().then(jwtToken => {
             const headers = {
