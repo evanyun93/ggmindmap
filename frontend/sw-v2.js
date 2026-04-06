@@ -133,6 +133,16 @@ self.addEventListener('push', (event) => {
         // 파싱 실패 시 기본값 사용
     }
 
+    // 다른 기기에서 알람 처리됨 → 이 기기의 해당 알림을 닫기
+    if (data.type === 'CLOSE_NOTIFICATION') {
+        event.waitUntil(
+            self.registration.getNotifications({ tag: data.tag }).then(notifications => {
+                notifications.forEach(n => n.close());
+            })
+        );
+        return;
+    }
+
     event.waitUntil(
         self.registration.showNotification(data.title, {
             body: getAlarmBody(data.body),

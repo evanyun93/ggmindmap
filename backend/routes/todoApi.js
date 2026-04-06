@@ -3,6 +3,52 @@ const router = express.Router();
 const { pool } = require('../config/database');
 const { authenticateToken } = require('../middleware/authHandler');
 const syncService = require('../services/syncService');
+const { admin, isFirebaseInitialized } = require('../config/firebase');
+
+/**
+ * 해당 유저의 모든 기기에 알림 닫기 silent push를 발송합니다.
+ * (이미 액션을 처리한 기기는 알림이 닫혀 있어 CLOSE_NOTIFICATION을 받아도 무해함)
+ * @param {number} userId
+ * @param {string} todoId
+ */
+async function sendDismissPushToOtherDevices(userId, todoId) {
+    if (!isFirebaseInitialized) return;
+    try {
+        const subResult = await pool.query(
+            'SELECT DISTINCT endpoint FROM tba_push_subscriptions WHERE user_id = $1',
+            [userId]
+        );
+        const tokens = subResult.rows.map(r => r.endpoint);
+
+        if (tokens.length === 0) return;
+
+        const dismissData = {
+            type: 'CLOSE_NOTIFICATION',
+            tag: `todo-alarm-${todoId}`
+        };
+
+        for (const token of tokens) {
+            try {
+                await admin.messaging().send({
+                    token,
+                    data: dismissData,
+                    android: { priority: 'high' },
+                    webpush: { headers: { Urgency: 'high' } }
+                });
+            } catch (err) {
+                if (
+                    err.code === 'messaging/registration-token-not-registered' ||
+                    err.code === 'messaging/invalid-registration-token'
+                ) {
+                    await pool.query('DELETE FROM tba_push_subscriptions WHERE endpoint = $1', [token]);
+                }
+            }
+        }
+        console.log(`[AlarmAction] 다른 기기 ${tokens.length}개에 알림 닫기 push 발송 (ID: ${todoId})`);
+    } catch (err) {
+        console.error('[AlarmAction] 다른 기기 dismiss push 실패:', err.message);
+    }
+}
 
 /**
  * 사용자별 To-Do 목록 조회 (widget별 필터링 가능)
@@ -185,6 +231,9 @@ router.patch('/:id/alarm-action', authenticateToken, async (req, res) => {
 
         // 실시간 동기화 알림
         syncService.notifyChange(req.user.id, result.rows[0].widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
+
+        // 모든 기기의 해당 알림 닫기 (이미 처리한 기기는 알림이 없어 무해)
+        sendDismissPushToOtherDevices(userId, id);
 
         if (action === 'snooze') {
             // DB에서 갱신된 시간 확인 (디버깅용)
