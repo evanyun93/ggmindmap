@@ -34,9 +34,14 @@ app.get('/api/health', (req, res) => {
 // startServer()에서 비동기로 호출됨
 // startServer()에서 비동기로 호출됨
 
-// Web Push 스케줄러 시작
-const { startPushScheduler } = require('./utils/pushScheduler');
-startPushScheduler();
+// Web Push 스케줄러 시작 (로컬 개발 환경에서는 중복 알람 방지를 위해 비활성화)
+const currentEnv = (process.env.NODE_ENV || '').trim();
+if (currentEnv !== 'development') {
+  const { startPushScheduler } = require('./utils/pushScheduler');
+  startPushScheduler();
+} else {
+  console.log(`⚠️ [Local] 현재 환경(${currentEnv})이 개발 모드이므로 푸시 알람 스케줄러를 시작하지 않습니다.`);
+}
 
 // 영양제 DB 동기화(ETL) 스케줄러 시작 (추가!)
 const { startEtlScheduler } = require('./services/etlService');

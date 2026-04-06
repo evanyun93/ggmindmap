@@ -134,6 +134,12 @@ function getAlarmBody(baseBody) {
 }
 
 async function checkAndFireAlarms() {
+    // ⚠️ 로컬 개발 환경에서는 중복 알람을 방지하기 위해 로컬 알람 발송을 건너뜁니다.
+    if (isLocal) {
+        // console.log('[SW-Local] 로컬 환경이므로 알람 체크를 건너뜁니다.');
+        return;
+    }
+
     const now = Date.now();
     let alarms;
     try {
