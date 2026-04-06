@@ -6,15 +6,14 @@ const cookieParser = require('cookie-parser');
 const { initDatabase } = require('./config/database');
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3000; // 백엔드 3000쓰자. 
 
 // CORS 설정
 const corsOptions = {
   origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
+    'http://localhost:3001', // FE 포트 (3000에서 3001로 변경)
+    'http://localhost:5500', // Live Server 사용할 거면 유지
     'https://ggmindmap.vercel.app',
-    'https://ggmindmap.duckdns.org'
   ],
   credentials: true,
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
@@ -86,15 +85,15 @@ const supplementApi = require('./routes/supplementApi'); // 나중에 만들 검
 app.use('/api/supplements', supplementApi);
 
 // ─── 프론트엔드 정적 파일 제공 ──────────────────────────────────────────
-app.use(express.static(path.join(__dirname, '..', 'frontend')));
+// app.use(express.static(path.join(__dirname, '..', 'frontend')));
 
-// ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
+// // ─── 프론트엔드 라우팅 (SPA 지원) ──────────────────────────────
 
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
-  }
-});
+// app.get('*', (req, res) => {
+//   if (!req.path.startsWith('/api')) {
+//     res.sendFile(path.join(__dirname, '..', 'frontend', 'index.html'));
+//   }
+// });
 
 // ─── 서버 시작 ─────────────────────────────────────────────────
 
