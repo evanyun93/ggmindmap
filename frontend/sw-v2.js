@@ -137,7 +137,7 @@ self.addEventListener('push', (event) => {
         self.registration.showNotification(data.title, {
             body: getAlarmBody(data.body),
             icon: '/assets/mindmap-icon-128.png',
-            badge: '/assets/mindmap-icon-128.png',
+            badge: '/assets/badge-icon.svg',
             tag: data.tag,
             renotify: true,
             vibrate: [200, 100, 200],
@@ -208,6 +208,7 @@ self.addEventListener('notificationclick', (event) => {
                         self.registration.showNotification(`알람 처리 실패 ⚠️`, {
                             body: `메시지: ${err.message}\n신호: '${event.action}'\n호스트: ${API_BASE}\n[v5.0]`,
                             icon: '/assets/mindmap-icon-128.png',
+                            badge: '/assets/badge-icon.svg',
                             tag: 'alarm-error',
                             renotify: true
                         });
