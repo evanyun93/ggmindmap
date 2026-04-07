@@ -273,8 +273,8 @@ class SyncService {
      */
     resolveType(type) {
         // 플랫폼별로 완전히 독립적으로 관리해야 하는 데이터 타입들
+        // ※ dashboard_layouts는 이미 { pc: [], mobile: [] } 구조로 내부에서 플랫폼 분리를 처리하므로 제외
         const platformSpecificTypes = [
-            SYNC_DATA_TYPES.DASHBOARD_LAYOUTS,
             'TODO_COLLAPSED',
             'MILESTONE_COLLAPSED',
             'NOTEPAD_COLLAPSED',

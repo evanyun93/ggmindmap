@@ -399,4 +399,275 @@ svg .node-group.collapsed {
 .widget-notepad.is-editing-notepad .notepad-toolbar {
   border-color: rgba(139, 92, 246, 0.3);
   background: rgba(139, 92, 246, 0.08);
+}
+
+/* ─── 위젯 전체화면 모달 (타이틀 더블클릭) ────────────────── */
+
+/* 타이틀 더블클릭 힌트: 호버 시 커서 강조 */
+.widget-header h3[class$="-widget-title"]:hover,
+.widget-header h3[class*="-widget-title"]:hover {
+  opacity: 0.85;
+}
+
+/* 제목 위에 더블클릭 힌트 툴팁 */
+.widget-title-dblclick-hint {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+  background: rgba(139, 92, 246, 0.9);
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  z-index: 100;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.45);
+}
+
+.widget-title-dblclick-hint::before {
+  content: '';
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-bottom-color: rgba(139, 92, 246, 0.9);
+}
+
+.header-main:hover .widget-title-dblclick-hint {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* 헤더-main에 상대 위치 확보 */
+.widget-header .header-main {
+  position: relative;
+}
+
+/* 전체화면 오버레이 배경 */
+.widget-fullscreen-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 8, 20, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 19000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
+  opacity: 0;
+  animation: widget-fs-bg-in 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.widget-fullscreen-overlay.closing {
+  animation: widget-fs-bg-out 0.25s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes widget-fs-bg-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes widget-fs-bg-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* 전체화면 카드 */
+.widget-fullscreen-modal {
+  position: relative;
+  width: 100%;
+  max-width: 1100px;
+  max-height: calc(100vh - 48px);
+  height: calc(100vh - 48px);
+  background: linear-gradient(135deg, rgba(30, 20, 60, 0.97) 0%, rgba(18, 12, 40, 0.98) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 24px;
+  box-shadow:
+    0 32px 80px rgba(0, 0, 0, 0.6),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transform: scale(0.93) translateY(20px);
+  animation: widget-fs-modal-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  animation-delay: 0.05s;
+}
+
+.widget-fullscreen-overlay.closing .widget-fullscreen-modal {
+  animation: widget-fs-modal-out 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes widget-fs-modal-in {
+  from { transform: scale(0.93) translateY(20px); opacity: 0.4; }
+  to   { transform: scale(1)    translateY(0);    opacity: 1; }
+}
+
+@keyframes widget-fs-modal-out {
+  from { transform: scale(1)    translateY(0);    opacity: 1; }
+  to   { transform: scale(0.95) translateY(10px); opacity: 0; }
+}
+
+/* 전체화면 모달 헤더 */
+.widget-fullscreen-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+  gap: 12px;
+}
+
+.widget-fullscreen-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.widget-fullscreen-modal-title .fs-card-icon {
+  font-size: 1.6rem;
+  flex-shrink: 0;
+}
+
+.widget-fullscreen-modal-title h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.widget-fullscreen-close-btn {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 1.1rem;
+}
+
+.widget-fullscreen-close-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  transform: scale(1.08);
+}
+
+/* 전체화면 모달 콘텐츠 영역 */
+.widget-fullscreen-modal-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  min-height: 0;
+}
+
+/* 복제된 위젯 내 콘텐츠 wrapper 높이 채우기 */
+.widget-fullscreen-modal-body > div {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+/* 복제된 위젯이 전체화면 모달 안에서 제대로 표시되게 */
+.widget-fullscreen-modal-body [class$="-collapsible-wrapper"],
+.widget-fullscreen-modal-body [class$="-content-wrapper"],
+.widget-fullscreen-modal-body .mindmap-widget-body {
+  max-height: none !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 전체화면에서 notepad editor 높이 채우기 */
+.widget-fullscreen-modal-body .notepad-editor {
+  flex: 1;
+  min-height: 0;
+}
+
+/* 전체화면에서 mindmap SVG 높이 채우기 */
+.widget-fullscreen-modal-body .mindmap-widget-svg {
+  width: 100% !important;
+  height: 100% !important;
+  flex: 1 !important;
+  min-height: 300px;
+}
+
+/* ESC 키 힌트 뱃지 */
+.widget-fullscreen-esc-hint {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 3px 10px;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+  .widget-fullscreen-overlay {
+    padding: 0;
+    align-items: flex-end;
+  }
+
+  .widget-fullscreen-modal {
+    max-width: 100%;
+    width: 100%;
+    max-height: 90vh;
+    height: 90vh;
+    border-radius: 24px 24px 0 0;
+    animation: widget-fs-modal-in-mobile 0.35s cubic-bezier(0.34, 1.2, 0.64, 1) forwards;
+    animation-delay: 0.05s;
+    transform: translateY(30px);
+  }
+
+  .widget-fullscreen-overlay.closing .widget-fullscreen-modal {
+    animation: widget-fs-modal-out-mobile 0.22s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  }
+
+  @keyframes widget-fs-modal-in-mobile {
+    from { transform: translateY(50px); opacity: 0.3; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  @keyframes widget-fs-modal-out-mobile {
+    from { transform: translateY(0);    opacity: 1; }
+    to   { transform: translateY(60px); opacity: 0; }
+  }
+
+  .widget-fullscreen-modal-header {
+    padding: 16px 20px 12px;
+  }
+
+  .widget-fullscreen-esc-hint {
+    display: none;
+  }
 }
