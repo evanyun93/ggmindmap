@@ -81,6 +81,7 @@ export function getMindmapHTML() {
                         <g id="linksGroup"></g>
                         <g id="nodesGroup"></g>
                         <g id="resizeOverlay"></g>
+                        <g id="selectionRect"></g>
                     </g>
                 </svg>
             </div>
@@ -146,6 +147,24 @@ export function getMindmapHTML() {
                                 <div class="mm-help-row"><kbd>드래그</kbd><span>노드를 원하는 위치로 이동</span></div>
                                 <div class="mm-help-row"><kbd>더블클릭</kbd><span>이름 편집 모드 진입</span></div>
                                 <div class="mm-help-row"><kbd>우클릭</kbd><span>이름 변경 · 크기 조정 · 삭제 메뉴</span></div>
+                            </div>
+                        </div>
+                        <div class="mm-help-section mm-desktop-only">
+                            <div class="mm-help-section-title">🔲 다중 선택 (PC)</div>
+                            <div class="mm-help-rows">
+                                <div class="mm-help-row"><kbd>Shift + 빈 공간 드래그</kbd><span>영역 선택 — 사각형 안의 도형 일괄 선택</span></div>
+                                <div class="mm-help-row"><kbd>선택 후 드래그</kbd><span>선택된 도형 전체 일괄 이동</span></div>
+                                <div class="mm-help-row"><kbd>Del / Backspace</kbd><span>선택된 도형 전체 일괄 삭제</span></div>
+                                <div class="mm-help-row"><kbd>ESC</kbd><span>선택 해제</span></div>
+                            </div>
+                        </div>
+                        <div class="mm-help-section mm-mobile-only">
+                            <div class="mm-help-section-title">🔲 다중 선택 (모바일)</div>
+                            <div class="mm-help-rows">
+                                <div class="mm-help-row"><kbd>선택 버튼</kbd><span>영역 선택 모드 활성화</span></div>
+                                <div class="mm-help-row"><kbd>드래그 (빈 공간)</kbd><span>영역 선택 — 사각형 안의 도형 일괄 선택</span></div>
+                                <div class="mm-help-row"><kbd>선택 후 드래그</kbd><span>선택된 도형 전체 일괄 이동</span></div>
+                                <div class="mm-help-row"><kbd>삭제 버튼</kbd><span>선택된 도형 전체 일괄 삭제</span></div>
                             </div>
                         </div>
                         <div class="mm-help-section mm-desktop-only">
@@ -220,6 +239,10 @@ export function getMindmapHTML() {
                     <button class="mm-mob-ctrl-btn" id="mmMobConnect">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="5" cy="12" r="3"/><circle cx="19" cy="6" r="3"/><circle cx="19" cy="18" r="3"/><line x1="8" y1="10.5" x2="16" y2="7.5"/><line x1="8" y1="13.5" x2="16" y2="16.5"/></svg>
                         <span>연결</span>
+                    </button>
+                    <button class="mm-mob-ctrl-btn" id="mmMobSelect" title="영역 선택">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1" stroke-dasharray="3 1.5"/><rect x="13" y="3" width="8" height="8" rx="1" stroke-dasharray="3 1.5"/><rect x="3" y="13" width="8" height="8" rx="1" stroke-dasharray="3 1.5"/><rect x="13" y="13" width="8" height="8" rx="1" stroke-dasharray="3 1.5"/></svg>
+                        <span>선택</span>
                     </button>
                     <button class="mm-mob-ctrl-btn" id="mmMobDelete">
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>

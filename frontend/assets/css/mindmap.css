@@ -244,6 +244,25 @@
     to { stroke-dashoffset: -8; }
 }
 
+/* ── 다중 선택 노드 ─────────────────────────────────────── */
+.node-group.multi-selected .node-shape {
+    filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.75));
+}
+
+/* ── 영역 선택 사각형 ────────────────────────────────────── */
+.mm-select-rect {
+    fill: rgba(139, 92, 246, 0.07);
+    stroke: rgba(167, 139, 250, 0.8);
+    stroke-width: 1.5;
+    stroke-dasharray: 6 3;
+    pointer-events: none;
+    animation: mm-select-dash 0.6s linear infinite;
+}
+
+@keyframes mm-select-dash {
+    to { stroke-dashoffset: -9; }
+}
+
 /* ── 연결선 ─────────────────────────────────────────────── */
 .mindmap-link {
     fill: none;

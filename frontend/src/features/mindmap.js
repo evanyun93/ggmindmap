@@ -76,6 +76,14 @@ let pinchStartMidX   = 0, pinchStartMidY = 0;
 let pinchStartPanX   = 0, pinchStartPanY = 0;
 let mobileConnectMode = false;
 
+// ── 다중 선택 상태 ───────────────────────────────────────────────
+let selectedNodeIds   = new Set(); // 다중 선택된 노드 ID 집합
+let isRectSelecting   = false;     // 영역 선택 드래그 중
+let rectSX = 0, rectSY = 0;       // 선택 영역 시작점 (SVG canvas 좌표)
+let rectEX = 0, rectEY = 0;       // 선택 영역 끝점 (SVG canvas 좌표)
+let multiDragOffsets  = new Map(); // nodeId → { offX, offY } — 다중 드래그 오프셋
+let isMobileSelectMode = false;    // 모바일 영역 선택 모드 토글
+
 // ── Undo / Redo 히스토리 ────────────────────────────────────────
 const MAX_HISTORY = 50;
 let undoStack = [];
@@ -126,6 +134,93 @@ function updateUndoRedoButtons() {
     const redoBtn = document.getElementById('mmMobRedo');
     if (undoBtn) undoBtn.disabled = undoStack.length === 0;
     if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+}
+
+// ── 다중 선택 헬퍼 ──────────────────────────────────────────────
+
+/** SVG canvas 좌표 기준으로 사각형 안에 걸치는 노드 ID 배열 반환 */
+function getNodesInRect(x1, y1, x2, y2) {
+    const minX = Math.min(x1, x2), maxX = Math.max(x1, x2);
+    const minY = Math.min(y1, y2), maxY = Math.max(y1, y2);
+    return nodes.filter(node => {
+        const hw = node.type === 'circle' ? (node.radius || 50)    : (node.width  || 120) / 2;
+        const hh = node.type === 'circle' ? (node.radius || 50)    : (node.height ||  80) / 2;
+        // 노드 bounding box가 선택 영역과 겹치면 포함
+        return node.x + hw >= minX && node.x - hw <= maxX &&
+               node.y + hh >= minY && node.y - hh <= maxY;
+    }).map(n => n.id);
+}
+
+/** 영역 선택 사각형 SVG 요소를 그리거나 지운다 */
+function renderSelectionRect() {
+    const g = document.getElementById('selectionRect');
+    if (!g) return;
+    if (!isRectSelecting) { g.innerHTML = ''; return; }
+    const x = Math.min(rectSX, rectEX);
+    const y = Math.min(rectSY, rectEY);
+    const w = Math.abs(rectEX - rectSX);
+    const h = Math.abs(rectEY - rectSY);
+    g.innerHTML = `<rect x="${x}" y="${y}" width="${w}" height="${h}" class="mm-select-rect"/>`;
+}
+
+/** 다중 선택 전체 해제 */
+function clearMultiSelection() {
+    if (selectedNodeIds.size === 0) return;
+    selectedNodeIds.clear();
+    renderMindmap();
+    updateHintBar();
+}
+
+/** 다중 선택된 노드 일괄 삭제 (isMain 제외) */
+function deleteMultiSelected() {
+    const toDelete = [...selectedNodeIds].filter(id => {
+        const n = nodes.find(n => n.id === id);
+        return n && !n.isMain;
+    });
+    if (toDelete.length === 0) return;
+    saveSnapshot();
+    toDelete.forEach(id => {
+        nodes = nodes.filter(n => n.id !== id);
+        links = links.filter(l => l.source !== id && l.target !== id);
+    });
+    selectedNodeIds.clear();
+    selectedNodeId = null;
+    renderMindmap();
+    saveMindmap();
+    updateHintBar();
+}
+
+/** 다중 드래그 중 모든 노드 DOM 위치를 갱신하고 링크를 재렌더 */
+function updateMultiDragDOM() {
+    multiDragOffsets.forEach((_, id) => {
+        const node = nodes.find(n => n.id === id);
+        if (!node) return;
+        const g = document.querySelector(`.node-group[data-node-id="${id}"]`);
+        if (g) g.setAttribute('transform', `translate(${node.x},${node.y})`);
+    });
+    const lg = document.getElementById('linksGroup');
+    if (lg) {
+        lg.innerHTML = links.map(link => {
+            const s = nodes.find(n => n.id === link.source);
+            const t = nodes.find(n => n.id === link.target);
+            if (!s || !t) return '';
+            const sp = edgePoint(s, t), tp = edgePoint(t, s);
+            const cx = (sp.x + tp.x) / 2, cy = (sp.y + tp.y) / 2 - 30;
+            return `<path d="M${sp.x},${sp.y} Q${cx},${cy} ${tp.x},${tp.y}" class="mindmap-link" marker-end="url(#arrowhead)"/>`;
+        }).join('');
+    }
+}
+
+/** 모바일 영역 선택 모드 토글 */
+function toggleMobileSelectMode() {
+    isMobileSelectMode = !isMobileSelectMode;
+    if (!isMobileSelectMode) {
+        isRectSelecting = false;
+        renderSelectionRect();
+        clearMultiSelection();
+    }
+    document.getElementById('mmMobSelect')?.classList.toggle('active', isMobileSelectMode);
+    updateHintBar();
 }
 
 // ── 유틸리티 ────────────────────────────────────────────────────
@@ -305,9 +400,27 @@ function updateZoomIndicator() {
 function updateHintBar() {
     const guide = document.getElementById('mindmapGuide');
     if (!guide) return;
-    
+
+    // 다중 선택 중 (PC/모바일 공통)
+    if (selectedNodeIds.size > 1) {
+        guide.innerHTML =
+            `<span class="mm-hint-item" style="color:#a78bfa"><kbd>${selectedNodeIds.size}개 선택됨</kbd></span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>드래그</kbd> 일괄 이동</span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>Del</kbd> 일괄 삭제</span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>ESC</kbd> 선택 해제</span>`;
+        return;
+    }
+
     // PC환경이 아닐 경우 (모바일/태블릿)
     if (window.innerWidth <= 1024) {
+        // 모바일 선택 모드
+        if (isMobileSelectMode) {
+            guide.innerHTML = `<span class="mm-hint-item" style="color:#F59E0B"><kbd>선택 모드</kbd> 드래그로 영역 선택 · 삭제버튼으로 일괄 삭제</span>`;
+            return;
+        }
         if (mobileConnectMode) {
             if (connectSourceId) {
                 guide.innerHTML = `<span class="mm-hint-item" style="color:#10B981"><kbd>연결 모드</kbd> 연결할 두 번째 노드를 탭하세요</span>`;
@@ -315,7 +428,7 @@ function updateHintBar() {
                 guide.innerHTML = `<span class="mm-hint-item" style="color:#F59E0B"><kbd>연결 모드</kbd> 기준이 될 첫 번째 노드를 탭하세요</span>`;
             }
         } else {
-            guide.innerHTML = 
+            guide.innerHTML =
                 `<span class="mm-hint-item"><kbd>메뉴</kbd> 꾹 누르기</span>` +
                 `<span class="mm-hint-sep">·</span>` +
                 `<span class="mm-hint-item"><kbd>이동</kbd> 드래그</span>` +
@@ -327,10 +440,10 @@ function updateHintBar() {
                 `<span class="mm-hint-item"><kbd>줌</kbd> 핀치</span>`;
         }
     } else {
-        guide.innerHTML = 
+        guide.innerHTML =
             `<span class="mm-hint-item"><kbd>우클릭</kbd> 도형 추가</span>` +
             `<span class="mm-hint-sep">·</span>` +
-            `<span class="mm-hint-item"><kbd>드래그</kbd> 화면 이동</span>` +
+            `<span class="mm-hint-item"><kbd>Shift+드래그</kbd> 영역 선택</span>` +
             `<span class="mm-hint-sep">·</span>` +
             `<span class="mm-hint-item"><kbd>더블클릭</kbd> 편집</span>` +
             `<span class="mm-hint-sep">·</span>` +
@@ -392,6 +505,8 @@ function toggleMobileConnect() {
 }
 
 function mobileDeleteSelected() {
+    // 다중 선택 일괄 삭제
+    if (selectedNodeIds.size > 0) { deleteMultiSelected(); return; }
     if (selectedNodeId == null) return;
     const node = nodes.find(n => n.id === selectedNodeId);
     if (!node || node.isMain) { if (node?.isMain) window.appAlert('중심 노드는 삭제할 수 없습니다.'); return; }
@@ -556,15 +671,18 @@ function renderMindmap() {
     }).join('');
 
     ng.innerHTML = nodes.map(node => {
-        const isSelected = selectedNodeId === node.id;
-        const color = getNodeColor(node);
+        const isSelected      = selectedNodeId === node.id;
+        const isMultiSelected = selectedNodeIds.has(node.id);
+        const showOverlay     = isSelected || isMultiSelected;
+        const color           = getNodeColor(node);
+        const overlayStroke   = isMultiSelected ? '#fbbf24' : color.stroke;
 
-        const selectionOverlay = isSelected
+        const selectionOverlay = showOverlay
             ? (node.type === 'rect' || node.type === 'freehand'
-                ? `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="${node.type==='freehand'?0:13}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
+                ? `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="${node.type==='freehand'?0:13}" fill="none" stroke="${overlayStroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
                 : (node.type === 'triangle'
-                    ? `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
-                    : `<circle class="selection-overlay" r="${(node.radius||50)+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`))
+                    ? `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${overlayStroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
+                    : `<circle class="selection-overlay" r="${(node.radius||50)+5}" fill="none" stroke="${overlayStroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`))
             : '';
 
         const shape = node.type === 'rect'
@@ -576,7 +694,7 @@ function renderMindmap() {
                     : `<circle r="${node.radius||50}" class="node-shape" fill="${color.fill}" stroke="${color.stroke}" stroke-width="${node.isMain?3:2}" filter="url(#glass-shadow)"/>`));
 
         const isConnSrc = connectSourceId === node.id;
-        const cls = `node-group${node.isMain?' main':''}${isConnSrc?' connecting-source':''}${isSelected?' selected':''}`;
+        const cls = `node-group${node.isMain?' main':''}${isConnSrc?' connecting-source':''}${isSelected?' selected':''}${isMultiSelected?' multi-selected':''}`;
 
         const textEl = renderNodeText(node);
 
@@ -599,11 +717,18 @@ function renderMindmap() {
 
 // ── 성능 개선을 위한 DOM 직접 업데이트 헬퍼 ────────────────────────
 function setSelectedNodeDOM(nodeId) {
-    if (selectedNodeId === nodeId) return;
+    if (selectedNodeId === nodeId && selectedNodeIds.size === 0) return;
     selectedNodeId = nodeId;
+
+    // 단일 선택 전환 시 다중 선택 해제
+    if (nodeId != null && selectedNodeIds.size > 0) {
+        selectedNodeIds.clear();
+        updateHintBar();
+    }
 
     document.querySelectorAll('.node-group .selection-overlay').forEach(el => el.remove());
     document.querySelectorAll('.node-group.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.node-group.multi-selected').forEach(el => el.classList.remove('multi-selected'));
 
     if (nodeId == null) return;
     const node = nodes.find(n => n.id === nodeId);
@@ -670,6 +795,17 @@ function setupEvents() {
 
         setSelectedNodeDOM(null);
 
+        // PC: Shift+드래그 → 영역 선택 모드
+        if (e.shiftKey) {
+            e.preventDefault();
+            const pt = getEventSVGCoords(e);
+            isRectSelecting = true;
+            rectSX = rectEX = pt.x;
+            rectSY = rectEY = pt.y;
+            svg.style.cursor = 'crosshair';
+            return;
+        }
+
         isPanning = true;
         panSX = e.clientX - canvasPanX;
         panSY = e.clientY - canvasPanY;
@@ -730,6 +866,29 @@ function setupEvents() {
             }
             return;
         }
+
+        // 영역 선택 드래그 업데이트
+        if (isRectSelecting) {
+            const pt = getEventSVGCoords(e);
+            rectEX = pt.x;
+            rectEY = pt.y;
+            renderSelectionRect();
+            return;
+        }
+
+        // 다중 노드 드래그
+        if (multiDragOffsets.size > 0) {
+            multiDragOffsets.forEach((off, id) => {
+                const node = nodes.find(n => n.id === id);
+                if (node) {
+                    node.x = (e.clientX - canvasPanX - off.offX) / canvasZoom;
+                    node.y = (e.clientY - canvasPanY - off.offY) / canvasZoom;
+                }
+            });
+            updateMultiDragDOM();
+            return;
+        }
+
         if (draggingNodeId) {
             const node = nodes.find(n => n.id === draggingNodeId);
             if (node) {
@@ -764,6 +923,31 @@ function setupEvents() {
             resizeDragStartDims = null;
             return;
         }
+
+        // 영역 선택 완료
+        if (isRectSelecting) {
+            isRectSelecting = false;
+            svg.style.cursor = 'grab';
+            if (Math.abs(rectEX - rectSX) > 4 || Math.abs(rectEY - rectSY) > 4) {
+                const ids = getNodesInRect(rectSX, rectSY, rectEX, rectEY);
+                if (ids.length > 0) {
+                    selectedNodeIds = new Set(ids);
+                    selectedNodeId  = null;
+                    renderMindmap();
+                    updateHintBar();
+                }
+            }
+            renderSelectionRect(); // 사각형 제거
+            return;
+        }
+
+        // 다중 드래그 완료
+        if (multiDragOffsets.size > 0) {
+            multiDragOffsets.clear();
+            saveMindmap();
+            return;
+        }
+
         if (draggingNodeId) {
             draggingNodeId = null;
             saveMindmap();
@@ -780,12 +964,38 @@ function setupEvents() {
             if (isDrawingMode) { cancelDrawingMode(); return; }
             if (resizingNodeId) { exitResizeMode(true); return; } // 리사이즈 취소
             let changed = false;
+
+            // 영역 선택 드래그 취소
+            if (isRectSelecting) {
+                isRectSelecting = false;
+                renderSelectionRect();
+                changed = true;
+            }
+
+            // 다중 선택 해제
+            if (selectedNodeIds.size > 0) {
+                selectedNodeIds.clear();
+                changed = true;
+                updateHintBar();
+            }
+
+            // 모바일 선택 모드 해제
+            if (isMobileSelectMode) {
+                isMobileSelectMode = false;
+                document.getElementById('mmMobSelect')?.classList.remove('active');
+                changed = true;
+                updateHintBar();
+            }
+
             if (connectSourceId != null) {
                 connectSourceId = null;
                 changed = true;
             }
             if (draggingNodeId != null) {
                 draggingNodeId = null;
+            }
+            if (multiDragOffsets.size > 0) {
+                multiDragOffsets.clear();
             }
 
             if (selectedNodeId != null) {
@@ -805,6 +1015,12 @@ function setupEvents() {
         if (e.key === 'Delete' || e.key === 'Backspace') {
             // 텍스트 편집 중이면 처리 안 함 (기존 로직 유지)
             if (window._editNodeId != null) return;
+
+            // 다중 선택 일괄 삭제
+            if (selectedNodeIds.size > 0) {
+                deleteMultiSelected();
+                return;
+            }
 
             if (selectedNodeId != null) {
                 const node = nodes.find(n => n.id === selectedNodeId);
@@ -850,6 +1066,7 @@ function setupEvents() {
     document.getElementById('mmMobTriangle')?.addEventListener('click', () => addNodeAtCenter('triangle'));
     document.getElementById('mmMobFreehand')?.addEventListener('click', () => startDrawingMode());
     document.getElementById('mmMobConnect')?.addEventListener('click',  toggleMobileConnect);
+    document.getElementById('mmMobSelect')?.addEventListener('click',   toggleMobileSelectMode);
     document.getElementById('mmMobDelete')?.addEventListener('click',   mobileDeleteSelected);
     document.getElementById('mmMobFit')?.addEventListener('click',      fitView);
     document.getElementById('mmMobUndo')?.addEventListener('click',     undo);
@@ -1018,6 +1235,21 @@ function setupTouchEvents(svg) {
             lastTapNodeId = nodeId;
             lastTapTime   = now;
 
+            // 다중 선택 상태 — 선택된 노드 터치 → 일괄 이동
+            if (selectedNodeIds.size > 1 && selectedNodeIds.has(nodeId) && !mobileConnectMode) {
+                clearTimeout(longPressTimer);
+                saveSnapshot();
+                multiDragOffsets.clear();
+                selectedNodeIds.forEach(nid => {
+                    const n = nodes.find(n => n.id === nid);
+                    if (n) multiDragOffsets.set(nid, {
+                        offX: t.clientX - canvasPanX - n.x * canvasZoom,
+                        offY: t.clientY - canvasPanY - n.y * canvasZoom,
+                    });
+                });
+                return;
+            }
+
             // 연결 모드
             if (mobileConnectMode) {
                 if (connectSourceId != null && connectSourceId !== nodeId) {
@@ -1066,10 +1298,26 @@ function setupTouchEvents(svg) {
             }, LONG_PRESS_MS);
 
         } else {
-            // 빈 캔버스 터치 → 팬 시작
+            // 빈 캔버스 터치
             clearTimeout(longPressTimer);
             if (window._editNodeId != null) { window._applyNodeEdit(); return; }
             if (resizingNodeId) { exitResizeMode(false); return; }
+
+            // 모바일 선택 모드 → 영역 선택 시작
+            if (isMobileSelectMode) {
+                const pt = getEventSVGCoords(e);
+                isRectSelecting = true;
+                rectSX = rectEX = pt.x;
+                rectSY = rectEY = pt.y;
+                return;
+            }
+
+            // 다중 선택 해제 (빈 캔버스 터치)
+            if (selectedNodeIds.size > 0) {
+                selectedNodeIds.clear();
+                renderMindmap();
+                updateHintBar();
+            }
 
             touchPanActive  = true;
             touchNodeDragId = null;
@@ -1173,6 +1421,28 @@ function setupTouchEvents(svg) {
             longPressTimer = null;
         }
 
+        // 영역 선택 드래그 (모바일 선택 모드)
+        if (isRectSelecting) {
+            const pt = getEventSVGCoords(e);
+            rectEX = pt.x;
+            rectEY = pt.y;
+            renderSelectionRect();
+            return;
+        }
+
+        // 다중 노드 터치 드래그
+        if (multiDragOffsets.size > 0) {
+            multiDragOffsets.forEach((off, id) => {
+                const node = nodes.find(n => n.id === id);
+                if (node) {
+                    node.x = (t.clientX - canvasPanX - off.offX) / canvasZoom;
+                    node.y = (t.clientY - canvasPanY - off.offY) / canvasZoom;
+                }
+            });
+            updateMultiDragDOM();
+            return;
+        }
+
         if (touchNodeDragId) {
             const node = nodes.find(n => n.id === touchNodeDragId);
             if (node) {
@@ -1204,6 +1474,29 @@ function setupTouchEvents(svg) {
             return;
         }
 
+        // 영역 선택 완료 (모바일)
+        if (isRectSelecting) {
+            isRectSelecting = false;
+            if (Math.abs(rectEX - rectSX) > 4 || Math.abs(rectEY - rectSY) > 4) {
+                const ids = getNodesInRect(rectSX, rectSY, rectEX, rectEY);
+                if (ids.length > 0) {
+                    selectedNodeIds = new Set(ids);
+                    selectedNodeId  = null;
+                    renderMindmap();
+                    updateHintBar();
+                }
+            }
+            renderSelectionRect();
+            return;
+        }
+
+        // 다중 드래그 완료 (모바일)
+        if (multiDragOffsets.size > 0) {
+            multiDragOffsets.clear();
+            saveMindmap();
+            return;
+        }
+
         if (touchNodeDragId) {
             saveMindmap();
             touchNodeDragId = null;
@@ -1217,6 +1510,11 @@ function setupTouchEvents(svg) {
         touchNodeDragId = null;
         touchPanActive  = false;
         pinchActive     = false;
+        if (isRectSelecting) {
+            isRectSelecting = false;
+            renderSelectionRect();
+        }
+        multiDragOffsets.clear();
     }, { passive: true });
 }
 
@@ -1533,6 +1831,27 @@ window._nodeMouseDown = (e, id) => {
     if (window._editNodeId != null) {
         if (window._editNodeId !== id) window._applyNodeEdit();
         return;
+    }
+
+    // 다중 선택 상태 — 선택된 노드 클릭 시 일괄 이동 시작
+    if (selectedNodeIds.size > 1 && selectedNodeIds.has(id) && !e.shiftKey && !mobileConnectMode) {
+        e.preventDefault();
+        saveSnapshot();
+        multiDragOffsets.clear();
+        selectedNodeIds.forEach(nid => {
+            const n = nodes.find(n => n.id === nid);
+            if (n) multiDragOffsets.set(nid, {
+                offX: e.clientX - canvasPanX - n.x * canvasZoom,
+                offY: e.clientY - canvasPanY - n.y * canvasZoom,
+            });
+        });
+        return;
+    }
+
+    // 다중 선택 외부 노드 클릭 → 선택 해제
+    if (selectedNodeIds.size > 0 && !e.shiftKey && !mobileConnectMode) {
+        selectedNodeIds.clear();
+        updateHintBar();
     }
 
     // 연결 모드 (모바일 하단 버튼 또는 Shift+클릭)
