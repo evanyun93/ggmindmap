@@ -17,6 +17,24 @@
   opacity: 1;
 }
 
+/* 태블릿/PC — 롱프레스 활성화 시 호버처럼 강조 */
+.resize-handle.active-resizing {
+  opacity: 1;
+  transition: none;
+  box-shadow: inset -4px -4px 14px rgba(139, 92, 246, 0.3);
+}
+
+.resize-handle.active-resizing::before {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent            0px,
+    transparent            10px,
+    rgba(167, 139, 250, 1) 10px,
+    rgba(167, 139, 250, 1) 14px
+  );
+  filter: drop-shadow(0 0 5px rgba(139, 92, 246, 0.8));
+}
+
 /* 삼각형 클립 + 사선 3줄 — 코너에 가까울수록 자연스럽게 짧아짐 */
 .resize-handle::before {
   content: '';
