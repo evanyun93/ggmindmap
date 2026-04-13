@@ -15,6 +15,7 @@ let maxZIndex = 100;
 let isMoveModeActive = false;
 let longPressTimer = null;
 
+
 export function updateMaxZIndex(zIndex) {
     if (typeof zIndex === 'number' && !isNaN(zIndex)) {
         maxZIndex = Math.max(maxZIndex, zIndex);
@@ -360,6 +361,9 @@ export function initDashboardGrid() {
     // 최상단/최하단 바운스 효과 초기화
     initScrollBounceEffect(dashboardContent || widgetsSection || grid, grid);
 
+    // PC 캔버스 패닝 (빈 공간 드래그로 뷰포트 이동)
+    if (dashboardContent) initCanvasPan(dashboardContent, grid);
+
     // 동적 위젯 로드 (WidgetManager 시스템)
     import('./widget-manager.js').then(m => {
         m.widgetManager.loadWidgets();
@@ -483,8 +487,8 @@ export function showEditWarning(widget) {
 export function setupDraggable(widget, grid) {
     let isDragStarted = false;
 
-    // 마우스 드래그 시작
-    widget.addEventListener('mousedown', (e) => handleStart(e));
+    // 마우스 드래그 시작 (grid의 캔버스 패닝과 충돌 방지를 위해 버블링 차단)
+    widget.addEventListener('mousedown', (e) => { e.stopPropagation(); handleStart(e); });
     // 모바일 지원 터치 드래그
     widget.addEventListener('touchstart', (e) => handleStart(e), { passive: false });
 
@@ -684,15 +688,17 @@ export function setupDraggable(widget, grid) {
             lastTouchX = currentTouch.clientX;
             lastTouchY = currentTouch.clientY;
 
-            // 대시보드 오토 스크롤 감지 (상/하단 12% 영역)
-            const viewH = window.innerHeight;
-            const threshold = viewH * 0.12;
-            if (lastTouchY < threshold) {
-                startAutoScroll('up');
-            } else if (lastTouchY > viewH - threshold) {
-                startAutoScroll('down');
-            } else {
-                stopAutoScroll();
+            // 대시보드 오토 스크롤 감지 (모바일 전용 — PC는 캔버스 패닝 방식 사용)
+            if (isMobile) {
+                const viewH = window.innerHeight;
+                const threshold = viewH * 0.12;
+                if (lastTouchY < threshold) {
+                    startAutoScroll('up');
+                } else if (lastTouchY > viewH - threshold) {
+                    startAutoScroll('down');
+                } else {
+                    stopAutoScroll();
+                }
             }
 
             // 모바일 수직 스택 모드 체크 (768px 이하)
@@ -926,7 +932,7 @@ export function setupResizable(widget, grid) {
 
         const onMove = (moveEvent) => {
             if (moveEvent.cancelable) moveEvent.preventDefault();
-            const currentEvent = (moveEvent.type === 'touchmove' || moveEvent.type === 'touchstart') 
+            const currentEvent = (moveEvent.type === 'touchmove' || moveEvent.type === 'touchstart')
                 ? moveEvent.touches[0] : moveEvent;
 
             // 대시보드 오토 스크롤 감지 (모바일 리사이즈 시 하단/상단 영역)
@@ -934,7 +940,7 @@ export function setupResizable(widget, grid) {
                 const viewH = window.innerHeight;
                 const threshold = viewH * 0.12;
                 const clientY = currentEvent.clientY;
-                
+
                 if (clientY > viewH - threshold) {
                     startAutoScroll('down');
                 } else if (clientY < threshold) {
@@ -948,7 +954,7 @@ export function setupResizable(widget, grid) {
             const currentHeight = initialHeight + (currentEvent.pageY - initialY);
             const minH = 120;
             const finalH = Math.max(minH, currentHeight);
-            
+
             // 모바일에서 강력한 스타일 적용 (min/max를 함께 설정하여 CSS 제약 우회)
             widget.style.height = `${finalH}px`;
             if (isMobile) {
@@ -971,7 +977,7 @@ export function setupResizable(widget, grid) {
             document.removeEventListener('touchend', onEnd);
             handle.classList.remove('active-resizing');
             widget.classList.remove('is-resizing'); // 피드백 종료
-            
+
             // 변경된 이 위젯만 저장 (효율적 업데이트)
             saveLayout(widget);
             adjustGridHeight();
@@ -994,7 +1000,7 @@ export function setupResizable(widget, grid) {
     let longPressTimer = null;
 
     handle.addEventListener('touchstart', (e) => {
-        e.preventDefault(); 
+        e.preventDefault();
         e.stopPropagation();
 
         const touch = e.touches[0];
@@ -1004,10 +1010,10 @@ export function setupResizable(widget, grid) {
         const startH = widget.offsetHeight;
 
         longPressTimer = setTimeout(() => {
-            if (window.navigator.vibrate) try { window.navigator.vibrate(60); } catch(e) {}
+            if (window.navigator.vibrate) try { window.navigator.vibrate(60); } catch (e) { }
             handle.classList.add('active-resizing');
             beginResize(startX, startY, startW, startH, true);
-        }, 400); 
+        }, 400);
 
         const cancelTimer = (mv) => {
             const t = mv.touches[0];
@@ -1092,7 +1098,7 @@ export function saveLayout(targetWidget = null) {
                         zIndex: currentLayout.z
                     })
                 });
-                
+
                 // 실시간 동기화 시스템에도 반영하여 기기별 분리 및 브로드캐스트 수행 (V6)
                 import('../services/sync.js').then(m => {
                     m.syncService.setData('DASHBOARD_LAYOUTS', id, currentLayout);
@@ -1177,6 +1183,100 @@ function setInitialLayout(grid) {
     adjustGridHeight();
 }
 
+
+/**
+ * PC 캔버스 패닝: 빈 공간 클릭+드래그로 대시보드 뷰포트 이동
+ */
+function initCanvasPan(container, grid) {
+    if (window.innerWidth <= 768 || !container || !grid) return;
+
+    let isPanning = false;
+    let startX = 0, startY = 0;
+    let scrollLeft = 0, scrollTop = 0;
+
+    const beginPan = (x, y) => {
+        isPanning = true;
+        startX = x;
+        startY = y;
+        scrollLeft = container.scrollLeft;
+        scrollTop = container.scrollTop;
+        container.classList.add('is-panning-active');
+    };
+
+    const movePan = (x, y) => {
+        if (!isPanning) return;
+        container.scrollLeft = scrollLeft - (x - startX);
+        container.scrollTop = scrollTop - (y - startY);
+    };
+
+    const endPan = () => {
+        if (!isPanning) return;
+        isPanning = false;
+        container.classList.remove('is-panning-active');
+    };
+
+    // ── 마우스 패닝 ──────────────────────────────────────────────
+    grid.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        // 빈 그리드 배경만 (위젯/자식 클릭 시 e.target은 절대 grid가 아님)
+        if (e.target !== grid) return;
+        beginPan(e.clientX, e.clientY);
+        e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => movePan(e.clientX, e.clientY));
+    document.addEventListener('mouseup', endPan);
+
+    // ── 터치 패닝 (태블릿) ────────────────────────────────────────
+    // touch-action:none(CSS)으로 브라우저 기본 스크롤을 차단했으므로
+    // 여기서 직접 컨테이너를 스크롤한다.
+    grid.addEventListener('touchstart', (e) => {
+        if (e.touches.length !== 1) return;
+        // 빈 그리드 배경만 패닝 (위젯 터치는 widget의 touchstart가 처리)
+        if (e.target !== grid) return;
+        beginPan(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+    }, { passive: false });
+
+    grid.addEventListener('touchmove', (e) => {
+        if (!isPanning || e.touches.length !== 1) return;
+        movePan(e.touches[0].clientX, e.touches[0].clientY);
+        e.preventDefault();
+    }, { passive: false });
+
+    grid.addEventListener('touchend', endPan);
+
+    // ── 홈 귀환 버튼 ──────────────────────────────────────────────
+    const homeBtn = document.createElement('button');
+    homeBtn.id = 'dashboardHomeBtn';
+    homeBtn.title = '처음 위치로 돌아가기';
+    homeBtn.innerHTML = `
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12L12 3l9 9"/>
+          <path d="M9 21V12h6v9"/>
+        </svg>
+        <span>처음위치로</span>`;
+    document.body.appendChild(homeBtn);
+
+    const SHOW_THRESHOLD = 350; // px — 이 거리 이상 이동 시 버튼 표시
+    let homeBtnVisible = false;
+
+    const updateHomeBtn = () => {
+        const dist = Math.hypot(container.scrollLeft, container.scrollTop);
+        const shouldShow = dist > SHOW_THRESHOLD;
+        if (shouldShow === homeBtnVisible) return;
+        homeBtnVisible = shouldShow;
+        homeBtn.classList.toggle('visible', shouldShow);
+    };
+
+    container.addEventListener('scroll', updateHomeBtn, { passive: true });
+
+    homeBtn.addEventListener('click', () => {
+        container.scrollTo({ left: 0, top: 0, behavior: 'smooth' });
+    });
+}
 
 /**
  * 최하단 바운스(Bounce) 효과 초기화
@@ -1309,8 +1409,8 @@ export function adjustGridHeight() {
         }
     });
 
-    // 기본 최소 높이 1000px, 최하단 위젯 + 여유 공간 100px
-    const minHeight = Math.max(1000, maxBottom + 100);
+    // 기본 최소 높이 2800px, 최하단 위젯 + 여유 공간 300px
+    const minHeight = Math.max(2800, maxBottom + 300);
     grid.style.minHeight = `${minHeight}px`;
 }
 

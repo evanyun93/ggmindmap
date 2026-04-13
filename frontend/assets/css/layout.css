@@ -226,25 +226,105 @@
 /* ─── [PC 전용] 자유 드래그 레이아웃 및 화이트보드 ──────────────── */
 @media (min-width: 769px) {
 
+  /* 대시보드 콘텐츠 영역: 스크롤 뷰포트 (스크롤바 숨김, JS 패닝) */
+  .dashboard-content {
+    overflow: auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    scrollbar-width: none;
+    /* 레이아웃 탭(46px)이 clip되지 않도록 상단 여백 확보 */
+    padding-top: 56px !important;
+  }
+  .dashboard-content::-webkit-scrollbar {
+    display: none;
+  }
+  .dashboard-content.is-panning-active {
+    cursor: grabbing !important;
+    user-select: none;
+  }
+
+  /* ── 대시보드 홈 귀환 버튼 ── */
+  #dashboardHomeBtn {
+    position: fixed;
+    bottom: 72px;   /* footer 위 */
+    left: 24px;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px 9px 13px;
+    background: rgba(30, 20, 60, 0.75);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(139, 92, 246, 0.55);
+    border-radius: 22px;
+    color: #E2D9FF;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: 0 6px 24px rgba(139, 92, 246, 0.35), 0 2px 8px rgba(0,0,0,0.3);
+
+    /* 기본: 숨김 */
+    opacity: 0;
+    transform: translateY(16px) scale(0.85);
+    pointer-events: none;
+    transition:
+      opacity  0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+      transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  }
+
+  #dashboardHomeBtn.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+
+  #dashboardHomeBtn:hover {
+    background: rgba(139, 92, 246, 0.85);
+    border-color: rgba(139, 92, 246, 0.9);
+    color: #fff;
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 10px 30px rgba(139, 92, 246, 0.5);
+    transition: transform 0.2s ease, box-shadow 0.2s ease,
+                background 0.2s ease, border-color 0.2s ease;
+  }
+
+  #dashboardHomeBtn:active {
+    transform: translateY(0) scale(0.97);
+  }
+
+  #dashboardHomeBtn svg {
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  /* 그리드 터치 시 브라우저 기본 스크롤 차단 (JS 패닝으로 대체) */
+  .dashboard-grid-v2 {
+    touch-action: none;
+  }
 
   /* 대시보드 그리드 컨테이너 (그리드 도트 및 오로라 배경) */
   .dashboard-grid-v2 {
     position: relative;
-    min-height: 1000px;
-    width: 100%;
-    
+    min-height: 2800px;
+    min-width: 3500px;
+    width: 3500px; /* 고정 너비로 항상 여유 공간 확보 */
+
+    /* 빈 공간 패닝 커서 */
+    cursor: grab;
+
     /* 뒷배경의 파티클 애니메이션이 선명하게 보이도록 투명화 */
     background-color: transparent !important;
-    
+
     /* 격자무늬 유지 */
     background-image: radial-gradient(var(--dashboard-dot) 2px, transparent 2px) !important;
     background-size: 40px 40px;
     background-position: 0 0;
-    
+
     border-radius: 28px;
     border: 1px solid rgba(255, 255, 255, 0.08);
     box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.2), 0 20px 40px rgba(0,0,0,0.3);
-    overflow: hidden;
+    overflow: visible;
     transition: background-color 0.5s ease;
     forced-color-adjust: none !important;
     isolation: isolate;

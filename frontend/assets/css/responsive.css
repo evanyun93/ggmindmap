@@ -7,6 +7,27 @@
   display: none !important;
 }
 
+/* ─── 중간 해상도 (태블릿 가로 ~ 좁은 PC) ───────────────────── */
+/* 중앙 타이틀이 우측 프로필 영역과 겹치는 것 방지 */
+@media (max-width: 1200px) {
+  .header-center-title {
+    display: none !important;
+  }
+}
+
+/* 우측 user-section이 넘치지 않도록 축소 */
+@media (min-width: 768px) and (max-width: 1200px) {
+  .user-section {
+    gap: 8px !important;
+  }
+  .user-name {
+    max-width: 100px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
 /* ─── [모바일 전용] 반응형 최적화 및 수직 레이아웃 ───────────────── */
 @media (max-width: 767px) {
   /* 루트 변수 조정 */
