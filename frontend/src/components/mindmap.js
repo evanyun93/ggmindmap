@@ -229,6 +229,14 @@ export function getMindmapHTML() {
                         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
                         <span>맞추기</span>
                     </button>
+                    <button class="mm-mob-ctrl-btn" id="mmMobUndo" disabled title="실행 취소 (Ctrl+Z)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+                        <span>되돌리기</span>
+                    </button>
+                    <button class="mm-mob-ctrl-btn" id="mmMobRedo" disabled title="다시 실행 (Ctrl+Shift+Z)">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3L21 13"/></svg>
+                        <span>다시실행</span>
+                    </button>
                     <div class="mm-mob-zoom">
                         <button class="mm-mob-zoom-btn" id="mmZoomOut">−</button>
                         <span class="mm-zoom-level" id="mmZoomLevel">100%</span>

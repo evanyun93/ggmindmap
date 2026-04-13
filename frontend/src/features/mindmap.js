@@ -76,6 +76,58 @@ let pinchStartMidX   = 0, pinchStartMidY = 0;
 let pinchStartPanX   = 0, pinchStartPanY = 0;
 let mobileConnectMode = false;
 
+// ── Undo / Redo 히스토리 ────────────────────────────────────────
+const MAX_HISTORY = 50;
+let undoStack = [];
+let redoStack = [];
+
+function saveSnapshot() {
+    undoStack.push({
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        links: JSON.parse(JSON.stringify(links))
+    });
+    if (undoStack.length > MAX_HISTORY) undoStack.shift();
+    redoStack = [];
+    updateUndoRedoButtons();
+}
+
+function undo() {
+    if (undoStack.length === 0) return;
+    redoStack.push({
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        links: JSON.parse(JSON.stringify(links))
+    });
+    const snap = undoStack.pop();
+    nodes = snap.nodes;
+    links = snap.links;
+    selectedNodeId = null;
+    renderMindmap();
+    saveMindmap();
+    updateUndoRedoButtons();
+}
+
+function redo() {
+    if (redoStack.length === 0) return;
+    undoStack.push({
+        nodes: JSON.parse(JSON.stringify(nodes)),
+        links: JSON.parse(JSON.stringify(links))
+    });
+    const snap = redoStack.pop();
+    nodes = snap.nodes;
+    links = snap.links;
+    selectedNodeId = null;
+    renderMindmap();
+    saveMindmap();
+    updateUndoRedoButtons();
+}
+
+function updateUndoRedoButtons() {
+    const undoBtn = document.getElementById('mmMobUndo');
+    const redoBtn = document.getElementById('mmMobRedo');
+    if (undoBtn) undoBtn.disabled = undoStack.length === 0;
+    if (redoBtn) redoBtn.disabled = redoStack.length === 0;
+}
+
 // ── 유틸리티 ────────────────────────────────────────────────────
 function getEventSVGCoords(e) {
     const svg = document.getElementById('mindmapSVG');
@@ -142,7 +194,7 @@ function initEditorEvents() {
         if (!currentInput) return;
         
         const node = nodes.find(n => n.id === id);
-        if (node) { node.text = currentInput.value; renderMindmap(); saveMindmap(); }
+        if (node && node.text !== currentInput.value) { saveSnapshot(); node.text = currentInput.value; renderMindmap(); saveMindmap(); }
         closeEditor();
     };
 
@@ -161,6 +213,7 @@ function initEditorEvents() {
             if (id == null) return;
             const node = nodes.find(n => n.id === id);
             if (!node || node.isMain) { if (node?.isMain) window.appAlert('중심 노드는 삭제할 수 없습니다.'); return; }
+            saveSnapshot();
             nodes = nodes.filter(n => n.id !== id);
             links = links.filter(l => l.source !== id && l.target !== id);
             renderMindmap(); saveMindmap(); closeEditor();
@@ -360,6 +413,7 @@ function addNode(type, clientX, clientY) {
         height: type === 'rect'     ? 60  : type === 'triangle' ? 100 : undefined,
         colorIdx: nodeColorIndex
     };
+    saveSnapshot();
     nodes.push(newNode);
     renderMindmap();
     openEditor(newNode.id);
@@ -761,9 +815,25 @@ function setupEvents() {
                 deleteNode(selectedNodeId);
             }
         }
+
+        // ─ Ctrl+Z : Undo ─
+        if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+            if (window._editNodeId != null) return; // 텍스트 편집 중 무시
+            e.preventDefault();
+            undo();
+            return;
+        }
+
+        // ─ Ctrl+Shift+Z 또는 Ctrl+Y : Redo ─
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+            if (window._editNodeId != null) return;
+            e.preventDefault();
+            redo();
+            return;
+        }
     });
 
-    // ─ 마우스 휠 줌 ─
+
     svg.addEventListener('wheel', e => {
         e.preventDefault();
         const rect   = svg.getBoundingClientRect();
@@ -782,6 +852,9 @@ function setupEvents() {
     document.getElementById('mmMobConnect')?.addEventListener('click',  toggleMobileConnect);
     document.getElementById('mmMobDelete')?.addEventListener('click',   mobileDeleteSelected);
     document.getElementById('mmMobFit')?.addEventListener('click',      fitView);
+    document.getElementById('mmMobUndo')?.addEventListener('click',     undo);
+    document.getElementById('mmMobRedo')?.addEventListener('click',     redo);
+    updateUndoRedoButtons(); // 초기 버튼 비활성화 상태 설정
     document.getElementById('mmDrawCancel')?.addEventListener('click',  cancelDrawingMode);
     document.getElementById('mmDrawDone')?.addEventListener('click',    doneDrawingMode);
     document.getElementById('mmDrawColorBtn')?.addEventListener('click', () => {
@@ -1169,6 +1242,7 @@ function deleteNode(id) {
     const node = nodes.find(n => n.id === id);
     if (!node || node.isMain) return;
 
+    saveSnapshot();
     nodes = nodes.filter(n => n.id !== id);
     links = links.filter(l => l.source !== id && l.target !== id);
     if (selectedNodeId === id) selectedNodeId = null;
@@ -1182,6 +1256,7 @@ function enterResizeMode(id) {
     const node = nodes.find(n => n.id === id);
     if (!node) return;
 
+    saveSnapshot(); // 리사이즈 시작 전 스냅샷 저장
     resizingNodeId    = id;
     resizeDragHandle  = null;
     selectedNodeId    = id;
@@ -1213,13 +1288,15 @@ function exitResizeMode(cancel = false) {
     if (!resizingNodeId) return;
 
     if (cancel) {
-        // ESC → 원래 치수로 복원
+        // ESC → 원래 치수로 복원 (스냅샷 번복 시 undoStack에서 제거)
         const node = nodes.find(n => n.id === resizingNodeId);
         if (node && resizeOriginalDims) {
             node.width  = resizeOriginalDims.width;
             node.height = resizeOriginalDims.height;
             node.radius = resizeOriginalDims.radius;
         }
+        undoStack.pop(); // enterResizeMode에서 저장한 스냅샷 취소
+        updateUndoRedoButtons();
         renderMindmap();
     } else {
         saveMindmap();
@@ -1402,6 +1479,7 @@ window._nodeTextMouseDown = (e, id) => {
 
     const node = nodes.find(n => n.id === id);
     if (node) {
+        saveSnapshot(); // 텍스트 이동 시작 전 스냅샷
         textDraggingNodeId = id;
         textDragStartOffX = node.textOffsetX || 0;
         textDragStartOffY = node.textOffsetY || 0;
@@ -1463,6 +1541,7 @@ window._nodeMouseDown = (e, id) => {
             const exactIdx = links.findIndex(l => l.source === connectSourceId && l.target === id);
             const revIdx   = links.findIndex(l => l.source === id && l.target === connectSourceId);
 
+            saveSnapshot();
             if (exactIdx !== -1) {
                 links.splice(exactIdx, 1);
             } else if (revIdx !== -1) {
@@ -1503,8 +1582,9 @@ window._nodeMouseDown = (e, id) => {
     lastClickTime   = now;
 
     // 드래그 이동 시작
+    saveSnapshot(); // 노드 이동 시작 전 스냅샷
     draggingNodeId = id;
-    setSelectedNodeDOM(id); // 노드 클릭 시 선택 상태로 변경
+    setSelectedNodeDOM(id);
 
     const node = nodes.find(n => n.id === id);
     if (node) {
@@ -1558,7 +1638,7 @@ function showColorPicker(nodeId, x, y) {
         btn.addEventListener('pointerup', e => {
             e.stopPropagation();
             const n = nodes.find(n => n.id === parseInt(btn.dataset.node));
-            if (n) { n.colorIdx = parseInt(btn.dataset.idx); renderMindmap(); saveMindmap(); }
+            if (n) { saveSnapshot(); n.colorIdx = parseInt(btn.dataset.idx); renderMindmap(); saveMindmap(); }
             closeColorPicker();
         });
     });
@@ -1665,6 +1745,7 @@ function doneDrawingMode() {
         textOffsetY: 0
     };
     
+    saveSnapshot();
     nodes.push(newNode);
     
     isDrawingMode = false;
@@ -1685,6 +1766,7 @@ function changeNodeShape(id, newType) {
     const node = nodes.find(n => n.id === id);
     if (!node) return;
     
+    saveSnapshot();
     const prevType = node.type;
     node.type = newType;
 
