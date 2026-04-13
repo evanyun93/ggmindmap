@@ -182,8 +182,12 @@ export function getMindmapHTML() {
 
             <!-- ── ✍️ 자유 그리기 툴바 ────────────────────────── -->
             <div class="mm-draw-toolbar hidden" id="mmDrawToolbar">
-                <div class="mm-draw-title">✍️ 자유 그리기 (여러 획 작성 가능)</div>
+                <div class="mm-draw-title">✍️ 자유 그리기</div>
                 <div class="mm-draw-actions">
+                    <button class="mm-draw-color-btn" id="mmDrawColorBtn" title="색상 변경">
+                        <div class="mm-draw-color-swatch" id="mmDrawColorSwatch"></div>
+                    </button>
+                    <div class="mm-draw-sep"></div>
                     <button class="mm-draw-btn mm-draw-cancel" id="mmDrawCancel">✕ 취소</button>
                     <button class="mm-draw-btn mm-draw-done" id="mmDrawDone">✓ 완료</button>
                 </div>

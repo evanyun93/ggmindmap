@@ -63,6 +63,7 @@ let touchPanCanvasX  = 0, touchPanCanvasY = 0;
 let isDrawingMode  = false;
 let drawingStrokes = [];
 let currentStroke  = null;
+let currentDrawingColorIdx = 0; // 현재 선택된 그리기 색상 인덱스
 
 // ── 텍스트 핸들 조작 상태 ────────────────────────────────────────
 let textDraggingNodeId = null;
@@ -74,6 +75,18 @@ let pinchActive      = false, pinchStartDist = 0, pinchStartZoom = 1;
 let pinchStartMidX   = 0, pinchStartMidY = 0;
 let pinchStartPanX   = 0, pinchStartPanY = 0;
 let mobileConnectMode = false;
+
+// ── 유틸리티 ────────────────────────────────────────────────────
+function getEventSVGCoords(e) {
+    const svg = document.getElementById('mindmapSVG');
+    const rect = svg.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    
+    return {
+        x: (t.clientX - rect.left - canvasPanX) / canvasZoom,
+        y: (t.clientY - rect.top  - canvasPanY) / canvasZoom
+    };
+}
 
 // ── 초기화 ──────────────────────────────────────────────────────
 export async function initMindmap() {
@@ -520,7 +533,8 @@ function renderMindmap() {
             if (!stroke.length) return '';
             return `M${stroke[0].x},${stroke[0].y} L${stroke.slice(1).map(p => `${p.x},${p.y}`).join(' L')}`;
         }).join(' ');
-        inkHTML = `<g class="mm-draw-ink"><path d="${paths}"/></g>`;
+        const color = NODE_COLORS[currentDrawingColorIdx];
+        inkHTML = `<g class="mm-draw-ink"><path d="${paths}" stroke="${color.stroke}"/></g>`;
     }
     ng.insertAdjacentHTML('beforeend', inkHTML);
 }
@@ -603,7 +617,7 @@ function setupEvents() {
         // 그리기 모드 처리
         if (isDrawingMode) {
             e.preventDefault();
-            const pt = { x: (e.clientX - canvasPanX) / canvasZoom, y: (e.clientY - canvasPanY) / canvasZoom };
+            const pt = getEventSVGCoords(e);
             currentStroke = [pt];
             drawingStrokes.push(currentStroke);
             renderMindmap();
@@ -651,7 +665,7 @@ function setupEvents() {
         }
 
         if (isDrawingMode && currentStroke) {
-            currentStroke.push({ x: (e.clientX - canvasPanX) / canvasZoom, y: (e.clientY - canvasPanY) / canvasZoom });
+            currentStroke.push(getEventSVGCoords(e));
             renderMindmap();
             return;
         }
@@ -775,6 +789,12 @@ function setupEvents() {
     document.getElementById('mmMobFit')?.addEventListener('click',      fitView);
     document.getElementById('mmDrawCancel')?.addEventListener('click',  cancelDrawingMode);
     document.getElementById('mmDrawDone')?.addEventListener('click',    doneDrawingMode);
+    document.getElementById('mmDrawColorBtn')?.addEventListener('click', () => {
+        currentDrawingColorIdx = (currentDrawingColorIdx + 1) % NODE_COLORS.length;
+        const swatch = document.getElementById('mmDrawColorSwatch');
+        if (swatch) swatch.style.backgroundColor = NODE_COLORS[currentDrawingColorIdx].stroke;
+        renderMindmap(); // 잉크 색상 즉시 반영을 위해
+    });
     document.getElementById('mmZoomIn')?.addEventListener('click', () => {
         const cx = window.innerWidth / 2;
         const cy = (window.innerHeight - (window.innerWidth <= 1024 ? 48 : 54)) / 2;
@@ -917,7 +937,7 @@ function setupTouchEvents(svg) {
 
         // 그리기 모드 처리 (모바일)
         if (isDrawingMode) {
-            const pt = { x: (t.clientX - canvasPanX) / canvasZoom, y: (t.clientY - canvasPanY) / canvasZoom };
+            const pt = getEventSVGCoords(e);
             currentStroke = [pt];
             drawingStrokes.push(currentStroke);
             renderMindmap();
@@ -1081,7 +1101,7 @@ function setupTouchEvents(svg) {
 
         // 그리기 모드
         if (isDrawingMode && currentStroke) {
-            currentStroke.push({ x: (t.clientX - canvasPanX) / canvasZoom, y: (t.clientY - canvasPanY) / canvasZoom });
+            currentStroke.push(getEventSVGCoords(e));
             renderMindmap();
             return;
         }
@@ -1527,6 +1547,10 @@ function startDrawingMode() {
     document.getElementById('mmDrawToolbar')?.classList.remove('hidden');
     // 모바일 하단 액션바 등 기타 UI 숨기기
     document.getElementById('mmMobileBar')?.classList.remove('mm-mobile-bar--visible');
+
+    // 색상 초기화 (첫 그리기 시)
+    const swatch = document.getElementById('mmDrawColorSwatch');
+    if (swatch) swatch.style.backgroundColor = NODE_COLORS[currentDrawingColorIdx].stroke;
     
     renderMindmap(); // 잉크 그룹 업데이트 등
 }
@@ -1591,7 +1615,7 @@ function doneDrawingMode() {
         baseWidth: baseW,
         baseHeight: baseH,
         strokes: normalizedStrokes,
-        colorIdx: nodeColorIndex++,
+        colorIdx: currentDrawingColorIdx,
         textOffsetX: 0,
         textOffsetY: 0
     };
@@ -1651,10 +1675,12 @@ window._nodeContextMenu = (e, id) => {
         { label: '⇲ 크기 변경', action: () => enterResizeMode(id) },
     ];
 
-    menuItems.push({ type: 'separator' });
-    if (node.type !== 'circle') menuItems.push({ label: '⭕ 원형으로 변경', action: () => changeNodeShape(id, 'circle') });
-    if (node.type !== 'rect') menuItems.push({ label: '▭ 사각형으로 변경', action: () => changeNodeShape(id, 'rect') });
-    if (node.type !== 'triangle') menuItems.push({ label: '△ 삼각형으로 변경', action: () => changeNodeShape(id, 'triangle') });
+    if (node && node.type !== 'freehand') {
+        menuItems.push({ type: 'separator' });
+        if (node.type !== 'circle') menuItems.push({ label: '⭕ 원형으로 변경', action: () => changeNodeShape(id, 'circle') });
+        if (node.type !== 'rect') menuItems.push({ label: '▭ 사각형으로 변경', action: () => changeNodeShape(id, 'rect') });
+        if (node.type !== 'triangle') menuItems.push({ label: '△ 삼각형으로 변경', action: () => changeNodeShape(id, 'triangle') });
+    }
 
     if (!node.isMain) {
         menuItems.push({ type: 'separator' });

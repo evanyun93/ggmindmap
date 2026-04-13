@@ -690,10 +690,39 @@
 }
 .mm-draw-done:hover { background: #7C3AED; }
 
+.mm-draw-color-btn {
+    width: 32px;
+    height: 32px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.mm-draw-color-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: scale(1.1);
+}
+.mm-draw-color-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+.mm-draw-sep {
+    width: 1px;
+    height: 24px;
+    background: rgba(255, 255, 255, 0.15);
+    margin: 0 4px;
+}
+
 /* 그리기 중 나타나는 임시 잉크 */
 .mm-draw-ink path {
     fill: none;
-    stroke: #8B5CF6;
+    stroke: currentColor; /* JS에서 색상 제어 */
     stroke-width: 4px;
     stroke-linecap: round;
     stroke-linejoin: round;
