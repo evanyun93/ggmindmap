@@ -1019,105 +1019,146 @@
 
 
 
-/* 대시보드 테마 선택기 UI */
+/* ── 대시보드 테마 선택기 UI (카드형) ── */
 .theme-picker-premium {
-  display: flex;
-  gap: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 8px 16px;
-  border-radius: 50px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  padding: 4px 0;
 }
 
-
-/* 테마 선택 컬러 칩 (Midnight, Blueprint 등) */
 .theme-chip {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1.5px solid rgba(255, 255, 255, 0.2);
-
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  outline: none;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.theme-chip::before {
-  content: '';
-  position: absolute;
-  top: -5px;
-  left: -5px;
-  right: -5px;
-  bottom: -5px;
-  border: 2px solid transparent;
-  border-radius: 50%;
-  transition: 0.3s ease;
-  pointer-events: none;
-}
-
-.theme-chip.active::before {
-  border-color: var(--accent-purple);
-}
-
-.theme-chip::after {
-  content: '✓';
-  font-size: 13px;
-  font-weight: 800;
-  opacity: 0;
-  transform: scale(0.5);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  pointer-events: none;
-}
-
-.theme-chip.active::after {
-  opacity: 1;
-  transform: scale(1);
+  background: none;
+  border: 2px solid #e2e8f0;
+  border-radius: 14px;
+  cursor: pointer;
+  padding: 0;
+  overflow: hidden;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.22s ease,
+              box-shadow 0.22s ease;
+  text-align: left;
 }
 
 .theme-chip:hover {
-  transform: scale(1.15);
-  border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  border-color: #c4b5fd;
 }
 
-.theme-chip.midnight {
-  background: #0f172a;
+.theme-chip.active {
+  border-color: #8B5CF6;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.18), 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
-.theme-chip.midnight::after {
-  color: #fff;
+/* 활성 체크 뱃지 */
+.theme-chip.active::before {
+  content: '✓';
+  position: absolute;
+  top: 7px;
+  left: 8px;
+  width: 20px;
+  height: 20px;
+  background: #8B5CF6;
+  border-radius: 50%;
+  color: white;
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.5);
+  line-height: 20px;
+  text-align: center;
 }
 
-.theme-chip.blueprint {
-  background: #1e293b;
+/* 스와치 영역 */
+.chip-swatch {
+  height: 58px;
+  position: relative;
+  overflow: hidden;
 }
 
-.theme-chip.blueprint::after {
-  color: #38bdf8;
+/* Midnight 스와치 */
+.theme-chip.midnight .chip-swatch {
+  background: linear-gradient(135deg, #0a0a1a 0%, #1a0f3a 55%, #0f1e40 100%);
+}
+.theme-chip.midnight .chip-swatch::after {
+  content: '';
+  position: absolute;
+  right: 10px; bottom: 7px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8B5CF6, #06B6D4);
+  box-shadow: 0 0 12px rgba(139, 92, 246, 0.8), 0 0 24px rgba(6, 182, 212, 0.4);
 }
 
-.theme-chip.classic {
-  background: #f8fafc;
-  border: 1.5px solid rgba(0, 0, 0, 0.1);
+/* Ocean (Blueprint) 스와치 */
+.theme-chip.blueprint .chip-swatch {
+  background: linear-gradient(135deg, #001520 0%, #00304a 55%, #001f38 100%);
+}
+.theme-chip.blueprint .chip-swatch::after {
+  content: '';
+  position: absolute;
+  right: 10px; bottom: 7px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #22d3ee, #10b981);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.8), 0 0 24px rgba(16, 185, 129, 0.4);
 }
 
-.theme-chip.classic::after {
+/* Classic 스와치 */
+.theme-chip.classic .chip-swatch {
+  background: linear-gradient(135deg, #f5f6fa 0%, #e8eaf6 55%, #eef0fa 100%);
+}
+.theme-chip.classic .chip-swatch::after {
+  content: '';
+  position: absolute;
+  right: 10px; bottom: 7px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6d28d9, #0891b2);
+  box-shadow: 0 0 10px rgba(109, 40, 217, 0.5), 0 0 20px rgba(8, 145, 178, 0.35);
+}
+
+/* Dark 스와치 */
+.theme-chip.dark .chip-swatch {
+  background: linear-gradient(135deg, #050505 0%, #0f0f0f 55%, #080808 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+.theme-chip.dark .chip-swatch::after {
+  content: '';
+  position: absolute;
+  right: 10px; bottom: 7px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #a78bfa, #67e8f9);
+  box-shadow: 0 0 12px rgba(167, 139, 250, 0.7), 0 0 24px rgba(103, 232, 249, 0.4);
+}
+
+/* 칩 정보 영역 */
+.chip-info {
+  padding: 8px 10px 9px;
+  background: #fff;
+  border-top: 1px solid #f1f5f9;
+}
+
+.chip-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
   color: #1e293b;
+  letter-spacing: 0.2px;
 }
 
-.theme-chip.dark {
-  background: #050505;
-}
-
-.theme-chip.dark::after {
-  color: #fff;
+.chip-desc {
+  display: block;
+  font-size: 10px;
+  color: #94a3b8;
+  margin-top: 2px;
+  letter-spacing: 0.1px;
 }
 
 .welcome-card h2 {
@@ -1568,7 +1609,7 @@
 
 .widgets-section.wide-layout {
   width: 100%;
-  padding-top: 10px;
+  padding-top: 0;
 }
 
 /* ─── 보더 디테일 고도화 (Refinement) ────────────────────────── */

@@ -6,8 +6,8 @@
 /* ═══ 레이아웃 탭 스타일 (PC 전용, 좌측 폴더 인덱스 모양) ═══ */
 .layout-controls-tab {
     position: absolute;
-    /* 위젯 그리드 영역의 padding-top(10px) 위치에 탭의 바닥을 완벽히 밀착시킴 */
-    top: 10px;
+    /* 위젯 그리드 상단에 바닥을 완벽히 밀착시킴 */
+    top: 0;
     transform: translateY(-100%);
     left: 30px;
     height: 46px;

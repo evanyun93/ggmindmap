@@ -62,11 +62,55 @@ export function initTheme() {
     });
 }
 
+/**
+ * 네이버 웨일 브라우저 강제 다크모드 차단
+ * Whale은 CSS color-scheme을 무시하고 렌더링 레벨에서 색상을 변환하므로
+ * html 인라인 스타일(가장 높은 우선순위)로 직접 차단합니다.
+ */
+function blockWhaleDarkMode(theme) {
+    if (!/Whale/i.test(navigator.userAgent)) return;
+
+    const html = document.documentElement;
+    const isClassic = theme === 'classic';
+
+    // html 인라인 color-scheme 강제 지정
+    html.style.setProperty('color-scheme', isClassic ? 'only light' : 'only dark', 'important');
+    html.style.setProperty('forced-color-adjust', 'none', 'important');
+
+    // 차단 시트 주입 (한 번만 생성, 이후 내용만 교체)
+    let shield = document.getElementById('whale-dark-shield');
+    if (!shield) {
+        shield = document.createElement('style');
+        shield.id = 'whale-dark-shield';
+        document.head.appendChild(shield);
+    }
+
+    if (isClassic) {
+        shield.textContent = `
+            html, body.theme-classic {
+                background-color: #f5f6fa !important;
+                color: #1e293b !important;
+                filter: none !important;
+            }
+        `;
+    } else {
+        shield.textContent = `
+            html {
+                color-scheme: only dark !important;
+                filter: none !important;
+            }
+        `;
+    }
+}
+
 function applyTheme(theme) {
     // 기존 테마 클래스 제거
     document.body.classList.remove('theme-midnight', 'theme-blueprint', 'theme-classic', 'theme-dark');
     // 신규 테마 클래스 추가
     document.body.classList.add(`theme-${theme}`);
+
+    // 웨일 다크모드 차단
+    blockWhaleDarkMode(theme);
 
     // UI 상태 업데이트
     const chips = document.querySelectorAll('.theme-chip');

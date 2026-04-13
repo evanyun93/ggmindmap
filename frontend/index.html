@@ -72,7 +72,19 @@
     };
   </script>
   <meta name="description" content="나만의 마인드맵 - 생각을 시각화하세요">
-  <meta name="color-scheme" content="light dark">
+  <meta name="color-scheme" content="dark">
+  <style>
+    html { color-scheme: only dark !important; forced-color-adjust: none !important; filter: none !important; }
+    @media (prefers-color-scheme: dark) { html, body { filter: none !important; } }
+  </style>
+  <script>
+    // 웨일 브라우저 다크모드 조기 차단 (CSS 로드 전 실행)
+    if (/Whale/i.test(navigator.userAgent)) {
+      document.documentElement.style.setProperty('color-scheme', 'only dark', 'important');
+      document.documentElement.style.setProperty('forced-color-adjust', 'none', 'important');
+      document.documentElement.style.setProperty('filter', 'none', 'important');
+    }
+  </script>
   <title>MindMap - 로그인</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

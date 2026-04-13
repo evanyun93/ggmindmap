@@ -769,18 +769,49 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 30px;
-  height: 30px;
+  width: 80px;
+  height: 80px;
   cursor: nwse-resize;
-  opacity: 0;
-  background: linear-gradient(135deg, transparent 65%, rgba(139, 92, 246, 0.5) 65%);
+  opacity: 0.6;
   z-index: 11;
-  transition: opacity 0.3s, background 0.3s;
-  border-bottom-right-radius: 26px;
+  transition: opacity 0.2s ease;
+  border-bottom-right-radius: inherit;
+  overflow: hidden;
+  /* 삼각형 색상 영역: 우하단 코너를 크게 채움 */
+  background: linear-gradient(135deg, transparent 48%, rgba(139, 92, 246, 0.3) 48%);
+  pointer-events: auto;
+}
+
+/* 삼각형 클립 + 사선 3줄 — 코너에 가까울수록 자연스럽게 짧아짐 */
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 52px;
+  height: 52px;
+  clip-path: polygon(100% 0%, 100% 100%, 0% 100%);
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent              0px,
+    transparent              10px,
+    rgba(139, 92, 246, 0.85) 10px,
+    rgba(139, 92, 246, 0.85) 14px
+  );
 }
 
 .draggable-widget:hover .resize-handle {
   opacity: 1;
+  background: linear-gradient(135deg, transparent 44%, rgba(139, 92, 246, 0.45) 44%);
+}
+
+.resize-handle:hover {
+  opacity: 1 !important;
+  background: linear-gradient(135deg, transparent 38%, rgba(139, 92, 246, 0.65) 38%) !important;
+}
+
+.resize-handle:active {
+  background: linear-gradient(135deg, transparent 38%, rgba(139, 92, 246, 0.85) 38%) !important;
 }
 
 .draggable-widget.dragging {

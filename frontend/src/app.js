@@ -55,6 +55,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             console.log('[App] 제스처에 의한 뒤로 가기가 차단되었습니다.');
         };
     }
+
+    // 6. PC 환경에서 Ctrl+S (페이지 저장) 방지
+    window.addEventListener('keydown', (e) => {
+        if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+            e.preventDefault();
+            // console.log('[App] Ctrl+S keydown event prevented.');
+        }
+    });
 });
 
 /**

@@ -3,16 +3,36 @@
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 15px;
-  height: 15px;
+  width: 60px;
+  height: 60px;
   cursor: nwse-resize;
-  z-index: 10;
-  background: linear-gradient(135deg, transparent 50%, rgba(255, 255, 255, 0.3) 50%);
-  border-bottom-right-radius: 8px;
+  z-index: 11;
+  opacity: 0.55;
+  border-bottom-right-radius: inherit;
+  background: transparent;
+  transition: opacity 0.2s ease;
 }
 
 .resize-handle:hover {
-  background: linear-gradient(135deg, transparent 50%, rgba(139, 92, 246, 0.5) 50%);
+  opacity: 1;
+}
+
+/* 삼각형 클립 + 사선 3줄 — 코너에 가까울수록 자연스럽게 짧아짐 */
+.resize-handle::before {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 52px;
+  height: 52px;
+  clip-path: polygon(100% 0%, 100% 100%, 0% 100%);
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent              0px,
+    transparent              10px,
+    rgba(139, 92, 246, 0.85) 10px,
+    rgba(139, 92, 246, 0.85) 14px
+  );
 }
 
 /* ─── 모바일 전용 스타일 (중앙 배치, 좁은 보라색 선) ──────────── */

@@ -253,20 +253,41 @@ export function getDashboardHTML(user) {
   // --- Sub-View for Theme Change ---
   const themeChangeSubView = `
     <div id="themeChangeSubView" style="display: none; margin-top: 16px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h4 style="margin: 0; color: #333; font-size: 16px;">테마 변경</h4>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <h4 style="margin: 0; color: #333; font-size: 16px; font-weight: 700;">테마 변경</h4>
             <button id="closeThemeChangeSubBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #666;">&times;</button>
         </div>
-        <p style="font-size: 13px; color: #666; margin-bottom: 16px;">대시보드의 분위기를 선택해 보세요.</p>
-        <div class="theme-picker-premium" style="display: flex; justify-content: space-around; background: #f8f9fa; padding: 20px; border-radius: 12px; border: 1px solid #eee;">
-            <button class="theme-chip midnight" data-theme="midnight" title="Midnight" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #0f172a; transition: all 0.2s;"></button>
-            <button class="theme-chip blueprint" data-theme="blueprint" title="Blueprint" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #1e293b; transition: all 0.2s;"></button>
-            <button class="theme-chip classic" data-theme="classic" title="Classic" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #f8fafc; transition: all 0.2s;"></button>
-            <button class="theme-chip dark" data-theme="dark" title="Dark" style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid transparent; cursor: pointer; background: #050505; transition: all 0.2s;"></button>
+        <p style="font-size: 12px; color: #94a3b8; margin-bottom: 14px;">원하는 분위기의 테마를 선택하세요.</p>
+        <div class="theme-picker-premium">
+            <button class="theme-chip midnight" data-theme="midnight">
+                <div class="chip-swatch"></div>
+                <div class="chip-info">
+                    <span class="chip-name">Midnight</span>
+                    <span class="chip-desc">보라빛 심야 모드</span>
+                </div>
+            </button>
+            <button class="theme-chip blueprint" data-theme="blueprint">
+                <div class="chip-swatch"></div>
+                <div class="chip-info">
+                    <span class="chip-name">Ocean</span>
+                    <span class="chip-desc">청록빛 심해 모드</span>
+                </div>
+            </button>
+            <button class="theme-chip classic" data-theme="classic">
+                <div class="chip-swatch"></div>
+                <div class="chip-info">
+                    <span class="chip-name">Classic</span>
+                    <span class="chip-desc">깔끔한 라이트 모드</span>
+                </div>
+            </button>
+            <button class="theme-chip dark" data-theme="dark">
+                <div class="chip-swatch"></div>
+                <div class="chip-info">
+                    <span class="chip-name">Dark</span>
+                    <span class="chip-desc">블랙 OLED 모드</span>
+                </div>
+            </button>
         </div>
-        <style>
-            .theme-chip.active { border-color: #8B5CF6 !important; transform: scale(1.1); box-shadow: 0 0 10px rgba(139, 92, 246, 0.3); }
-        </style>
     </div>
   `;
 
