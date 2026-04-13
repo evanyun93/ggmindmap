@@ -86,13 +86,14 @@ export async function initMindmap() {
     contextMenu.init();
     contextMenu.bindGlobalListeners('#mindmapCanvasContainer');
 
-    // 모바일: 힌트바 숨기고 모바일 바 표시, 화면에 노드 맞추기
-    if (window.innerWidth <= 768) {
-        document.getElementById('mindmapGuide')?.classList.add('hidden');
+    // 모바일: 모바일 바 표시, 화면에 노드 맞추기 (힌트바는 유지)
+    if (window.innerWidth <= 1024) {
         document.getElementById('mmMobileBar')?.classList.add('mm-mobile-bar--visible');
         fitView();
         updateZoomIndicator();
     }
+    
+    updateHintBar(); // 환경에 맞게 힌트 바 텍스트 갱신
 
     // 실시간 동기화 리스너 (범용 아키텍처 적용 - 전역 마인드맵은 ID 0 사용)
     syncService.watchWidget(0, async () => {
@@ -107,17 +108,22 @@ function initEditorEvents() {
     const input = document.getElementById('nodeTextInput');
     if (!input) return;
 
-    const applyEdit = () => {
+    window._applyNodeEdit = () => {
         const id = window._editNodeId;
         if (id == null) return;
+        
+        // input element might not be directly available, fetch it just in case
+        const currentInput = document.getElementById('nodeTextInput');
+        if (!currentInput) return;
+        
         const node = nodes.find(n => n.id === id);
-        if (node) { node.text = input.value; renderMindmap(); saveMindmap(); }
+        if (node) { node.text = currentInput.value; renderMindmap(); saveMindmap(); }
         closeEditor();
     };
 
     input.addEventListener('keydown', e => {
         // Shift+Enter → 편집 완료
-        if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); applyEdit(); return; }
+        if (e.key === 'Enter' && e.shiftKey) { e.preventDefault(); window._applyNodeEdit(); return; }
         // Enter 단독 → 개행 (기본 textarea 동작, 높이 자동 조정)
         if (e.key === 'Enter') {
             requestAnimationFrame(() => autoResizeTextarea(input));
@@ -141,8 +147,7 @@ function initEditorEvents() {
 
     // 조작 안지지(pointer-events 다운)  → 외부 클릭 시 저장 후 닫기
     input.addEventListener('blur', () => {
-        // 짧은 지연 후 저장 (다른 노드 클릭 시보다 뒤에 실행되도록)
-        setTimeout(() => { if (window._editNodeId != null) applyEdit(); }, 100);
+        setTimeout(() => { if (window._editNodeId != null) window._applyNodeEdit(); }, 100);
     });
 }
 
@@ -169,7 +174,7 @@ function openEditor(nodeId) {
     const nW = node.type === 'rect' || node.type === 'triangle' ? (node.width  || 120) : (node.radius || 50) * 2;
     const nH = node.type === 'rect' || node.type === 'triangle' ? (node.height || 60)  : (node.radius || 50) * 2;
 
-    const isMob = window.innerWidth <= 768;
+    const isMob = window.innerWidth <= 1024;
     const edW   = Math.min(Math.max(nW * canvasZoom + 24, isMob ? 200 : 160), window.innerWidth - 16);
     const edH   = Math.max(nH * canvasZoom, isMob ? 52 : 44);
     const topH  = isMob ? 48 : 54;
@@ -219,11 +224,49 @@ function updateZoomIndicator() {
     if (el) el.textContent = `${Math.round(canvasZoom * 100)}%`;
 }
 
+function updateHintBar() {
+    const guide = document.getElementById('mindmapGuide');
+    if (!guide) return;
+    
+    // PC환경이 아닐 경우 (모바일/태블릿)
+    if (window.innerWidth <= 1024) {
+        if (mobileConnectMode) {
+            if (connectSourceId) {
+                guide.innerHTML = `<span class="mm-hint-item" style="color:#10B981"><kbd>연결 모드</kbd> 연결할 두 번째 노드를 탭하세요</span>`;
+            } else {
+                guide.innerHTML = `<span class="mm-hint-item" style="color:#F59E0B"><kbd>연결 모드</kbd> 기준이 될 첫 번째 노드를 탭하세요</span>`;
+            }
+        } else {
+            guide.innerHTML = 
+                `<span class="mm-hint-item"><kbd>메뉴</kbd> 꾹 누르기</span>` +
+                `<span class="mm-hint-sep">·</span>` +
+                `<span class="mm-hint-item"><kbd>이동</kbd> 드래그</span>` +
+                `<span class="mm-hint-sep">·</span>` +
+                `<span class="mm-hint-item"><kbd>편집</kbd> 두번 탭</span>` +
+                `<span class="mm-hint-sep">·</span>` +
+                `<span class="mm-hint-item"><kbd>연결</kbd> 연결버튼</span>` +
+                `<span class="mm-hint-sep">·</span>` +
+                `<span class="mm-hint-item"><kbd>줌</kbd> 핀치</span>`;
+        }
+    } else {
+        guide.innerHTML = 
+            `<span class="mm-hint-item"><kbd>우클릭</kbd> 도형 추가</span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>드래그</kbd> 화면 이동</span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>더블클릭</kbd> 편집</span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>Shift+클릭</kbd> 연결</span>` +
+            `<span class="mm-hint-sep">·</span>` +
+            `<span class="mm-hint-item"><kbd>휠</kbd> 줌</span>`;
+    }
+}
+
 function fitView() {
     if (nodes.length === 0) return;
     const PADDING = 80;
-    const topbarH  = window.innerWidth <= 768 ? 48 : 54;
-    const bottomH  = window.innerWidth <= 768 ? 122 : 0;
+    const topbarH  = window.innerWidth <= 1024 ? 48 : 54;
+    const bottomH  = window.innerWidth <= 1024 ? 122 : 0;
     const canvasW  = window.innerWidth;
     const canvasH  = window.innerHeight - topbarH - bottomH;
 
@@ -256,8 +299,8 @@ function zoomAt(factor, screenX, screenY) {
 }
 
 function addNodeAtCenter(type) {
-    const topbarH = window.innerWidth <= 768 ? 48 : 54;
-    const bottomH = window.innerWidth <= 768 ? 122 : 0;
+    const topbarH = window.innerWidth <= 1024 ? 48 : 54;
+    const bottomH = window.innerWidth <= 1024 ? 122 : 0;
     const cx = window.innerWidth  / 2;
     const cy = topbarH + (window.innerHeight - topbarH - bottomH) / 2;
     addNode(type, cx, cy);
@@ -267,6 +310,7 @@ function toggleMobileConnect() {
     mobileConnectMode = !mobileConnectMode;
     if (!mobileConnectMode) { connectSourceId = null; renderMindmap(); }
     document.getElementById('mmMobConnect')?.classList.toggle('active', mobileConnectMode);
+    updateHintBar();
 }
 
 function mobileDeleteSelected() {
@@ -492,7 +536,7 @@ function setupEvents() {
         if (e.target.classList.contains('resize-handle')) return;
         if (resizingNodeId) { exitResizeMode(false); return; }
         if (e.target.closest('.node-group')) return;
-        if (window._editNodeId != null) { closeEditor(); return; }
+        if (window._editNodeId != null) { window._applyNodeEdit(); return; }
         if (connectSourceId != null) return;
 
         setSelectedNodeDOM(null);
@@ -578,7 +622,7 @@ function setupEvents() {
                 selectedNodeId = null;
                 changed = true;
             }
-            closeEditor();
+            if (window._editNodeId != null) window._applyNodeEdit();
             if (changed) renderMindmap();
             return;
         }
@@ -623,12 +667,12 @@ function setupEvents() {
     document.getElementById('mmMobFit')?.addEventListener('click',      fitView);
     document.getElementById('mmZoomIn')?.addEventListener('click', () => {
         const cx = window.innerWidth / 2;
-        const cy = (window.innerHeight - (window.innerWidth <= 768 ? 48 : 54)) / 2;
+        const cy = (window.innerHeight - (window.innerWidth <= 1024 ? 48 : 54)) / 2;
         zoomAt(1.25, cx, cy);
     });
     document.getElementById('mmZoomOut')?.addEventListener('click', () => {
         const cx = window.innerWidth / 2;
-        const cy = (window.innerHeight - (window.innerWidth <= 768 ? 48 : 54)) / 2;
+        const cy = (window.innerHeight - (window.innerWidth <= 1024 ? 48 : 54)) / 2;
         zoomAt(0.8, cx, cy);
     });
 
@@ -750,9 +794,9 @@ function setupTouchEvents(svg) {
         if (nodeGroup) {
             const nodeId = parseInt(nodeGroup.dataset.nodeId);
 
-            // 편집기 열려 있으면 닫기
+            // 편집기 열려 있으면 저장 후 닫기
             if (window._editNodeId != null && window._editNodeId !== nodeId) {
-                closeEditor();
+                window._applyNodeEdit();
                 return;
             }
 
@@ -770,19 +814,29 @@ function setupTouchEvents(svg) {
             // 연결 모드
             if (mobileConnectMode) {
                 if (connectSourceId != null && connectSourceId !== nodeId) {
-                    const exists = links.some(l =>
-                        (l.source === connectSourceId && l.target === nodeId) ||
-                        (l.target === connectSourceId && l.source === nodeId));
-                    if (!exists) links.push({ source: connectSourceId, target: nodeId });
+                    const exactIdx = links.findIndex(l => l.source === connectSourceId && l.target === nodeId);
+                    const revIdx   = links.findIndex(l => l.source === nodeId && l.target === connectSourceId);
+                    
+                    if (exactIdx !== -1) {
+                        // 이미 같은 방향이면 연결 해제
+                        links.splice(exactIdx, 1);
+                    } else if (revIdx !== -1) {
+                        // 역방향이면 방향 전환
+                        links[revIdx] = { source: connectSourceId, target: nodeId };
+                    } else {
+                        // 신규 연결
+                        links.push({ source: connectSourceId, target: nodeId });
+                    }
                     connectSourceId = null;
                     renderMindmap();
                     saveMindmap();
                     mobileConnectMode = false;
                     document.getElementById('mmMobConnect')?.classList.remove('active');
                 } else {
-                    connectSourceId = nodeId;
+                    connectSourceId = connectSourceId === nodeId ? null : nodeId;
                     renderMindmap();
                 }
+                updateHintBar();
                 return;
             }
 
@@ -807,7 +861,7 @@ function setupTouchEvents(svg) {
         } else {
             // 빈 캔버스 터치 → 팬 시작
             clearTimeout(longPressTimer);
-            if (window._editNodeId != null) { closeEditor(); return; }
+            if (window._editNodeId != null) { window._applyNodeEdit(); return; }
             if (resizingNodeId) { exitResizeMode(false); return; }
 
             touchPanActive  = true;
@@ -1163,19 +1217,28 @@ window._nodeMouseDown = (e, id) => {
         return;
     }
 
-    // 편집기 열려 있을 때 다른 노드 클릭 → 편집기 닫기
+    // 편집기 열려 있을 때 다른 노드 클릭 → 모서리 부분 등 저장 후 닫기
     if (window._editNodeId != null) {
-        if (window._editNodeId !== id) closeEditor();
+        if (window._editNodeId !== id) window._applyNodeEdit();
         return;
     }
 
     // Shift + 클릭 → 연결 모드
     if (e.shiftKey) {
         if (connectSourceId != null && connectSourceId !== id) {
-            const exists = links.some(l =>
-                (l.source === connectSourceId && l.target === id) ||
-                (l.target === connectSourceId && l.source === id));
-            if (!exists) links.push({ source: connectSourceId, target: id });
+            const exactIdx = links.findIndex(l => l.source === connectSourceId && l.target === id);
+            const revIdx   = links.findIndex(l => l.source === id && l.target === connectSourceId);
+            
+            if (exactIdx !== -1) {
+                // 이미 같은 방향이면 연결 해제
+                links.splice(exactIdx, 1);
+            } else if (revIdx !== -1) {
+                // 역방향이면 방향 전환
+                links[revIdx] = { source: connectSourceId, target: id };
+            } else {
+                // 신규 연결
+                links.push({ source: connectSourceId, target: id });
+            }
             connectSourceId = null;
             renderMindmap();
             saveMindmap();
@@ -1241,7 +1304,7 @@ function showColorPicker(nodeId, x, y) {
     picker.style.top  = `${y}px`;
 
     // 뷰포트 + 모바일 바 경계 안으로 위치 보정
-    const isMob  = window.innerWidth <= 768;
+    const isMob  = window.innerWidth <= 1024;
     const topSafe = isMob ? 56 : 8;
     const botSafe = isMob ? 134 : 8;
     requestAnimationFrame(() => {

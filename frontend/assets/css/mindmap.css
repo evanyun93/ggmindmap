@@ -439,7 +439,7 @@
 }
 
 /* 모바일: 스와치 크기·간격 조정 (7개 × 36px + 6 × 8px + 28px 패딩 = 342px, 375px 화면에 적합) */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mm-color-picker {
         padding: 10px 12px 12px;
     }
@@ -654,14 +654,16 @@
 }
 
 /* JS에서 .mm-mobile-bar--visible 추가 시 표시 (모바일에서만) */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mm-mobile-bar {
         display: flex;
     }
 
-    /* 힌트바는 모바일에서 숨김 */
+    /* 힌트바를 모바일 바 위로 이동 */
     .mm-hint-bar {
-        display: none !important;
+        bottom: 132px;
+        transform: translateX(-50%) scale(0.9);
+        padding: 8px 16px;
     }
 
     /* 상단 툴바 높이 축소 */
@@ -731,7 +733,7 @@
 .mm-mobile-only { display: none; }
 .mm-desktop-only { display: block; }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
     .mm-mobile-only { display: block; }
     .mm-desktop-only { display: none; }
 }

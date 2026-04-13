@@ -123,6 +123,7 @@ export function getMindmapHTML() {
                                 <div class="mm-help-row"><kbd>노드 두 번 탭</kbd><span>이름 편집</span></div>
                                 <div class="mm-help-row"><kbd>노드 꾹 누르기</kbd><span>편집 / 삭제 메뉴</span></div>
                                 <div class="mm-help-row"><kbd>🔗 연결 버튼</kbd><span>첫 번째 노드 탭 → 두 번째 노드 탭으로 연결</span></div>
+                                <div class="mm-help-row"><kbd>🔗 재연결</kbd><span>연결방향 반전, 이미 연결된 노드 재선택시 해제</span></div>
                             </div>
                         </div>
                         <!-- PC 전용 조작법 -->
@@ -151,6 +152,7 @@ export function getMindmapHTML() {
                             <div class="mm-help-section-title">🔗 노드 연결</div>
                             <div class="mm-help-rows">
                                 <div class="mm-help-row"><kbd>Shift + 클릭</kbd><span>첫 번째 노드 → 두 번째 노드 클릭으로 연결</span></div>
+                                <div class="mm-help-row"><kbd>Shift + 재연결</kbd><span>연결방향 반전, 이미 연결된 노드 재선택시 해제</span></div>
                             </div>
                         </div>
                         <div class="mm-help-section mm-desktop-only">
