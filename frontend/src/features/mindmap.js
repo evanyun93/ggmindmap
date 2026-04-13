@@ -58,6 +58,18 @@ const MAX_ZOOM = 4;
 let touchNodeDragId  = null, touchNodeOffX = 0, touchNodeOffY = 0;
 let touchPanActive   = false, touchPanStartX = 0, touchPanStartY = 0;
 let touchPanCanvasX  = 0, touchPanCanvasY = 0;
+
+// ── 그리기 상태 ──────────────────────────────────────────────────
+let isDrawingMode  = false;
+let drawingStrokes = [];
+let currentStroke  = null;
+
+// ── 텍스트 핸들 조작 상태 ────────────────────────────────────────
+let textDraggingNodeId = null;
+let textDragStartOffX  = 0;
+let textDragStartOffY  = 0;
+let textDragStartX     = 0;
+let textDragStartY     = 0;
 let pinchActive      = false, pinchStartDist = 0, pinchStartZoom = 1;
 let pinchStartMidX   = 0, pinchStartMidY = 0;
 let pinchStartPanX   = 0, pinchStartPanY = 0;
@@ -171,8 +183,8 @@ function openEditor(nodeId) {
     const sx = svgRect.left + canvasPanX + node.x * canvasZoom;
     const sy = svgRect.top  + canvasPanY + node.y * canvasZoom;
 
-    const nW = node.type === 'rect' || node.type === 'triangle' ? (node.width  || 120) : (node.radius || 50) * 2;
-    const nH = node.type === 'rect' || node.type === 'triangle' ? (node.height || 60)  : (node.radius || 50) * 2;
+    const nW = (node.type === 'rect' || node.type === 'triangle' || node.type === 'freehand') ? (node.width  || 120) : (node.radius || 50) * 2;
+    const nH = (node.type === 'rect' || node.type === 'triangle' || node.type === 'freehand') ? (node.height || 60)  : (node.radius || 50) * 2;
 
     const isMob = window.innerWidth <= 1024;
     const edW   = Math.min(Math.max(nW * canvasZoom + 24, isMob ? 200 : 160), window.innerWidth - 16);
@@ -343,7 +355,7 @@ function addNode(type, clientX, clientY) {
 // ── 렌더링 ──────────────────────────────────────────────────────
 async function loadMindmapData() {
     try {
-        // SyncService에서 마인드맵 데이터 가져오기
+        // SyncService에서 마인맵 데이터 가져오기
         const savedData = await syncService.getData('mindmap_data');
         if (savedData) {
             const data = typeof savedData === 'string' ? JSON.parse(savedData) : savedData;
@@ -367,7 +379,7 @@ function edgePoint(from, to) {
     const d  = Math.hypot(dx, dy);
     if (d === 0) return { x: from.x, y: from.y };
     const nx = dx / d, ny = dy / d;
-    if (from.type === 'rect') {
+    if (from.type === 'rect' || from.type === 'freehand') {
         const hw = (from.width  || 120) / 2;
         const hh = (from.height || 60)  / 2;
         const t  = Math.min(nx ? hw / Math.abs(nx) : Infinity,
@@ -375,10 +387,8 @@ function edgePoint(from, to) {
         return { x: from.x + nx * t, y: from.y + ny * t };
     }
     if (from.type === 'triangle') {
-        // 삼각형 경계점 계산 (이등변 삼각형 근사)
         const w = from.width || 120;
         const h = from.height || 100;
-        // 단순화된 사각형 바운딩 박스 기반 경계점 (삼각형의 경우 조금 더 안쪽으로 들어오게 유도)
         const hw = w * 0.4; 
         const hh = h * 0.4;
         const t  = Math.min(nx ? hw / Math.abs(nx) : Infinity,
@@ -387,6 +397,20 @@ function edgePoint(from, to) {
     }
     const r = from.radius || 50;
     return { x: from.x + nx * r, y: from.y + ny * r };
+}
+
+function generateFreehandPath(node) {
+    if (!node.strokes || !node.strokes.length) return '';
+    const bw = node.baseWidth || node.width;
+    const bh = node.baseHeight || node.height;
+    const scaleX = node.width / bw;
+    const scaleY = node.height / bh;
+
+    return node.strokes.map(stroke => {
+        if (!stroke.length) return '';
+        const pts = stroke.map(p => `${p.x * scaleX},${p.y * scaleY}`);
+        return `M${pts[0]} L${pts.slice(1).join(' L')}`;
+    }).join(' ');
 }
 
 function renderNodeText(node) {
@@ -401,6 +425,9 @@ function renderNodeText(node) {
     } else if (node.type === 'triangle') {
         maxW = (node.width || 120) * 0.6;
         maxH = (node.height || 100) * 0.6;
+    } else if (node.type === 'freehand') {
+        maxW = (node.width || 120) - 20;
+        maxH = (node.height || 80) - 20;
     }
 
     const CHAR_WIDTH = node.isMain ? 15 : 13;
@@ -424,10 +451,12 @@ function renderNodeText(node) {
     }
 
     const n = displayLines.length;
+    const tx = node.textOffsetX || 0;
+    const ty = node.textOffsetY || 0;
 
     if (n <= 1) {
         const dy = node.isMain ? 6 : 5;
-        return `<text text-anchor="middle" dy="${dy}" class="node-text">${escapeHtml(displayLines[0] ?? '')}</text>`;
+        return `<g class="node-text-group" transform="translate(${tx}, ${ty})"><text text-anchor="middle" dy="${dy}" class="node-text">${escapeHtml(displayLines[0] ?? '')}</text></g>`;
     }
 
     // N줄 수직 중앙 정렬: 첫 줄 dy = -(N-1)/2 * LINE_H + 5
@@ -436,7 +465,7 @@ function renderNodeText(node) {
         `<tspan x="0" dy="${i === 0 ? startDy : LINE_H}">${escapeHtml(line)}</tspan>`
     ).join('');
 
-    return `<text text-anchor="middle" class="node-text">${tspans}</text>`;
+    return `<g class="node-text-group" transform="translate(${tx}, ${ty})"><text text-anchor="middle" class="node-text">${tspans}</text></g>`;
 }
 
 function renderMindmap() {
@@ -458,8 +487,8 @@ function renderMindmap() {
         const color = getNodeColor(node);
 
         const selectionOverlay = isSelected
-            ? (node.type === 'rect'
-                ? `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="13" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
+            ? (node.type === 'rect' || node.type === 'freehand'
+                ? `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="${node.type==='freehand'?0:13}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
                 : (node.type === 'triangle'
                     ? `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`
                     : `<circle class="selection-overlay" r="${(node.radius||50)+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`))
@@ -469,15 +498,31 @@ function renderMindmap() {
             ? `<rect x="${-(node.width||120)/2}" y="${-(node.height||60)/2}" width="${node.width||120}" height="${node.height||60}" rx="12" class="node-shape" fill="${color.fill}" stroke="${color.stroke}" stroke-width="${node.isMain?3:2}" filter="url(#glass-shadow)"/>`
             : (node.type === 'triangle'
                 ? `<polygon points="0,${-(node.height||100)/2} ${-(node.width||120)/2},${(node.height||100)/2} ${(node.width||120)/2},${(node.height||100)/2}" class="node-shape" fill="${color.fill}" stroke="${color.stroke}" stroke-width="${node.isMain?3:2}" filter="url(#glass-shadow)"/>`
-                : `<circle r="${node.radius||50}" class="node-shape" fill="${color.fill}" stroke="${color.stroke}" stroke-width="${node.isMain?3:2}" filter="url(#glass-shadow)"/>`);
+                : (node.type === 'freehand'
+                    ? `<path d="${generateFreehandPath(node)}" class="node-shape" fill="${color.fill}" stroke="${color.stroke}" stroke-width="2" filter="url(#glass-shadow)"/>`
+                    : `<circle r="${node.radius||50}" class="node-shape" fill="${color.fill}" stroke="${color.stroke}" stroke-width="${node.isMain?3:2}" filter="url(#glass-shadow)"/>`));
 
         const isConnSrc = connectSourceId === node.id;
         const cls = `node-group${node.isMain?' main':''}${isConnSrc?' connecting-source':''}${isSelected?' selected':''}`;
 
         const textEl = renderNodeText(node);
 
-        return `<g class="${cls}" data-node-id="${node.id}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}</g>`;
+        const textDragHandle = isSelected ? `<path d="M-6,-14 L6,-14 M0,-20 L0,-8 M-4,-16 L0,-20 L4,-16 M-4,-12 L0,-8 L4,-12 M-8,-10 L-12,-14 L-8,-18 M8,-10 L12,-14 L8,-18" class="mm-text-drag-handle" transform="translate(${(node.textOffsetX||0)+20}, ${(node.textOffsetY||0)-10})"/>` : '';
+
+        return `<g class="${cls}" data-node-id="${node.id}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}${textDragHandle}</g>`;
     }).join('');
+
+    let inkHTML = '';
+    if (drawingStrokes.length || currentStroke) {
+        const all = [...drawingStrokes];
+        if (currentStroke) all.push(currentStroke);
+        const paths = all.map(stroke => {
+            if (!stroke.length) return '';
+            return `M${stroke[0].x},${stroke[0].y} L${stroke.slice(1).map(p => `${p.x},${p.y}`).join(' L')}`;
+        }).join(' ');
+        inkHTML = `<g class="mm-draw-ink"><path d="${paths}"/></g>`;
+    }
+    ng.insertAdjacentHTML('beforeend', inkHTML);
 }
 
 // ── 성능 개선을 위한 DOM 직접 업데이트 헬퍼 ────────────────────────
@@ -497,8 +542,9 @@ function setSelectedNodeDOM(nodeId) {
         g.classList.add('selected');
         const color = getNodeColor(node);
         let overlay = '';
-        if (node.type === 'rect') overlay = `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="13" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
-        else if (node.type === 'triangle') overlay = `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
+        if (node.type === 'rect' || node.type === 'freehand') {
+            overlay = `<rect class="selection-overlay" x="${-(node.width||120)/2-5}" y="${-(node.height||60)/2-5}" width="${(node.width||120)+10}" height="${(node.height||60)+10}" rx="${node.type==='freehand'?0:13}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
+        } else if (node.type === 'triangle') overlay = `<polygon class="selection-overlay" points="0,${-(node.height||100)/2-8} ${-(node.width||120)/2-8},${(node.height||100)/2+5} ${(node.width||120)/2+8},${(node.height||100)/2+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
         else overlay = `<circle class="selection-overlay" r="${(node.radius||50)+5}" fill="none" stroke="${color.stroke}" stroke-width="1.5" stroke-dasharray="5 3" opacity="0.8"/>`;
         g.insertAdjacentHTML('afterbegin', overlay);
     }
@@ -535,6 +581,35 @@ function setupEvents() {
         if (e.button !== 0) return; // 좌클릭만
         if (e.target.classList.contains('resize-handle')) return;
         if (resizingNodeId) { exitResizeMode(false); return; }
+        
+        // 텍스트 이동 핸들 드래그
+        if (e.target.closest('.mm-text-drag-handle')) {
+            const nodeG = e.target.closest('.node-group');
+            if (nodeG) {
+                textDraggingNodeId = parseInt(nodeG.dataset.nodeId);
+                const node = nodes.find(n => n.id === textDraggingNodeId);
+                if (node) {
+                    textDragStartOffX = node.textOffsetX || 0;
+                    textDragStartOffY = node.textOffsetY || 0;
+                    textDragStartX = e.clientX;
+                    textDragStartY = e.clientY;
+                    nodeG.classList.add('text-dragging');
+                    e.stopPropagation();
+                    return;
+                }
+            }
+        }
+
+        // 그리기 모드 처리
+        if (isDrawingMode) {
+            e.preventDefault();
+            const pt = { x: (e.clientX - canvasPanX) / canvasZoom, y: (e.clientY - canvasPanY) / canvasZoom };
+            currentStroke = [pt];
+            drawingStrokes.push(currentStroke);
+            renderMindmap();
+            return;
+        }
+
         if (e.target.closest('.node-group')) return;
         if (window._editNodeId != null) { window._applyNodeEdit(); return; }
         if (connectSourceId != null) return;
@@ -551,18 +626,36 @@ function setupEvents() {
     svg.addEventListener('contextmenu', e => {
         if (e.target.closest('.node-group')) return; // 노드 우클릭은 _nodeContextMenu가 처리
         e.preventDefault();
-        e.stopPropagation(); // document의 contextmenu 리스너가 메뉴를 hide()하는 것을 방지
+        e.stopPropagation(); // document의 contextmenu 리스너가 메뉴를 hide()하는 방지
         if (resizingNodeId) return;
         const cx = e.clientX, cy = e.clientY;
         contextMenu.show(cx, cy, [
             { label: '⭕ 원 추가',    action: () => addNode('circle',   cx, cy) },
             { label: '▭ 사각형 추가', action: () => addNode('rect',     cx, cy) },
             { label: '△ 삼각형 추가', action: () => addNode('triangle', cx, cy) },
+            { type: 'separator' },
+            { label: '✍️ 캔버스 바탕 그리기', action: () => startDrawingMode() },
         ]);
     });
 
-    // ─ mousemove: 노드 드래그 or 리사이즈 or 팬 ─
+    // ─ mousemove: 노드 드래그 or 리사이즈 or 팬 or 텍스트 or 그리기 ─
     document.addEventListener('mousemove', e => {
+        if (textDraggingNodeId) {
+            const node = nodes.find(n => n.id === textDraggingNodeId);
+            if (node) {
+                node.textOffsetX = textDragStartOffX + (e.clientX - textDragStartX) / canvasZoom;
+                node.textOffsetY = textDragStartOffY + (e.clientY - textDragStartY) / canvasZoom;
+                renderMindmap();
+            }
+            return;
+        }
+
+        if (isDrawingMode && currentStroke) {
+            currentStroke.push({ x: (e.clientX - canvasPanX) / canvasZoom, y: (e.clientY - canvasPanY) / canvasZoom });
+            renderMindmap();
+            return;
+        }
+
         if (resizingNodeId && resizeDragHandle) {
             const node = nodes.find(n => n.id === resizingNodeId);
             if (node) {
@@ -588,8 +681,21 @@ function setupEvents() {
         }
     });
 
-    // ─ mouseup: 드래그 / 팬 종료 ─
+    // ─ mouseup: 드래그 / 팬 / 그리기 종료 ─
     document.addEventListener('mouseup', () => {
+        if (textDraggingNodeId) {
+            const nodeG = document.querySelector(`.node-group[data-node-id="${textDraggingNodeId}"]`);
+            if (nodeG) nodeG.classList.remove('text-dragging');
+            textDraggingNodeId = null;
+            saveMindmap();
+            return;
+        }
+
+        if (isDrawingMode && currentStroke) {
+            currentStroke = null; // 하나의 획 마무리
+            return;
+        }
+
         if (resizeDragHandle) {
             resizeDragHandle    = null;
             resizeDragStartDims = null;
@@ -608,6 +714,7 @@ function setupEvents() {
     // ─ ESC & Delete: 액션 취소 및 삭제 ─
     document.addEventListener('keydown', e => {
         if (e.key === 'Escape') {
+            if (isDrawingMode) { cancelDrawingMode(); return; }
             if (resizingNodeId) { exitResizeMode(true); return; } // 리사이즈 취소
             let changed = false;
             if (connectSourceId != null) {
@@ -662,9 +769,12 @@ function setupEvents() {
     document.getElementById('mmMobCircle')?.addEventListener('click',   () => addNodeAtCenter('circle'));
     document.getElementById('mmMobRect')?.addEventListener('click',     () => addNodeAtCenter('rect'));
     document.getElementById('mmMobTriangle')?.addEventListener('click', () => addNodeAtCenter('triangle'));
+    document.getElementById('mmMobFreehand')?.addEventListener('click', () => startDrawingMode());
     document.getElementById('mmMobConnect')?.addEventListener('click',  toggleMobileConnect);
     document.getElementById('mmMobDelete')?.addEventListener('click',   mobileDeleteSelected);
     document.getElementById('mmMobFit')?.addEventListener('click',      fitView);
+    document.getElementById('mmDrawCancel')?.addEventListener('click',  cancelDrawingMode);
+    document.getElementById('mmDrawDone')?.addEventListener('click',    doneDrawingMode);
     document.getElementById('mmZoomIn')?.addEventListener('click', () => {
         const cx = window.innerWidth / 2;
         const cy = (window.innerHeight - (window.innerWidth <= 1024 ? 48 : 54)) / 2;
@@ -788,6 +898,32 @@ function setupTouchEvents(svg) {
         touchStartX = t.clientX;
         touchStartY = t.clientY;
 
+        // 텍스트 이동 핸들 드래그 (모바일)
+        if (e.target.closest('.mm-text-drag-handle')) {
+            const nodeG = e.target.closest('.node-group');
+            if (nodeG) {
+                textDraggingNodeId = parseInt(nodeG.dataset.nodeId);
+                const node = nodes.find(n => n.id === textDraggingNodeId);
+                if (node) {
+                    textDragStartOffX = node.textOffsetX || 0;
+                    textDragStartOffY = node.textOffsetY || 0;
+                    textDragStartX = t.clientX;
+                    textDragStartY = t.clientY;
+                    nodeG.classList.add('text-dragging');
+                    return;
+                }
+            }
+        }
+
+        // 그리기 모드 처리 (모바일)
+        if (isDrawingMode) {
+            const pt = { x: (t.clientX - canvasPanX) / canvasZoom, y: (t.clientY - canvasPanY) / canvasZoom };
+            currentStroke = [pt];
+            drawingStrokes.push(currentStroke);
+            renderMindmap();
+            return;
+        }
+
         const el        = document.elementFromPoint(t.clientX, t.clientY);
         const nodeGroup = el?.closest('[data-node-id]');
 
@@ -879,6 +1015,8 @@ function setupTouchEvents(svg) {
                     { label: '⭕ 원 추가',    action: () => addNode('circle',   cx, cy) },
                     { label: '▭ 사각형 추가', action: () => addNode('rect',     cx, cy) },
                     { label: '△ 삼각형 추가', action: () => addNode('triangle', cx, cy) },
+                    { type: 'separator' },
+                    { label: '✍️ 자유 그리기', action: () => startDrawingMode() },
                 ]);
             }, LONG_PRESS_MS);
         }
@@ -930,6 +1068,24 @@ function setupTouchEvents(svg) {
         if (e.touches.length !== 1) return;
         const t = e.touches[0];
 
+        // 제스처 텍스트 위치 드래그
+        if (textDraggingNodeId) {
+            const node = nodes.find(n => n.id === textDraggingNodeId);
+            if (node) {
+                node.textOffsetX = textDragStartOffX + (t.clientX - textDragStartX) / canvasZoom;
+                node.textOffsetY = textDragStartOffY + (t.clientY - textDragStartY) / canvasZoom;
+                renderMindmap();
+            }
+            return;
+        }
+
+        // 그리기 모드
+        if (isDrawingMode && currentStroke) {
+            currentStroke.push({ x: (t.clientX - canvasPanX) / canvasZoom, y: (t.clientY - canvasPanY) / canvasZoom });
+            renderMindmap();
+            return;
+        }
+
         // 이동 감지 → 꾹 누르기 취소
         if (Math.abs(t.clientX - touchStartX) > MOVE_THRESHOLD ||
             Math.abs(t.clientY - touchStartY) > MOVE_THRESHOLD) {
@@ -954,6 +1110,19 @@ function setupTouchEvents(svg) {
     svg.addEventListener('touchend', e => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
+
+        if (textDraggingNodeId) {
+            const nodeG = document.querySelector(`.node-group[data-node-id="${textDraggingNodeId}"]`);
+            if (nodeG) nodeG.classList.remove('text-dragging');
+            textDraggingNodeId = null;
+            saveMindmap();
+            return;
+        }
+
+        if (isDrawingMode && currentStroke) {
+            currentStroke = null; // 하나의 획 마무리, 다음 획 대기
+            return;
+        }
 
         if (touchNodeDragId) {
             saveMindmap();
@@ -1223,28 +1392,32 @@ window._nodeMouseDown = (e, id) => {
         return;
     }
 
-    // Shift + 클릭 → 연결 모드
-    if (e.shiftKey) {
+    // 연결 모드 (모바일 하단 버튼 또는 Shift+클릭)
+    if (mobileConnectMode || e.shiftKey) {
         if (connectSourceId != null && connectSourceId !== id) {
             const exactIdx = links.findIndex(l => l.source === connectSourceId && l.target === id);
             const revIdx   = links.findIndex(l => l.source === id && l.target === connectSourceId);
-            
+
             if (exactIdx !== -1) {
-                // 이미 같은 방향이면 연결 해제
                 links.splice(exactIdx, 1);
             } else if (revIdx !== -1) {
-                // 역방향이면 방향 전환
                 links[revIdx] = { source: connectSourceId, target: id };
             } else {
-                // 신규 연결
                 links.push({ source: connectSourceId, target: id });
             }
             connectSourceId = null;
             renderMindmap();
             saveMindmap();
+            // 모바일 연결 버튼 모드면 자동 해제
+            if (mobileConnectMode) {
+                mobileConnectMode = false;
+                document.getElementById('mmMobConnect')?.classList.remove('active');
+                updateHintBar();
+            }
         } else {
             connectSourceId = id;
             renderMindmap();
+            if (mobileConnectMode) updateHintBar();
         }
         return;
     }
@@ -1343,6 +1516,124 @@ function closeColorPicker() {
     }
 }
 
+// ── 자유 그리기 모드 컨트롤 ────────────────────────────────────
+function startDrawingMode() {
+    isDrawingMode = true;
+    drawingStrokes = [];
+    currentStroke = null;
+    setSelectedNodeDOM(null);
+    closeEditor();
+    
+    document.getElementById('mmDrawToolbar')?.classList.remove('hidden');
+    // 모바일 하단 액션바 등 기타 UI 숨기기
+    document.getElementById('mmMobileBar')?.classList.remove('mm-mobile-bar--visible');
+    
+    renderMindmap(); // 잉크 그룹 업데이트 등
+}
+
+function cancelDrawingMode() {
+    isDrawingMode = false;
+    drawingStrokes = [];
+    currentStroke = null;
+    
+    document.getElementById('mmDrawToolbar')?.classList.add('hidden');
+    if (window.innerWidth <= 1024) {
+        document.getElementById('mmMobileBar')?.classList.add('mm-mobile-bar--visible');
+    }
+    
+    renderMindmap();
+}
+
+function doneDrawingMode() {
+    if (!drawingStrokes.length) {
+        cancelDrawingMode();
+        return;
+    }
+    
+    // 전체 Bounding Box 계산
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    drawingStrokes.forEach(stroke => {
+        stroke.forEach(pt => {
+            if (pt.x < minX) minX = pt.x;
+            if (pt.y < minY) minY = pt.y;
+            if (pt.x > maxX) maxX = pt.x;
+            if (pt.y > maxY) maxY = pt.y;
+        });
+    });
+    
+    if (minX === Infinity || maxX - minX < 5 || maxY - minY < 5) {
+        // 너무 작으면 취소 (오작동 방지)
+        cancelDrawingMode();
+        return;
+    }
+    
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    const baseW = maxX - minX + 20; // 패딩 추가
+    const baseH = maxY - minY + 20;
+
+    // 점들을 중심점(cx, cy) 기준으로 정규화
+    const normalizedStrokes = drawingStrokes.map(stroke => 
+        stroke.map(pt => ({
+            x: pt.x - cx,
+            y: pt.y - cy
+        }))
+    );
+
+    const newNode = {
+        id: Date.now(),
+        type: 'freehand',
+        text: '',
+        x: cx,
+        y: cy,
+        width: baseW,
+        height: baseH,
+        baseWidth: baseW,
+        baseHeight: baseH,
+        strokes: normalizedStrokes,
+        colorIdx: nodeColorIndex++,
+        textOffsetX: 0,
+        textOffsetY: 0
+    };
+    
+    nodes.push(newNode);
+    
+    isDrawingMode = false;
+    drawingStrokes = [];
+    currentStroke = null;
+    
+    document.getElementById('mmDrawToolbar')?.classList.add('hidden');
+    if (window.innerWidth <= 1024) {
+        document.getElementById('mmMobileBar')?.classList.add('mm-mobile-bar--visible');
+    }
+    
+    renderMindmap();
+    saveMindmap();
+    openEditor(newNode.id);
+}
+
+function changeNodeShape(id, newType) {
+    const node = nodes.find(n => n.id === id);
+    if (!node) return;
+    
+    const prevType = node.type;
+    node.type = newType;
+
+    // 도형 전환 시 대략적인 형태 유지
+    if (prevType === 'circle' && newType !== 'circle') {
+        node.width = (node.radius || 50) * 2;
+        node.height = (node.radius || 50) * 2;
+        delete node.radius;
+    } else if (prevType !== 'circle' && newType === 'circle') {
+        node.radius = Math.max(node.width || 120, node.height || 60) / 2;
+        delete node.width;
+        delete node.height;
+    }
+    
+    renderMindmap();
+    saveMindmap();
+}
+
 // ── 노드 우클릭 전역 핸들러 ─────────────────────────────────────
 window._nodeContextMenu = (e, id) => {
     e.preventDefault();
@@ -1359,6 +1650,11 @@ window._nodeContextMenu = (e, id) => {
         { label: '🎨 색상 변경', action: () => showColorPicker(id, e.clientX, e.clientY) },
         { label: '⇲ 크기 변경', action: () => enterResizeMode(id) },
     ];
+
+    menuItems.push({ type: 'separator' });
+    if (node.type !== 'circle') menuItems.push({ label: '⭕ 원형으로 변경', action: () => changeNodeShape(id, 'circle') });
+    if (node.type !== 'rect') menuItems.push({ label: '▭ 사각형으로 변경', action: () => changeNodeShape(id, 'rect') });
+    if (node.type !== 'triangle') menuItems.push({ label: '△ 삼각형으로 변경', action: () => changeNodeShape(id, 'triangle') });
 
     if (!node.isMain) {
         menuItems.push({ type: 'separator' });

@@ -632,6 +632,89 @@
 
 
 /* ═══════════════════════════════════════════════════════════
+   자유 그리기 툴바 및 인테페이스
+═══════════════════════════════════════════════════════════ */
+.mm-draw-toolbar {
+    position: fixed;
+    top: 60px; /* 상단 메뉴바 아래 */
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(139, 92, 246, 0.4);
+    border-radius: 20px;
+    padding: 10px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 2300;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+    transition: all 0.2s;
+}
+
+.mm-draw-toolbar.hidden {
+    display: none;
+}
+
+.mm-draw-title {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.mm-draw-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.mm-draw-btn {
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+}
+
+.mm-draw-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+.mm-draw-cancel:hover { background: rgba(255, 255, 255, 0.15); }
+
+.mm-draw-done {
+    background: #8B5CF6;
+    color: white;
+}
+.mm-draw-done:hover { background: #7C3AED; }
+
+/* 그리기 중 나타나는 임시 잉크 */
+.mm-draw-ink path {
+    fill: none;
+    stroke: #8B5CF6;
+    stroke-width: 4px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    filter: drop-shadow(0 2px 8px rgba(139,92,246,0.5));
+}
+
+/* 텍스트 이동 핸들 */
+.mm-text-drag-handle {
+    cursor: move;
+    fill: rgba(255, 255, 255, 0.9);
+    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+.mm-text-drag-handle:hover,
+.node-group.text-dragging .mm-text-drag-handle {
+    opacity: 1;
+    fill: #8B5CF6;
+}
+
+/* ═══════════════════════════════════════════════════════════
    모바일 하단 액션 바
 ═══════════════════════════════════════════════════════════ */
 
