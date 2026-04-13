@@ -76,6 +76,10 @@ let pinchStartMidX   = 0, pinchStartMidY = 0;
 let pinchStartPanX   = 0, pinchStartPanY = 0;
 let mobileConnectMode = false;
 
+// ── 텍스트 이동 모드 상태 ────────────────────────────────────────
+let textMoveModeNodeId  = null;  // 텍스트 이동 모드 중인 노드 ID
+let textLongPressTimer  = null;  // 모바일 텍스트 꾹 누르기 타이머
+
 // ── 다중 선택 상태 ───────────────────────────────────────────────
 let selectedNodeIds   = new Set(); // 다중 선택된 노드 ID 집합
 let isRectSelecting   = false;     // 영역 선택 드래그 중
@@ -614,46 +618,106 @@ function renderNodeText(node) {
 
     const CHAR_WIDTH = node.isMain ? 15 : 13;
     const LINE_H     = node.isMain ? 22 : 18;
+    const CB_SIZE    = 12; // 체크박스 크기(px)
+    const CB_GAP     = 4;  // 체크박스↔텍스트 간격
 
     const MAX_CHARS  = Math.max(5, Math.floor(maxW / CHAR_WIDTH));
     const MAX_LINES  = Math.max(2, Math.floor(maxH / LINE_H));
 
-    // \n으로 분리 후, 줄이 너무 길면 MAX_CHARS마다 자동 줄바꿈
+    // ── 텍스트를 종류별 라인으로 파싱 ──────────────────────────
+    // kind: 'text' | 'checkbox' | 'url'
     const rawLines = (node.text || '').split('\n');
-    const allLines = rawLines.flatMap(line => {
-        if (line.length <= MAX_CHARS) return [line];
-        const chunks = [];
-        for (let i = 0; i < line.length; i += MAX_CHARS) chunks.push(line.slice(i, i + MAX_CHARS));
-        return chunks;
+    const parsedLines = [];
+
+    rawLines.forEach((rawLine, rawIdx) => {
+        // 체크박스: [] 또는 [x] 또는 [ ] 로 시작하는 줄
+        const cbMatch = rawLine.match(/^\[([ xX]?)\](.*)/);
+        if (cbMatch) {
+            const checked = /[xX]/.test(cbMatch[1]);
+            const rest = cbMatch[2].startsWith(' ') ? cbMatch[2].slice(1) : cbMatch[2];
+            const effMax = Math.max(3, MAX_CHARS - 3);
+            if (rest.length <= effMax) {
+                parsedLines.push({ kind: 'checkbox', text: rest, checked, rawIdx });
+            } else {
+                parsedLines.push({ kind: 'checkbox', text: rest.slice(0, effMax), checked, rawIdx });
+                for (let i = effMax; i < rest.length; i += MAX_CHARS)
+                    parsedLines.push({ kind: 'text', text: rest.slice(i, i + MAX_CHARS), rawIdx });
+            }
+            return;
+        }
+        // URL: http:// 또는 https:// 로 시작하는 줄
+        const trimmed = rawLine.trim();
+        if (/^https?:\/\/\S/.test(trimmed)) {
+            const display = trimmed.length > MAX_CHARS ? trimmed.slice(0, MAX_CHARS - 1) + '…' : trimmed;
+            parsedLines.push({ kind: 'url', text: display, url: trimmed, rawIdx });
+            return;
+        }
+        // 일반 텍스트 (자동 줄바꿈)
+        if (rawLine.length <= MAX_CHARS) {
+            parsedLines.push({ kind: 'text', text: rawLine, rawIdx });
+        } else {
+            for (let i = 0; i < rawLine.length; i += MAX_CHARS)
+                parsedLines.push({ kind: 'text', text: rawLine.slice(i, i + MAX_CHARS), rawIdx });
+        }
     });
 
-    const displayLines = allLines.slice(0, MAX_LINES);
-    if (allLines.length > MAX_LINES) {
-        displayLines[MAX_LINES - 1] = displayLines[MAX_LINES - 1].slice(0, Math.max(1, MAX_CHARS - 1)) + '…';
+    const displayLines = parsedLines.slice(0, MAX_LINES);
+    if (parsedLines.length > MAX_LINES) {
+        const last = displayLines[MAX_LINES - 1];
+        last.text = last.text.slice(0, Math.max(1, MAX_CHARS - 1)) + '…';
     }
 
-    const n = displayLines.length;
+    const n = Math.max(1, displayLines.length);
     const tx = node.textOffsetX || 0;
     const ty = node.textOffsetY || 0;
 
-    const longestLine = Math.max(1, ...displayLines.map(l => (l||'').length));
-    const boxW = Math.min(maxW, longestLine * CHAR_WIDTH * 0.9 + 16);
+    // ── 텍스트 정렬 ──────────────────────────────────────────
+    const align = node.textAlign || 'center';
+    const textAnchor = align === 'left' ? 'start' : align === 'right' ? 'end' : 'middle';
+    const baseX = align === 'left' ? -(maxW / 2) + 4 : align === 'right' ? (maxW / 2) - 4 : 0;
+
+    // ── 배경 박스 ─────────────────────────────────────────────
+    const longestChars = Math.max(1, ...displayLines.map(l => (l.text || '').length));
+    const hasCheckbox  = displayLines.some(l => l.kind === 'checkbox');
+    const boxW = Math.min(maxW, longestChars * CHAR_WIDTH * 0.9 + 16 + (hasCheckbox ? CB_SIZE + CB_GAP : 0));
     const boxH = n * LINE_H + 8;
-    const boxY = -boxH / 2 + 5;
-    const boxHTML = `<rect class="mm-text-box" x="${-boxW/2}" y="${boxY}" width="${boxW}" height="${boxH}" rx="4" fill="transparent" stroke="transparent" stroke-width="1.5" stroke-dasharray="4 2" />`;
+    const boxHTML = `<rect class="mm-text-box" x="${-boxW/2}" y="${-boxH/2+5}" width="${boxW}" height="${boxH}" rx="4" fill="transparent" stroke="transparent" stroke-width="1.5" stroke-dasharray="4 2" />`;
 
-    if (n <= 1) {
-        const dy = node.isMain ? 6 : 5;
-        return `<g class="node-text-group" transform="translate(${tx}, ${ty})" style="cursor: move; pointer-events: all;" onmousedown="window._nodeTextMouseDown(event, ${node.id})" ontouchstart="window._nodeTextTouchStart(event, ${node.id})">${boxHTML}<text text-anchor="middle" dy="${dy}" class="node-text">${escapeHtml(displayLines[0] ?? '')}</text></g>`;
-    }
+    // ── 첫 줄 Y (수직 중앙 정렬) ─────────────────────────────
+    const firstY = n <= 1 ? (node.isMain ? 6 : 5) : -(((n - 1) / 2) * LINE_H) + 5;
 
-    // N줄 수직 중앙 정렬: 첫 줄 dy = -(N-1)/2 * LINE_H + 5
-    const startDy = -((n - 1) / 2) * LINE_H + 5;
-    const tspans = displayLines.map((line, i) =>
-        `<tspan x="0" dy="${i === 0 ? startDy : LINE_H}">${escapeHtml(line)}</tspan>`
-    ).join('');
+    // ── 각 줄 렌더링 ──────────────────────────────────────────
+    const lineEls = displayLines.map((line, i) => {
+        const y = firstY + i * LINE_H;
 
-    return `<g class="node-text-group" transform="translate(${tx}, ${ty})" style="cursor: move; pointer-events: all;" onmousedown="window._nodeTextMouseDown(event, ${node.id})" ontouchstart="window._nodeTextTouchStart(event, ${node.id})">${boxHTML}<text text-anchor="middle" class="node-text">${tspans}</text></g>`;
+        // 체크박스 줄
+        if (line.kind === 'checkbox') {
+            const textW   = (line.text?.length || 0) * CHAR_WIDTH * 0.5;
+            const totalW  = CB_SIZE + CB_GAP + textW;
+            const cbX = align === 'left'  ? baseX
+                      : align === 'right' ? baseX - totalW
+                      : -totalW / 2; // center
+            const cbY = y - CB_SIZE + 2;
+            const cbRect = `<rect x="${cbX}" y="${cbY}" width="${CB_SIZE}" height="${CB_SIZE}" rx="2" fill="transparent" stroke="rgba(160,160,185,0.8)" stroke-width="1.5" style="cursor:pointer" onmousedown="event.stopPropagation()" onclick="window._toggleCheckbox(event,${node.id},${line.rawIdx})"/>`;
+            const chk = line.checked
+                ? `<polyline points="${cbX+2},${y-4} ${cbX+5},${y-1} ${cbX+10},${y-9}" stroke="#a78bfa" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`
+                : '';
+            const txt = line.text
+                ? `<text text-anchor="start" x="${cbX + CB_SIZE + CB_GAP}" y="${y}" class="node-text">${escapeHtml(line.text)}</text>`
+                : '';
+            return cbRect + chk + txt;
+        }
+
+        // URL 줄 — onclick으로 새 탭 열기, mousedown stopPropagation으로 드래그 차단
+        if (line.kind === 'url') {
+            return `<text text-anchor="${textAnchor}" x="${baseX}" y="${y}" class="node-text node-text--url" data-href="${escapeHtml(line.url)}" onmousedown="event.stopPropagation()" onclick="window._openUrl(event,this)">${escapeHtml(line.text)}</text>`;
+        }
+
+        // 일반 텍스트 줄
+        return `<text text-anchor="${textAnchor}" x="${baseX}" y="${y}" class="node-text">${escapeHtml(line.text ?? '')}</text>`;
+    }).join('');
+
+    return `<g class="node-text-group" transform="translate(${tx}, ${ty})" style="pointer-events: all;" onmousedown="window._nodeTextMouseDown(event, ${node.id})" ontouchstart="window._nodeTextTouchStart(event, ${node.id})" oncontextmenu="window._nodeTextContextMenu(event, ${node.id})">${boxHTML}${lineEls}</g>`;
 }
 
 function renderMindmap() {
@@ -795,6 +859,12 @@ function setupEvents() {
 
         setSelectedNodeDOM(null);
 
+        // 텍스트 이동 모드 해제 (빈 캔버스 클릭)
+        if (textMoveModeNodeId != null) {
+            document.querySelector(`.node-group[data-node-id="${textMoveModeNodeId}"] .node-text-group`)?.classList.remove('text-move-active');
+            textMoveModeNodeId = null;
+        }
+
         // PC: Shift+드래그 → 영역 선택 모드
         if (e.shiftKey) {
             e.preventDefault();
@@ -908,6 +978,11 @@ function setupEvents() {
         if (textDraggingNodeId) {
             const nodeG = document.querySelector(`.node-group[data-node-id="${textDraggingNodeId}"]`);
             if (nodeG) nodeG.classList.remove('text-dragging');
+            // 텍스트 이동 완료 → 이동 모드 해제
+            if (textMoveModeNodeId === textDraggingNodeId) {
+                nodeG?.querySelector('.node-text-group')?.classList.remove('text-move-active');
+                textMoveModeNodeId = null;
+            }
             textDraggingNodeId = null;
             saveMindmap();
             return;
@@ -985,6 +1060,12 @@ function setupEvents() {
                 document.getElementById('mmMobSelect')?.classList.remove('active');
                 changed = true;
                 updateHintBar();
+            }
+
+            // 텍스트 이동 모드 해제
+            if (textMoveModeNodeId != null) {
+                document.querySelector(`.node-group[data-node-id="${textMoveModeNodeId}"] .node-text-group`)?.classList.remove('text-move-active');
+                textMoveModeNodeId = null;
             }
 
             if (connectSourceId != null) {
@@ -1460,10 +1541,17 @@ function setupTouchEvents(svg) {
     svg.addEventListener('touchend', e => {
         clearTimeout(longPressTimer);
         longPressTimer = null;
+        clearTimeout(textLongPressTimer);
+        textLongPressTimer = null;
 
         if (textDraggingNodeId) {
             const nodeG = document.querySelector(`.node-group[data-node-id="${textDraggingNodeId}"]`);
             if (nodeG) nodeG.classList.remove('text-dragging');
+            // 텍스트 이동 완료 → 이동 모드 해제
+            if (textMoveModeNodeId === textDraggingNodeId) {
+                nodeG?.querySelector('.node-text-group')?.classList.remove('text-move-active');
+                textMoveModeNodeId = null;
+            }
             textDraggingNodeId = null;
             saveMindmap();
             return;
@@ -1507,6 +1595,8 @@ function setupTouchEvents(svg) {
 
     svg.addEventListener('touchcancel', () => {
         clearTimeout(longPressTimer);
+        clearTimeout(textLongPressTimer);
+        textLongPressTimer = null;
         touchNodeDragId = null;
         touchPanActive  = false;
         pinchActive     = false;
@@ -1758,63 +1848,168 @@ window._resizeHandleDown = (e, handleKey) => {
     }
 };
 
+// ── URL 새 탭 열기 ────────────────────────────────────────────────
+window._openUrl = (event, el) => {
+    event.stopPropagation();
+    const url = el.getAttribute('data-href');
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+};
+
+// ── 텍스트 그룹 우클릭 컨텍스트 메뉴 ────────────────────────────
+window._nodeTextContextMenu = (e, id) => {
+    e.preventDefault();
+    e.stopPropagation();
+    contextMenu.show(e.clientX, e.clientY, [
+        { label: '✏️ 텍스트 편집', action: () => openEditor(id) },
+        {
+            label: '✥ 텍스트 상자 이동',
+            action: () => {
+                textMoveModeNodeId = id;
+                const tg = document.querySelector(`.node-group[data-node-id="${id}"] .node-text-group`);
+                if (tg) tg.classList.add('text-move-active');
+            }
+        },
+    ]);
+};
+
 // ── 텍스트 mousedown 전역 핸들러 ─────────────────────────────────
 window._nodeTextMouseDown = (e, id) => {
     e.stopPropagation();
     if (resizingNodeId || window._editNodeId != null) return;
-    
-    const now = Date.now();
+
+    const now     = Date.now();
     const elapsed = now - lastClickTime;
+
+    // 더블클릭 → 편집기 열기
     if (id === lastClickNodeId && elapsed < DBLCLICK_MS) {
-        lastClickNodeId = null;
-        lastClickTime   = 0;
-        textDraggingNodeId  = null;
+        lastClickNodeId    = null;
+        lastClickTime      = 0;
+        draggingNodeId     = null;
+        textDraggingNodeId = null;
+        if (textMoveModeNodeId === id) {
+            document.querySelector(`.node-group[data-node-id="${id}"] .node-text-group`)?.classList.remove('text-move-active');
+            textMoveModeNodeId = null;
+        }
         openEditor(id);
         return;
     }
     lastClickNodeId = id;
     lastClickTime   = now;
 
+    // 텍스트 이동 모드 활성화 → 텍스트 위치 드래그
+    if (textMoveModeNodeId === id) {
+        const node = nodes.find(n => n.id === id);
+        if (node) {
+            saveSnapshot();
+            textDraggingNodeId = id;
+            textDragStartOffX  = node.textOffsetX || 0;
+            textDragStartOffY  = node.textOffsetY || 0;
+            textDragStartX     = e.clientX;
+            textDragStartY     = e.clientY;
+            document.querySelector(`.node-group[data-node-id="${id}"]`)?.classList.add('text-dragging');
+        }
+        return;
+    }
+
+    // 다중 선택된 노드의 텍스트 클릭 → 일괄 노드 이동
+    if (selectedNodeIds.size > 1 && selectedNodeIds.has(id) && !e.shiftKey) {
+        saveSnapshot();
+        multiDragOffsets.clear();
+        selectedNodeIds.forEach(nid => {
+            const n = nodes.find(n => n.id === nid);
+            if (n) multiDragOffsets.set(nid, {
+                offX: e.clientX - canvasPanX - n.x * canvasZoom,
+                offY: e.clientY - canvasPanY - n.y * canvasZoom,
+            });
+        });
+        return;
+    }
+
+    // 기본: 텍스트 클릭 → 노드 이동 시작
+    saveSnapshot();
+    draggingNodeId = id;
+    setSelectedNodeDOM(id);
     const node = nodes.find(n => n.id === id);
     if (node) {
-        saveSnapshot(); // 텍스트 이동 시작 전 스냅샷
-        textDraggingNodeId = id;
-        textDragStartOffX = node.textOffsetX || 0;
-        textDragStartOffY = node.textOffsetY || 0;
-        textDragStartX = e.clientX;
-        textDragStartY = e.clientY;
-        const nodeG = document.querySelector(`.node-group[data-node-id="${id}"]`);
-        if (nodeG) nodeG.classList.add('text-dragging');
+        dragOffsetX = e.clientX - canvasPanX - node.x * canvasZoom;
+        dragOffsetY = e.clientY - canvasPanY - node.y * canvasZoom;
     }
 };
 
 window._nodeTextTouchStart = (e, id) => {
     e.stopPropagation();
     if (e.touches.length !== 1 || resizingNodeId || window._editNodeId != null) return;
-    
-    const t = e.touches[0];
-    const now = Date.now();
+
+    const t       = e.touches[0];
+    const now     = Date.now();
     const elapsed = now - lastClickTime;
+
+    // 더블탭 → 편집기 열기
     if (id === lastClickNodeId && elapsed < DBLCLICK_MS) {
-        lastClickNodeId = null;
-        lastClickTime   = 0;
-        textDraggingNodeId  = null;
+        lastClickNodeId    = null;
+        lastClickTime      = 0;
+        textDraggingNodeId = null;
+        touchNodeDragId    = null;
+        clearTimeout(textLongPressTimer);
+        if (textMoveModeNodeId === id) {
+            document.querySelector(`.node-group[data-node-id="${id}"] .node-text-group`)?.classList.remove('text-move-active');
+            textMoveModeNodeId = null;
+        }
         openEditor(id);
         return;
     }
     lastClickNodeId = id;
     lastClickTime   = now;
 
+    // 텍스트 이동 모드 활성화 → 텍스트 위치 드래그
+    if (textMoveModeNodeId === id) {
+        clearTimeout(textLongPressTimer);
+        const node = nodes.find(n => n.id === id);
+        if (node) {
+            saveSnapshot();
+            textDraggingNodeId = id;
+            textDragStartOffX  = node.textOffsetX || 0;
+            textDragStartOffY  = node.textOffsetY || 0;
+            textDragStartX     = t.clientX;
+            textDragStartY     = t.clientY;
+            document.querySelector(`.node-group[data-node-id="${id}"]`)?.classList.add('text-dragging');
+        }
+        return;
+    }
+
+    // 다중 선택된 노드의 텍스트 터치 → 일괄 노드 이동
+    if (selectedNodeIds.size > 1 && selectedNodeIds.has(id) && !mobileConnectMode) {
+        clearTimeout(textLongPressTimer);
+        saveSnapshot();
+        multiDragOffsets.clear();
+        selectedNodeIds.forEach(nid => {
+            const n = nodes.find(n => n.id === nid);
+            if (n) multiDragOffsets.set(nid, {
+                offX: t.clientX - canvasPanX - n.x * canvasZoom,
+                offY: t.clientY - canvasPanY - n.y * canvasZoom,
+            });
+        });
+        return;
+    }
+
+    // 기본: 텍스트 터치 → 노드 이동 시작
+    setSelectedNodeDOM(id);
     const node = nodes.find(n => n.id === id);
     if (node) {
-        textDraggingNodeId = id;
-        textDragStartOffX = node.textOffsetX || 0;
-        textDragStartOffY = node.textOffsetY || 0;
-        textDragStartX = t.clientX;
-        textDragStartY = t.clientY;
-        const nodeG = document.querySelector(`.node-group[data-node-id="${id}"]`);
-        if (nodeG) nodeG.classList.add('text-dragging');
+        touchNodeDragId = id;
+        touchNodeOffX   = t.clientX - canvasPanX - node.x * canvasZoom;
+        touchNodeOffY   = t.clientY - canvasPanY - node.y * canvasZoom;
     }
+
+    // 꾹 누르기 → 텍스트 컨텍스트 메뉴 (모바일)
+    textLongPressTimer = setTimeout(() => {
+        textLongPressTimer = null;
+        touchNodeDragId = null; // 꾹 누르기면 노드 드래그 취소
+        window._nodeTextContextMenu(
+            { clientX: t.clientX, clientY: t.clientY, preventDefault: () => {}, stopPropagation: () => {} },
+            id
+        );
+    }, 600);
 };
 
 // ── 노드 mousedown 전역 핸들러 ───────────────────────────────────
@@ -1910,6 +2105,24 @@ window._nodeMouseDown = (e, id) => {
         dragOffsetX = e.clientX - canvasPanX - node.x * canvasZoom;
         dragOffsetY = e.clientY - canvasPanY - node.y * canvasZoom;
     }
+};
+
+// ── 체크박스 토글 전역 핸들러 ────────────────────────────────────
+window._toggleCheckbox = (event, nodeId, rawLineIdx) => {
+    event.stopPropagation();
+    event.preventDefault();
+    const node = nodes.find(n => n.id === nodeId);
+    if (!node) return;
+    const lines = (node.text || '').split('\n');
+    if (rawLineIdx >= lines.length) return;
+    const cbMatch = lines[rawLineIdx].match(/^\[([ xX]?)\](.*)/);
+    if (!cbMatch) return;
+    saveSnapshot();
+    const wasChecked = /[xX]/.test(cbMatch[1]);
+    lines[rawLineIdx] = (wasChecked ? '[ ]' : '[x]') + cbMatch[2];
+    node.text = lines.join('\n');
+    renderMindmap();
+    saveMindmap();
 };
 
 // ── 색상 선택기 ──────────────────────────────────────────────────
@@ -2119,6 +2332,10 @@ window._nodeContextMenu = (e, id) => {
         { label: '✏️ 이름 변경', action: () => openEditor(id) },
         { label: '🎨 색상 변경', action: () => showColorPicker(id, e.clientX, e.clientY) },
         { label: '⇲ 크기 변경', action: () => enterResizeMode(id) },
+        { type: 'separator' },
+        { label: '◀ 텍스트 좌측 정렬', action: () => { saveSnapshot(); node.textAlign = 'left';   renderMindmap(); saveMindmap(); } },
+        { label: '◆ 텍스트 중앙 정렬', action: () => { saveSnapshot(); node.textAlign = 'center'; renderMindmap(); saveMindmap(); } },
+        { label: '▶ 텍스트 우측 정렬', action: () => { saveSnapshot(); node.textAlign = 'right';  renderMindmap(); saveMindmap(); } },
     ];
 
     if (node && node.type !== 'freehand') {

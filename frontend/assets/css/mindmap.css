@@ -249,6 +249,16 @@
     filter: drop-shadow(0 0 14px rgba(245, 158, 11, 0.75));
 }
 
+/* ── URL 링크 텍스트 ─────────────────────────────────────── */
+.node-text--url {
+    fill: #60a5fa;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.node-text--url:hover {
+    fill: #93c5fd;
+}
+
 /* ── 영역 선택 사각형 ────────────────────────────────────── */
 .mm-select-rect {
     fill: rgba(139, 92, 246, 0.07);
@@ -751,12 +761,25 @@
 .mm-text-box {
     transition: stroke 0.2s, fill 0.2s;
     pointer-events: all; /* 투명하더라도 이벤트를 받을 수 있도록 설정 */
-    cursor: move;
+    cursor: default;
 }
-.node-group.text-dragging .mm-text-box,
-.node-text-group:hover .mm-text-box {
+.node-group.text-dragging .mm-text-box {
     stroke: rgba(139, 92, 246, 0.8) !important;
     fill: rgba(139, 92, 246, 0.05);
+}
+/* 텍스트 이동 모드 활성화 */
+.node-text-group.text-move-active .mm-text-box {
+    stroke: rgba(245, 158, 11, 0.9) !important;
+    fill: rgba(245, 158, 11, 0.07);
+    cursor: grab;
+    stroke-dasharray: 4 2;
+    animation: mm-text-move-dash 0.5s linear infinite;
+}
+.node-group.text-dragging .node-text-group .mm-text-box {
+    cursor: grabbing !important;
+}
+@keyframes mm-text-move-dash {
+    to { stroke-dashoffset: -6; }
 }
 /* ═══════════════════════════════════════════════════════════
    모바일 하단 액션 바
