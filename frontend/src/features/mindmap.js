@@ -467,9 +467,15 @@ function renderNodeText(node) {
     const tx = node.textOffsetX || 0;
     const ty = node.textOffsetY || 0;
 
+    const longestLine = Math.max(1, ...displayLines.map(l => (l||'').length));
+    const boxW = Math.min(maxW, longestLine * CHAR_WIDTH * 0.9 + 16);
+    const boxH = n * LINE_H + 8;
+    const boxY = -boxH / 2 + 5;
+    const boxHTML = `<rect class="mm-text-box" x="${-boxW/2}" y="${boxY}" width="${boxW}" height="${boxH}" rx="4" fill="transparent" stroke="transparent" stroke-width="1.5" stroke-dasharray="4 2" />`;
+
     if (n <= 1) {
         const dy = node.isMain ? 6 : 5;
-        return `<g class="node-text-group" transform="translate(${tx}, ${ty})"><text text-anchor="middle" dy="${dy}" class="node-text">${escapeHtml(displayLines[0] ?? '')}</text></g>`;
+        return `<g class="node-text-group" transform="translate(${tx}, ${ty})" style="cursor: move; pointer-events: all;" onmousedown="window._nodeTextMouseDown(event, ${node.id})" ontouchstart="window._nodeTextTouchStart(event, ${node.id})">${boxHTML}<text text-anchor="middle" dy="${dy}" class="node-text">${escapeHtml(displayLines[0] ?? '')}</text></g>`;
     }
 
     // N줄 수직 중앙 정렬: 첫 줄 dy = -(N-1)/2 * LINE_H + 5
@@ -478,7 +484,7 @@ function renderNodeText(node) {
         `<tspan x="0" dy="${i === 0 ? startDy : LINE_H}">${escapeHtml(line)}</tspan>`
     ).join('');
 
-    return `<g class="node-text-group" transform="translate(${tx}, ${ty})"><text text-anchor="middle" class="node-text">${tspans}</text></g>`;
+    return `<g class="node-text-group" transform="translate(${tx}, ${ty})" style="cursor: move; pointer-events: all;" onmousedown="window._nodeTextMouseDown(event, ${node.id})" ontouchstart="window._nodeTextTouchStart(event, ${node.id})">${boxHTML}<text text-anchor="middle" class="node-text">${tspans}</text></g>`;
 }
 
 function renderMindmap() {
@@ -520,9 +526,7 @@ function renderMindmap() {
 
         const textEl = renderNodeText(node);
 
-        const textDragHandle = isSelected ? `<path d="M-6,-14 L6,-14 M0,-20 L0,-8 M-4,-16 L0,-20 L4,-16 M-4,-12 L0,-8 L4,-12 M-8,-10 L-12,-14 L-8,-18 M8,-10 L12,-14 L8,-18" class="mm-text-drag-handle" transform="translate(${(node.textOffsetX||0)+20}, ${(node.textOffsetY||0)-10})"/>` : '';
-
-        return `<g class="${cls}" data-node-id="${node.id}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}${textDragHandle}</g>`;
+        return `<g class="${cls}" data-node-id="${node.id}" transform="translate(${node.x},${node.y})" style="--node-glow:${color.glow}" onmousedown="window._nodeMouseDown(event,${node.id})" oncontextmenu="window._nodeContextMenu(event,${node.id})">${selectionOverlay}${shape}${textEl}</g>`;
     }).join('');
 
     let inkHTML = '';
@@ -595,24 +599,6 @@ function setupEvents() {
         if (e.button !== 0) return; // 좌클릭만
         if (e.target.classList.contains('resize-handle')) return;
         if (resizingNodeId) { exitResizeMode(false); return; }
-        
-        // 텍스트 이동 핸들 드래그
-        if (e.target.closest('.mm-text-drag-handle')) {
-            const nodeG = e.target.closest('.node-group');
-            if (nodeG) {
-                textDraggingNodeId = parseInt(nodeG.dataset.nodeId);
-                const node = nodes.find(n => n.id === textDraggingNodeId);
-                if (node) {
-                    textDragStartOffX = node.textOffsetX || 0;
-                    textDragStartOffY = node.textOffsetY || 0;
-                    textDragStartX = e.clientX;
-                    textDragStartY = e.clientY;
-                    nodeG.classList.add('text-dragging');
-                    e.stopPropagation();
-                    return;
-                }
-            }
-        }
 
         // 그리기 모드 처리
         if (isDrawingMode) {
@@ -657,8 +643,17 @@ function setupEvents() {
         if (textDraggingNodeId) {
             const node = nodes.find(n => n.id === textDraggingNodeId);
             if (node) {
-                node.textOffsetX = textDragStartOffX + (e.clientX - textDragStartX) / canvasZoom;
-                node.textOffsetY = textDragStartOffY + (e.clientY - textDragStartY) / canvasZoom;
+                let offX = textDragStartOffX + (e.clientX - textDragStartX) / canvasZoom;
+                let offY = textDragStartOffY + (e.clientY - textDragStartY) / canvasZoom;
+                
+                let hw, hh;
+                if (node.type === 'circle') { hw = hh = (node.radius || 50) * 0.7; }
+                else if (node.type === 'triangle') { hw = (node.width || 120) * 0.35; hh = (node.height || 100) * 0.35; }
+                else if (node.type === 'rect') { hw = (node.width || 120) * 0.45; hh = (node.height || 60) * 0.45; }
+                else { hw = (node.width || 120) * 0.45; hh = (node.height || 80) * 0.45; }
+                
+                node.textOffsetX = Math.max(-hw, Math.min(hw, offX));
+                node.textOffsetY = Math.max(-hh, Math.min(hh, offY));
                 renderMindmap();
             }
             return;
@@ -918,23 +913,6 @@ function setupTouchEvents(svg) {
         touchStartX = t.clientX;
         touchStartY = t.clientY;
 
-        // 텍스트 이동 핸들 드래그 (모바일)
-        if (e.target.closest('.mm-text-drag-handle')) {
-            const nodeG = e.target.closest('.node-group');
-            if (nodeG) {
-                textDraggingNodeId = parseInt(nodeG.dataset.nodeId);
-                const node = nodes.find(n => n.id === textDraggingNodeId);
-                if (node) {
-                    textDragStartOffX = node.textOffsetX || 0;
-                    textDragStartOffY = node.textOffsetY || 0;
-                    textDragStartX = t.clientX;
-                    textDragStartY = t.clientY;
-                    nodeG.classList.add('text-dragging');
-                    return;
-                }
-            }
-        }
-
         // 그리기 모드 처리 (모바일)
         if (isDrawingMode) {
             const pt = getEventSVGCoords(e);
@@ -1092,8 +1070,17 @@ function setupTouchEvents(svg) {
         if (textDraggingNodeId) {
             const node = nodes.find(n => n.id === textDraggingNodeId);
             if (node) {
-                node.textOffsetX = textDragStartOffX + (t.clientX - textDragStartX) / canvasZoom;
-                node.textOffsetY = textDragStartOffY + (t.clientY - textDragStartY) / canvasZoom;
+                let offX = textDragStartOffX + (t.clientX - textDragStartX) / canvasZoom;
+                let offY = textDragStartOffY + (t.clientY - textDragStartY) / canvasZoom;
+                
+                let hw, hh;
+                if (node.type === 'circle') { hw = hh = (node.radius || 50) * 0.7; }
+                else if (node.type === 'triangle') { hw = (node.width || 120) * 0.35; hh = (node.height || 100) * 0.35; }
+                else if (node.type === 'rect') { hw = (node.width || 120) * 0.45; hh = (node.height || 60) * 0.45; }
+                else { hw = (node.width || 120) * 0.45; hh = (node.height || 80) * 0.45; }
+                
+                node.textOffsetX = Math.max(-hw, Math.min(hw, offX));
+                node.textOffsetY = Math.max(-hh, Math.min(hh, offY));
                 renderMindmap();
             }
             return;
@@ -1393,6 +1380,64 @@ window._resizeHandleDown = (e, handleKey) => {
             height: node.height || (node.type === 'triangle' ? 100 : 60),
             radius: node.radius || 50,
         };
+    }
+};
+
+// ── 텍스트 mousedown 전역 핸들러 ─────────────────────────────────
+window._nodeTextMouseDown = (e, id) => {
+    e.stopPropagation();
+    if (resizingNodeId || window._editNodeId != null) return;
+    
+    const now = Date.now();
+    const elapsed = now - lastClickTime;
+    if (id === lastClickNodeId && elapsed < DBLCLICK_MS) {
+        lastClickNodeId = null;
+        lastClickTime   = 0;
+        textDraggingNodeId  = null;
+        openEditor(id);
+        return;
+    }
+    lastClickNodeId = id;
+    lastClickTime   = now;
+
+    const node = nodes.find(n => n.id === id);
+    if (node) {
+        textDraggingNodeId = id;
+        textDragStartOffX = node.textOffsetX || 0;
+        textDragStartOffY = node.textOffsetY || 0;
+        textDragStartX = e.clientX;
+        textDragStartY = e.clientY;
+        const nodeG = document.querySelector(`.node-group[data-node-id="${id}"]`);
+        if (nodeG) nodeG.classList.add('text-dragging');
+    }
+};
+
+window._nodeTextTouchStart = (e, id) => {
+    e.stopPropagation();
+    if (e.touches.length !== 1 || resizingNodeId || window._editNodeId != null) return;
+    
+    const t = e.touches[0];
+    const now = Date.now();
+    const elapsed = now - lastClickTime;
+    if (id === lastClickNodeId && elapsed < DBLCLICK_MS) {
+        lastClickNodeId = null;
+        lastClickTime   = 0;
+        textDraggingNodeId  = null;
+        openEditor(id);
+        return;
+    }
+    lastClickNodeId = id;
+    lastClickTime   = now;
+
+    const node = nodes.find(n => n.id === id);
+    if (node) {
+        textDraggingNodeId = id;
+        textDragStartOffX = node.textOffsetX || 0;
+        textDragStartOffY = node.textOffsetY || 0;
+        textDragStartX = t.clientX;
+        textDragStartY = t.clientY;
+        const nodeG = document.querySelector(`.node-group[data-node-id="${id}"]`);
+        if (nodeG) nodeG.classList.add('text-dragging');
     }
 };
 

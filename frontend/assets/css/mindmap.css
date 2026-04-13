@@ -729,20 +729,16 @@
     filter: drop-shadow(0 2px 8px rgba(139,92,246,0.5));
 }
 
-/* 텍스트 이동 핸들 */
-.mm-text-drag-handle {
+.mm-text-box {
+    transition: stroke 0.2s, fill 0.2s;
+    pointer-events: all; /* 투명하더라도 이벤트를 받을 수 있도록 설정 */
     cursor: move;
-    fill: rgba(255, 255, 255, 0.9);
-    filter: drop-shadow(0 1px 3px rgba(0,0,0,0.5));
-    opacity: 0.6;
-    transition: opacity 0.2s;
 }
-.mm-text-drag-handle:hover,
-.node-group.text-dragging .mm-text-drag-handle {
-    opacity: 1;
-    fill: #8B5CF6;
+.node-group.text-dragging .mm-text-box,
+.node-text-group:hover .mm-text-box {
+    stroke: rgba(139, 92, 246, 0.8) !important;
+    fill: rgba(139, 92, 246, 0.05);
 }
-
 /* ═══════════════════════════════════════════════════════════
    모바일 하단 액션 바
 ═══════════════════════════════════════════════════════════ */
