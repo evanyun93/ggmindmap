@@ -901,7 +901,7 @@ export function setupResizable(widget, grid) {
     // --- 리사이즈 드래그 시작 로직 (공통) ---
     const beginResize = (initialX, initialY, initialWidth, initialHeight, isTouch) => {
         bringToFront(widget);
-        const isMobile = window.innerWidth <= 768;
+        const isMobile = window.innerWidth <= 767;
         widget.classList.add('is-resizing'); // 시각적 피드백 제공 시작
 
         let scrollRafId = null;

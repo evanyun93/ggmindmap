@@ -35,26 +35,52 @@
   );
 }
 
-/* ─── 모바일 전용 스타일 (중앙 배치, 좁은 보라색 선) ──────────── */
-@media (max-width: 768px) {
+/* ─── 폰 전용 스타일 (767px 이하: 중앙 바 핸들, 코너 핸들 숨김) ── */
+@media (max-width: 767px) {
   .resize-handle {
     bottom: 4px !important;
     left: 50% !important;
     right: auto !important;
     transform: translateX(-50%) !important;
-    width: 60px !important; 
-    height: 12px !important; /* 터치 영역 쾌적화 */
+    width: 60px !important;
+    height: 12px !important;
     background: transparent !important;
     border: none !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
-    z-index: 999 !important; /* 클릭 방해 방지 최우선 */
+    z-index: 999 !important;
     cursor: row-resize !important;
     backdrop-filter: none !important;
-    touch-action: none !important; /* 터치 시 스크롤 방지 (중요!) */
-    margin-top: -10px !important; /* 위쪽으로 터치 영여 확장 */
+    touch-action: none !important;
+    margin-top: -10px !important;
     padding-top: 10px !important;
+    opacity: 1 !important;
+  }
+
+  /* 코너 삼각형 그립 숨김 (폰에서는 중앙 바만 사용) */
+  .resize-handle::before {
+    content: none !important;
+  }
+
+  /* 보라색 단일 선 디자인 */
+  .resize-handle::after {
+    content: '';
+    width: 40px;
+    height: 4px;
+    background: #8B5CF6;
+    border-radius: 2px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
+  }
+
+  /* 롱프레스 활성화 시 디자인 변화 */
+  .resize-handle.active-resizing::after,
+  .resize-handle:active::after {
+    width: 50px;
+    height: 6px;
+    background: #A78BFA;
+    box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
   }
 
   /* 리사이즈 중 위젯 강조 효과 */
@@ -63,25 +89,5 @@
     outline-offset: -2px;
     box-shadow: 0 0 20px rgba(139, 92, 246, 0.4) !important;
     z-index: 999 !important;
-  }
-
-  /* 보라색 단일 선 디자인 */
-  .resize-handle::after {
-    content: '';
-    width: 40px;
-    height: 4px;
-    background: #8B5CF6; /* 요청하신 보라색 */
-    border-radius: 2px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 0 5px rgba(139, 92, 246, 0.3);
-  }
-
-  /* 롱프레스 활성화/터치 시 디자인 변화 */
-  .resize-handle.active-resizing::after,
-  .resize-handle:active::after {
-    width: 50px;
-    height: 6px;
-    background: #A78BFA; /* 더 밝은 보라색 */
-    box-shadow: 0 0 10px rgba(139, 92, 246, 0.6);
   }
 }
