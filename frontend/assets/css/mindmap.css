@@ -254,9 +254,15 @@
     fill: #60a5fa;
     text-decoration: underline;
     cursor: pointer;
+    pointer-events: auto !important;
 }
 .node-text--url:hover {
     fill: #93c5fd;
+}
+
+/* 체크박스 히트 테스트 영역 */
+.mm-checkbox-rect {
+    pointer-events: auto !important;
 }
 
 /* ── 영역 선택 사각형 ────────────────────────────────────── */

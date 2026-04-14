@@ -698,7 +698,7 @@ function renderNodeText(node) {
                       : align === 'right' ? baseX - totalW
                       : -totalW / 2; // center
             const cbY = y - CB_SIZE + 2;
-            const cbRect = `<rect x="${cbX}" y="${cbY}" width="${CB_SIZE}" height="${CB_SIZE}" rx="2" fill="transparent" stroke="rgba(160,160,185,0.8)" stroke-width="1.5" style="cursor:pointer" onmousedown="event.stopPropagation()" onclick="window._toggleCheckbox(event,${node.id},${line.rawIdx})"/>`;
+            const cbRect = `<rect x="${cbX}" y="${cbY}" width="${CB_SIZE}" height="${CB_SIZE}" rx="2" fill="transparent" stroke="rgba(160,160,185,0.8)" stroke-width="1.5" style="cursor:pointer" class="mm-checkbox-rect" data-raw-idx="${line.rawIdx}"/>`;
             const chk = line.checked
                 ? `<polyline points="${cbX+2},${y-4} ${cbX+5},${y-1} ${cbX+10},${y-9}" stroke="#a78bfa" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" pointer-events="none"/>`
                 : '';
@@ -708,9 +708,9 @@ function renderNodeText(node) {
             return cbRect + chk + txt;
         }
 
-        // URL 줄 — onclick으로 새 탭 열기, mousedown stopPropagation으로 드래그 차단
+        // URL 줄
         if (line.kind === 'url') {
-            return `<text text-anchor="${textAnchor}" x="${baseX}" y="${y}" class="node-text node-text--url" data-href="${escapeHtml(line.url)}" onmousedown="event.stopPropagation()" onclick="window._openUrl(event,this)">${escapeHtml(line.text)}</text>`;
+            return `<text text-anchor="${textAnchor}" x="${baseX}" y="${y}" class="node-text node-text--url" data-href="${escapeHtml(line.url)}">${escapeHtml(line.text)}</text>`;
         }
 
         // 일반 텍스트 줄
@@ -1875,6 +1875,19 @@ window._nodeTextContextMenu = (e, id) => {
 // ── 텍스트 mousedown 전역 핸들러 ─────────────────────────────────
 window._nodeTextMouseDown = (e, id) => {
     e.stopPropagation();
+    
+    // 특수 요소(링크, 체크박스) 클릭 처리
+    const urlEl = e.target.closest('.node-text--url');
+    if (urlEl) {
+        window._openUrl(e, urlEl);
+        return;
+    }
+    const cbEl = e.target.closest('.mm-checkbox-rect');
+    if (cbEl) {
+        window._toggleCheckbox(e, id, parseInt(cbEl.dataset.rawIdx));
+        return;
+    }
+
     if (resizingNodeId || window._editNodeId != null) return;
 
     const now     = Date.now();
@@ -1940,7 +1953,21 @@ window._nodeTextTouchStart = (e, id) => {
     e.stopPropagation();
     if (e.touches.length !== 1 || resizingNodeId || window._editNodeId != null) return;
 
-    const t       = e.touches[0];
+    const t = e.touches[0];
+
+    // 특수 요소(링크, 체크박스) 클릭 처리
+    const urlEl = e.target.closest('.node-text--url');
+    if (urlEl) {
+        window._openUrl(e, urlEl);
+        return;
+    }
+    const cbEl = e.target.closest('.mm-checkbox-rect');
+    if (cbEl) {
+        window._toggleCheckbox(e, id, parseInt(cbEl.dataset.rawIdx));
+        return;
+    }
+
+    e.preventDefault(); // 일반 텍스트 영역만 고스트 클릭 방지
     const now     = Date.now();
     const elapsed = now - lastClickTime;
 
