@@ -185,6 +185,9 @@ export async function initTodo(el, widgetData) {
 
     // 5. 크로스 디바이스 실시간 동기화: 탭으로 돌아왔을 때 즉시 새로고침
     setupCrossDeviceSync(el);
+
+    // 6. 드래그앤드롭 순서 변경
+    setupDragAndDrop(el);
 }
 
 /**
@@ -646,6 +649,31 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             };
         };
     }
+
+    // 드래그 핸들 이벤트 (핸들에서 눌렀을 때만 드래그 활성화)
+    const dragHandle = itemEl.querySelector('.todo-drag-handle');
+    if (dragHandle) {
+        dragHandle.addEventListener('mousedown', (e) => {
+            e.stopPropagation(); // 위젯 이동 방지
+            itemEl.setAttribute('draggable', 'true');
+        });
+
+        itemEl.addEventListener('dragstart', (e) => {
+            if (!itemEl.hasAttribute('draggable')) { e.preventDefault(); return; }
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', String(id));
+            widgetEl._draggedTodoItem = itemEl;
+            setTimeout(() => itemEl.classList.add('todo-dragging'), 0);
+        });
+
+        itemEl.addEventListener('dragend', () => {
+            itemEl.classList.remove('todo-dragging');
+            itemEl.removeAttribute('draggable');
+            widgetEl._draggedTodoItem = null;
+            const indicator = widgetEl.querySelector('.todo-drop-indicator');
+            if (indicator) indicator.remove();
+        });
+    }
 }
 
 function parseTimeFromTask(taskContent) {
@@ -740,8 +768,15 @@ function generateTodoHtml(todo) {
 
     return `
     <div class="todo-item ${checked ? 'completed' : ''}" data-id="${todo.id}">
+        <div class="todo-drag-handle" title="드래그하여 순서 변경">
+            <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" style="pointer-events:none;">
+                <circle cx="3" cy="2.5" r="1.4"/><circle cx="7" cy="2.5" r="1.4"/>
+                <circle cx="3" cy="8" r="1.4"/><circle cx="7" cy="8" r="1.4"/>
+                <circle cx="3" cy="13.5" r="1.4"/><circle cx="7" cy="13.5" r="1.4"/>
+            </svg>
+        </div>
         <div class="todo-item-main">
-            <input type="checkbox" ${checked ? 'checked' : ''} 
+            <input type="checkbox" ${checked ? 'checked' : ''}
                    style="background:${checked ? color : 'transparent'}; border-color:${color};"
                    data-id="${todo.id}" data-color="${color}" class="todo-check">
             <div class="todo-content-wrap">
@@ -779,7 +814,7 @@ function renderTodos(el, todos) {
     const noDataMsg = container.querySelector('.no-data-mini');
     if (noDataMsg) noDataMsg.remove();
 
-    const sortedTodos = [...todos].sort((a, b) => b.id - a.id);
+    const sortedTodos = [...todos].sort((a, b) => (a.position || 0) - (b.position || 0) || b.id - a.id);
 
     // 현재 DOM에 있는 아이템들을 Map으로 캐싱
     const existingItems = new Map();
@@ -861,5 +896,76 @@ function renderTodos(el, todos) {
     if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
         Notification.requestPermission();
     }
+}
+
+async function reorderTodos(widgetId, orderedItems) {
+    try {
+        await apiFetch('/api/todos/reorder', {
+            method: 'PATCH',
+            body: JSON.stringify({ widget_id: widgetId, items: orderedItems })
+        });
+        syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetId, Date.now());
+    } catch (err) {
+        console.error('[Todo] 순서 저장 실패:', err);
+    }
+}
+
+function setupDragAndDrop(el) {
+    const container = el.querySelector('.todo-list-container');
+    if (!container || container._hasDragDrop) return;
+    container._hasDragDrop = true;
+
+    const dropIndicator = document.createElement('div');
+    dropIndicator.className = 'todo-drop-indicator';
+
+    container.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+
+        const items = [...container.querySelectorAll('.todo-item:not(.todo-dragging)')];
+        if (items.length === 0) return;
+
+        let targetItem = null;
+        let insertBefore = true;
+
+        for (const item of items) {
+            const rect = item.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) {
+                targetItem = item;
+                insertBefore = true;
+                break;
+            }
+            targetItem = item;
+            insertBefore = false;
+        }
+
+        if (targetItem) {
+            insertBefore ? container.insertBefore(dropIndicator, targetItem)
+                         : targetItem.after(dropIndicator);
+        }
+    });
+
+    container.addEventListener('dragleave', (e) => {
+        if (!container.contains(e.relatedTarget)) dropIndicator.remove();
+    });
+
+    container.addEventListener('drop', (e) => {
+        e.preventDefault();
+        const draggedItem = el._draggedTodoItem;
+        if (!draggedItem) return;
+
+        if (dropIndicator.parentNode === container) {
+            container.insertBefore(draggedItem, dropIndicator);
+        }
+        dropIndicator.remove();
+        draggedItem.classList.remove('todo-dragging');
+        el._draggedTodoItem = null;
+
+        const orderedItems = [...container.querySelectorAll('.todo-item')]
+            .filter(item => item.dataset.id && !item.dataset.id.startsWith('temp-'))
+            .map((item, index) => ({ id: parseInt(item.dataset.id), position: index + 1 }));
+
+        reorderTodos(el.dataset.id, orderedItems);
+    });
 }
 

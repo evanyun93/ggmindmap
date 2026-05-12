@@ -83,7 +83,7 @@ router.get('/', authenticateToken, async (req, res) => {
             params.push(widget_id);
         }
 
-        query += ' ORDER BY created_at DESC, id DESC';
+        query += ' ORDER BY position ASC, id DESC';
 
         const result = await pool.query(query, params);
         res.json({ success: true, todos: result.rows });
@@ -112,6 +112,45 @@ router.post('/', authenticateToken, async (req, res) => {
         res.status(201).json({ success: true, id: result.rows[0].id });
     } catch (error) {
         console.error('To-Do 추가 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류' });
+    }
+});
+
+/**
+ * To-Do 순서 일괄 변경
+ */
+router.patch('/reorder', authenticateToken, async (req, res) => {
+    try {
+        const { widget_id, items } = req.body;
+
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ success: false, message: '유효한 아이템 배열이 필요합니다.' });
+        }
+
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            for (const item of items) {
+                await client.query(
+                    'UPDATE tba_todos SET position = $1 WHERE id = $2 AND user_id = $3',
+                    [item.position, item.id, req.user.id]
+                );
+            }
+            await client.query('COMMIT');
+        } catch (err) {
+            await client.query('ROLLBACK');
+            throw err;
+        } finally {
+            client.release();
+        }
+
+        if (widget_id) {
+            syncService.notifyChange(req.user.id, widget_id, syncService.SYNC_TYPES.TODO_DATA_UPDATE);
+        }
+
+        res.json({ success: true });
+    } catch (error) {
+        console.error('To-Do 순서 변경 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류' });
     }
 });

@@ -113,6 +113,59 @@
   flex: 1;
 }
 
+/* ─── Todo 드래그앤드롭 ─────────────────────────────────────── */
+.todo-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  flex-shrink: 0;
+  cursor: grab;
+  color: transparent;
+  transition: color 0.15s;
+  padding: 2px 0;
+  margin-right: -4px;
+}
+
+.todo-item:hover .todo-drag-handle {
+  color: #4b5563;
+}
+
+.todo-drag-handle:hover {
+  color: #9ca3af !important;
+}
+
+.todo-drag-handle:active {
+  cursor: grabbing;
+}
+
+.todo-item.todo-dragging {
+  opacity: 0.35;
+  background: rgba(139, 92, 246, 0.08) !important;
+  transform: none !important;
+}
+
+.todo-drop-indicator {
+  position: relative;
+  height: 2px;
+  margin: 2px 4px;
+  background: #8B5CF6;
+  border-radius: 2px;
+  box-shadow: 0 0 8px rgba(139, 92, 246, 0.5);
+  pointer-events: none;
+}
+
+.todo-drop-indicator::before {
+  content: '';
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #8B5CF6;
+}
+
 .todo-item.completed .todo-alarm-badge {
   opacity: 0.5;
   filter: grayscale(1);

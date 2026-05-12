@@ -62,13 +62,43 @@ async function initDatabase() {
         CREATE INDEX IF NOT EXISTS idx_supplements_search_maker ON tba_supplements USING GIN (manufacturer gin_trgm_ops);
       `);
 
-      // tba_supplement_nutrients 생성 (영양제-성분 매핑 테이블)
+      // tba_supplement_nutrients 생성 (영양제-성분 와이드 포맷 테이블)
       await client.query(`
         CREATE TABLE IF NOT EXISTS tba_supplement_nutrients (
-          supplement_id VARCHAR(100) REFERENCES tba_supplements(id) ON DELETE CASCADE,
-          nutrient_id VARCHAR(50) NOT NULL,
-          amount_mg NUMERIC(10, 2) NOT NULL,
-          PRIMARY KEY (supplement_id, nutrient_id)
+          supplement_id VARCHAR(100) PRIMARY KEY REFERENCES tba_supplements(id) ON DELETE CASCADE,
+          
+          -- 비타민군
+          vit_a NUMERIC(10, 2) DEFAULT 0,
+          vit_b1 NUMERIC(10, 2) DEFAULT 0,
+          vit_b2 NUMERIC(10, 2) DEFAULT 0,
+          niacin NUMERIC(10, 2) DEFAULT 0,           -- B3
+          pantothenic_acid NUMERIC(10, 2) DEFAULT 0, -- B5
+          vit_b6 NUMERIC(10, 2) DEFAULT 0,
+          biotin NUMERIC(10, 2) DEFAULT 0,           -- B7
+          folate NUMERIC(10, 2) DEFAULT 0,           -- B9 (엽산)
+          vit_b12 NUMERIC(10, 2) DEFAULT 0,
+          vit_c NUMERIC(10, 2) DEFAULT 0,
+          vit_d NUMERIC(10, 2) DEFAULT 0,
+          vit_e NUMERIC(10, 2) DEFAULT 0,
+          vit_k NUMERIC(10, 2) DEFAULT 0,
+          
+          -- 무기질(미네랄) 및 기타 핵심 성분
+          calcium NUMERIC(10, 2) DEFAULT 0,
+          magnesium NUMERIC(10, 2) DEFAULT 0,
+          iron NUMERIC(10, 2) DEFAULT 0,
+          zinc NUMERIC(10, 2) DEFAULT 0,
+          selenium NUMERIC(10, 2) DEFAULT 0,
+          copper NUMERIC(10, 2) DEFAULT 0,
+          manganese NUMERIC(10, 2) DEFAULT 0,
+          iodine NUMERIC(10, 2) DEFAULT 0,
+          
+          -- 기능성 성분 (주요 관심사)
+          omega3 NUMERIC(10, 2) DEFAULT 0,           -- EPA+DHA 합계
+          probiotics NUMERIC(15, 2) DEFAULT 0,       -- 보장균수 (CFU)
+          lutein NUMERIC(10, 2) DEFAULT 0,
+          milk_thistle NUMERIC(10, 2) DEFAULT 0,
+          
+          updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
         );
       `);
 
@@ -219,8 +249,6 @@ async function initDatabase() {
         );
       `);
 
-
-
       // ============================================
       // [2단계] 기존 테이블에 대한 마이그레이션 (ALTER / UPDATE)
       // ============================================
@@ -291,6 +319,7 @@ async function initDatabase() {
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS color VARCHAR(20) DEFAULT '#8B5CF6';
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS widget_id INTEGER REFERENCES tba_user_widgets(id);
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS push_sent_at TIMESTAMPTZ;
+        ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
       `);
 
       await client.query("SET TIME ZONE 'Asia/Seoul'");
