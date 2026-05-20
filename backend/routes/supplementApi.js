@@ -53,7 +53,6 @@ router.get('/search', async (req, res) => {
                   FROM tba_supplements s
                   LEFT JOIN tba_supplement_nutrients n ON s.id = n.supplement_id
                   WHERE s.name ILIKE $1 OR s.manufacturer ILIKE $1
-                  GROUP BY s.id, n.supplement_id
                   LIMIT 10;
                 `;
     // SQL Injection 방지를 위해 파라미터화된 쿼리 사용 (%검색어%)

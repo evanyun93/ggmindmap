@@ -53,8 +53,8 @@
 
 .sup-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 10px;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
@@ -63,6 +63,12 @@
   box-shadow: 0 4px 15px rgba(0,0,0,0.1);
   transition: all 0.3s ease;
   animation: supItemPop 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.sup-item-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .sup-item:hover {
@@ -108,13 +114,46 @@
   font-weight: 500;
 }
 .sup-item-nutrients {
-  font-size: 10px;
-  color: var(--success);
-  margin-top: 3px;
-  opacity: 0.8;
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
+}
+
+.sup-item-nutrients-empty {
+  font-size: 11px;
+  color: var(--text-secondary);
+  opacity: 0.45;
+  font-style: italic;
+}
+
+.sup-nutrient-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.sup-nutrient-pill strong {
+  font-weight: 700;
+}
+.sup-nutrient-pill.pill-vitamin {
+  background: rgba(129, 140, 248, 0.1);
+  border-color: rgba(129, 140, 248, 0.3);
+  color: #a5b4fc;
+}
+.sup-nutrient-pill.pill-mineral {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #7dd3fc;
+}
+.sup-nutrient-pill.pill-functional {
+  background: rgba(251, 146, 60, 0.1);
+  border-color: rgba(251, 146, 60, 0.3);
+  color: #fdba74;
 }
 .sup-item-del-btn {
   background: rgba(239, 68, 68, 0.1);

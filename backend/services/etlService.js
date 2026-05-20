@@ -2,25 +2,34 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
+const iconv = require('iconv-lite');
 const cron = require('node-cron');
 const { pool } = require('../config/database');
 
-// 우리가 관리할 영양소와 CSV 컬럼명, 그리고 mg 단위 변환 비율 매핑
+// 우리가 관리할 영양소와 CSV 컬럼명, DB 컬럼명, mg 단위 변환 비율 매핑
+// col: CSV 헤더명, dbCol: tba_supplement_nutrients 테이블의 컬럼명, factor: mg 환산 배수
 const NUTRIENT_MAP = [
-    { col: '비타민 A(μg RAE)', id: 'VITAMIN_A', factor: 0.001 }, // ug -> mg
-    { col: '비타민 C(mg)', id: 'VITAMIN_C', factor: 1 },
-    { col: '비타민 D(μg)', id: 'VITAMIN_D', factor: 0.001 },
-    { col: '티아민(mg)', id: 'VITAMIN_B1', factor: 1 },
-    { col: '리보플라빈(mg)', id: 'VITAMIN_B2', factor: 1 },
-    { col: '니아신(mg)', id: 'VITAMIN_B3', factor: 1 },
-    { col: '칼슘(mg)', id: 'CALCIUM', factor: 1 },
-    { col: '철(mg)', id: 'IRON', factor: 1 },
-    { col: '인(mg)', id: 'PHOSPHORUS', factor: 1 },
-    { col: '칼륨(mg)', id: 'POTASSIUM', factor: 1 },
-    { col: '나트륨(mg)', id: 'SODIUM', factor: 1 },
-    { col: '단백질(g)', id: 'PROTEIN', factor: 1000 }, // g -> mg
-    { col: '지방(g)', id: 'FAT', factor: 1000 },
-    { col: '탄수화물(g)', id: 'CARBOHYDRATE', factor: 1000 },
+    { col: '비타민 A(μg RAE)',  dbCol: 'vit_a',           factor: 0.001 }, // μg → mg
+    { col: '비타민 C(mg)',      dbCol: 'vit_c',           factor: 1     },
+    { col: '비타민 D(μg)',      dbCol: 'vit_d',           factor: 0.001 }, // μg → mg
+    { col: '티아민(mg)',        dbCol: 'vit_b1',          factor: 1     },
+    { col: '리보플라빈(mg)',    dbCol: 'vit_b2',          factor: 1     },
+    { col: '니아신(mg)',        dbCol: 'niacin',          factor: 1     },
+    { col: '칼슘(mg)',          dbCol: 'calcium',         factor: 1     },
+    { col: '철(mg)',            dbCol: 'iron',            factor: 1     },
+    { col: '아연(mg)',          dbCol: 'zinc',            factor: 1     },
+    { col: '마그네슘(mg)',      dbCol: 'magnesium',       factor: 1     },
+    { col: '셀레늄(μg)',        dbCol: 'selenium',        factor: 0.001 }, // μg → mg
+    { col: '구리(mg)',          dbCol: 'copper',          factor: 1     },
+    { col: '망간(mg)',          dbCol: 'manganese',       factor: 1     },
+    { col: '요오드(μg)',        dbCol: 'iodine',          factor: 0.001 }, // μg → mg
+    { col: '비타민 B6(mg)',     dbCol: 'vit_b6',          factor: 1     },
+    { col: '비타민 B12(μg)',    dbCol: 'vit_b12',         factor: 0.001 }, // μg → mg
+    { col: '엽산(μg)',          dbCol: 'folate',          factor: 0.001 }, // μg → mg
+    { col: '비오틴(μg)',        dbCol: 'biotin',          factor: 0.001 }, // μg → mg
+    { col: '판토텐산(mg)',      dbCol: 'pantothenic_acid',factor: 1     },
+    { col: '비타민 E(mg α-TE)', dbCol: 'vit_e',          factor: 1     },
+    { col: '비타민 K(μg)',      dbCol: 'vit_k',           factor: 0.001 }, // μg → mg
 ];
 
 async function syncSupplementsToDB() {
@@ -34,9 +43,10 @@ async function syncSupplementsToDB() {
 
     const rows = [];
 
-    // 1. CSV 파일을 읽어서 배열에 저장 (데이터가 깔끔해서 메모리에 다 올려도 됨)
+    // 1. CSV 파일을 읽어서 배열에 저장 (EUC-KR 인코딩 → UTF-8 변환)
     await new Promise((resolve, reject) => {
         fs.createReadStream(filePath)
+            .pipe(iconv.decodeStream('EUC-KR'))  // EUC-KR → UTF-8 디코딩
             .pipe(csv())
             .on('data', (data) => rows.push(data))
             .on('end', () => resolve())
@@ -57,8 +67,10 @@ async function syncSupplementsToDB() {
 
             for (const row of batch) {
                 // 식약처 코드(식품코드)를 고유 ID로 사용
+                // CSV 헤더: '식품코드', '식품명', '제조사명' (EUC-KR 기준)
                 const supId = `pub_${row['식품코드']}`;
                 const name = row['식품명'];
+                if (!name || !supId || supId === 'pub_undefined') continue; // 유효하지 않은 행 스킵
                 const manufacturer = row['제조사명'] || row['수입업체명'] || '알 수 없음';
 
                 // 1. 영양제 메인 정보 저장
@@ -74,26 +86,43 @@ async function syncSupplementsToDB() {
                 const rawData = JSON.stringify({ type: row['유형명'], target: row['섭취대상'] });
                 await client.query(supQuery, [supId, name, manufacturer, rawData]);
 
-                // 2. 매핑된 영양소 추출 및 저장
+                // 2. 해당 row의 모든 영양소를 추출하여 한 번에 UPSERT
+                // 유효한 (값 > 0) 영양소만 수집
+                const nutrientValues = {}; // { dbCol: amountMg }
                 for (const nut of NUTRIENT_MAP) {
                     const cellValue = row[nut.col];
-
-                    // 빈 값이 아니며, 숫자로 변환 가능하고 0보다 큰 경우에만 저장
                     if (cellValue && !isNaN(cellValue)) {
                         const amount = parseFloat(cellValue);
                         if (amount > 0) {
-                            const amountMg = amount * nut.factor;
-
-                            // etlService.js 내 수정 예시 (Phase 1 뼈대 구축 시)
-                            const nutQuery = `
-                                            INSERT INTO tba_supplement_nutrients (supplement_id)
-                                            VALUES ($1)
-                                            ON CONFLICT (supplement_id) DO NOTHING;
-                                            `;
-                            // 일단 제품 ID만 등록해두고, 함량은 Phase 2(CSV)에서 해당 컬럼만 UPDATE 칩니다.
-                            await client.query(nutQuery, [supId]);
+                            nutrientValues[nut.dbCol] = amount * nut.factor;
                         }
                     }
+                }
+
+                // 영양소가 1개라도 있는 경우에만 DB에 저장
+                if (Object.keys(nutrientValues).length > 0) {
+                    // 동적 UPSERT 쿼리 생성
+                    // INSERT INTO tba_supplement_nutrients (supplement_id, col1, col2, ...)
+                    // VALUES ($1, $2, $3, ...)
+                    // ON CONFLICT (supplement_id) DO UPDATE SET col1=$2, col2=$3, ...
+                    const cols = Object.keys(nutrientValues);
+                    const vals = Object.values(nutrientValues);
+                    const colNames = ['supplement_id', ...cols].join(', ');
+                    const placeholders = ['$1', ...cols.map((_, i) => `$${i + 2}`)].join(', ');
+                    const updates = cols.map((col, i) => `${col} = $${i + 2}`).join(', ');
+
+                    const nutQuery = `
+                        INSERT INTO tba_supplement_nutrients (${colNames})
+                        VALUES (${placeholders})
+                        ON CONFLICT (supplement_id) DO UPDATE SET ${updates};
+                    `;
+                    await client.query(nutQuery, [supId, ...vals]);
+                } else {
+                    // 영양소 데이터가 없어도 supplement_id는 등록
+                    await client.query(
+                        `INSERT INTO tba_supplement_nutrients (supplement_id) VALUES ($1) ON CONFLICT DO NOTHING;`,
+                        [supId]
+                    );
                 }
             }
 

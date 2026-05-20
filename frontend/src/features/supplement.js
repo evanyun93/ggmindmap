@@ -1,8 +1,47 @@
 import { apiFetch } from '../services/api.js';
 import { syncService } from '../services/sync.js';
 
+// ───────── 영양소 메타데이터 (API nutrientId → 한국어 이름, 단위 변환) ─────────
+// amountMg: DB에 mg 단위로 저장. μg 단위 영양소(A, D, B12 등)는 저장 시 factor 0.001 적용됨.
+// → 값 < 1이면 μg로 환산해서 표시.
+const NUTRIENT_META = {
+  VIT_A:            { name: '비타민 A',  category: 'vitamin'    },
+  VIT_B1:           { name: '비타민 B1', category: 'vitamin'    },
+  VIT_B2:           { name: '비타민 B2', category: 'vitamin'    },
+  NIACIN:           { name: '나이아신',  category: 'vitamin'    },
+  PANTOTHENIC_ACID: { name: '판토텐산',  category: 'vitamin'    },
+  VIT_B6:           { name: '비타민 B6', category: 'vitamin'    },
+  BIOTIN:           { name: '비오틴',    category: 'vitamin'    },
+  FOLATE:           { name: '엽산',      category: 'vitamin'    },
+  VIT_B12:          { name: '비타민 B12',category: 'vitamin'    },
+  VIT_C:            { name: '비타민 C',  category: 'vitamin'    },
+  VIT_D:            { name: '비타민 D',  category: 'vitamin'    },
+  VIT_E:            { name: '비타민 E',  category: 'vitamin'    },
+  VIT_K:            { name: '비타민 K',  category: 'vitamin'    },
+  CALCIUM:          { name: '칼슘',      category: 'mineral'    },
+  MAGNESIUM:        { name: '마그네슘',  category: 'mineral'    },
+  IRON:             { name: '철분',      category: 'mineral'    },
+  ZINC:             { name: '아연',      category: 'mineral'    },
+  SELENIUM:         { name: '셀레늄',    category: 'mineral'    },
+  COPPER:           { name: '구리',      category: 'mineral'    },
+  MANGANESE:        { name: '망간',      category: 'mineral'    },
+  IODINE:           { name: '요오드',    category: 'mineral'    },
+  OMEGA3:           { name: '오메가3',   category: 'functional' },
+  PROBIOTICS:       { name: '유산균',    category: 'functional' },
+  LUTEIN:           { name: '루테인',    category: 'functional' },
+  MILK_THISTLE:     { name: '밀크시슬',  category: 'functional' },
+};
+
+function formatNutrientAmount(amountMg) {
+  if (amountMg == null || amountMg <= 0) return null;
+  if (amountMg < 1) {
+    const ug = amountMg * 1000;
+    return ug < 10 ? `${ug.toFixed(1)}μg` : `${Math.round(ug)}μg`;
+  }
+  return amountMg < 10 ? `${amountMg.toFixed(1)}mg` : `${Math.round(amountMg)}mg`;
+}
+
 // ───────── API Mock Data (분석용은 아직 백엔드가 없으므로 유지) ─────────
-// MOCK_DB는 제거되었습니다. 이제 실제 API에서 검색 결과를 가져옵니다.
 
 // 백엔드 요청/응답 시뮬레이터 (추후 AI 분석 API 완성 시 교체)
 const mockApiAnalysis = (payload) => {
@@ -70,22 +109,9 @@ class SupplementWidget {
     this.state = {
       userProfile: {
         gender: 'FEMALE', age: 32, weightKg: 55, heightCm: 165,
-        isPregnant: false, medicalConditions: ["ANEMIA"], currentMedications: ["THYROID_HORMONE"]
+        isPregnant: false, medicalConditions: [], currentMedications: []
       },
-      supplements: [
-        // 테스트용 기본 데이터 (필요 시 비워두셔도 됩니다)
-        { 
-          id: "sup_001", 
-          name: "센트룸 멀티비타민", 
-          manufacturer: "GSK Consumer Healthcare", 
-          dailyDosage: 1,
-          customNutrients: [
-            { name: "비타민A", amount: 1000, unit: "IU" },
-            { name: "비타민C", amount: 100, unit: "mg" },
-            { name: "아연", amount: 8, unit: "mg" }
-          ]
-        },
-      ],
+      supplements: [],
       analysisStatus: 'IDLE', // 'IDLE' | 'LOADING' | 'SUCCESS'
       analysisResult: null
     };
@@ -212,23 +238,23 @@ class SupplementWidget {
     listWrap.innerHTML = '';
 
     this.state.supplements.forEach((sup, idx) => {
+      const pillsHtml = this._buildNutrientPills(sup.customNutrients);
       listWrap.innerHTML += `
         <div class="sup-item" data-id="${sup.id}">
-          <div class="sup-item-info">
-            <div class="sup-item-icon">💊</div>
-            <div class="sup-item-text">
-              <span class="sup-item-name">${sup.name}</span>
-              <span class="sup-item-maker">${sup.manufacturer}</span>
-              ${sup.customNutrients && sup.customNutrients.length > 0
-                ? `<div class="sup-item-nutrients">${sup.customNutrients.map(n => `${n.name} ${n.amount}${n.unit}`).join(', ')}</div>`
-                : ''
-              }
+          <div class="sup-item-top">
+            <div class="sup-item-info">
+              <div class="sup-item-icon">💊</div>
+              <div class="sup-item-text">
+                <span class="sup-item-name">${sup.name}</span>
+                <span class="sup-item-maker">${sup.manufacturer || '직접입력'}</span>
+              </div>
             </div>
+            <button class="sup-item-del-btn" data-idx="${idx}">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+              삭제
+            </button>
           </div>
-          <button class="sup-item-del-btn" data-idx="${idx}">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-            삭제
-          </button>
+          ${pillsHtml}
         </div>
       `;
     });
@@ -238,10 +264,30 @@ class SupplementWidget {
         const i = parseInt(e.currentTarget.dataset.idx, 10);
         this.state.supplements.splice(i, 1);
         this.renderSupplements();
-        // 삭제 후 분석 상태 리셋
         if (this.state.analysisStatus === 'SUCCESS') this.resetAnalysis();
       });
     });
+  }
+
+  _buildNutrientPills(customNutrients) {
+    if (!customNutrients || customNutrients.length === 0) {
+      return `<div class="sup-item-nutrients-empty">성분 정보 없음 (직접 입력한 제품)</div>`;
+    }
+
+    const pills = customNutrients
+      .filter(n => n.amountMg > 0)
+      .sort((a, b) => b.amountMg - a.amountMg)
+      .slice(0, 7)
+      .map(n => {
+        const meta = NUTRIENT_META[n.nutrientId];
+        if (!meta) return '';
+        const val = formatNutrientAmount(n.amountMg);
+        if (!val) return '';
+        return `<span class="sup-nutrient-pill pill-${meta.category}">${meta.name} <strong>${val}</strong></span>`;
+      })
+      .join('');
+
+    return pills ? `<div class="sup-item-nutrients">${pills}</div>` : '';
   }
 
   resetAnalysis() {
@@ -291,13 +337,20 @@ class SupplementWidget {
           autoList.style.display = 'block';
           // 검색 결과 리스트 렌더링
           autoList.innerHTML = hits.map(h => {
-            const nutrientsText = h.customNutrients && h.customNutrients.length > 0
-              ? `<div style="font-size: 10px; color: #10b981; margin-top: 2px;">${h.customNutrients.map(n => `${n.name} ${n.amount}${n.unit}`).join(', ')}</div>`
-              : '';
+            const topNutrients = (h.customNutrients || [])
+              .filter(n => n.amountMg > 0)
+              .sort((a, b) => b.amountMg - a.amountMg)
+              .slice(0, 4)
+              .map(n => {
+                const meta = NUTRIENT_META[n.nutrientId];
+                return meta ? `${meta.name} ${formatNutrientAmount(n.amountMg)}` : null;
+              })
+              .filter(Boolean)
+              .join(' · ');
             return `<div class="sup-auto-item" data-id="${h.id}">
               <div style="font-weight: 600;">${h.name}</div>
               <div style="font-size: 11px; color:#888;">${h.manufacturer}</div>
-              ${nutrientsText}
+              ${topNutrients ? `<div style="font-size: 10px; color: #10b981; margin-top: 3px;">${topNutrients}</div>` : ''}
             </div>`;
           }).join('');
 
