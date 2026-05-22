@@ -30,6 +30,7 @@ const NUTRIENT_META = {
   PROBIOTICS:       { name: '유산균',    category: 'functional' },
   LUTEIN:           { name: '루테인',    category: 'functional' },
   MILK_THISTLE:     { name: '밀크시슬',  category: 'functional' },
+  COQ10:            { name: '코엔자임Q10', category: 'functional' },
 };
 
 function formatNutrientAmount(amountMg) {

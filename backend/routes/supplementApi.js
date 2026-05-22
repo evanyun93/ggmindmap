@@ -48,6 +48,7 @@ router.get('/search', async (req, res) => {
                         UNION ALL SELECT 'PROBIOTICS', n.probiotics WHERE n.probiotics > 0
                         UNION ALL SELECT 'LUTEIN', n.lutein WHERE n.lutein > 0
                         UNION ALL SELECT 'MILK_THISTLE', n.milk_thistle WHERE n.milk_thistle > 0
+                        UNION ALL SELECT 'COQ10', n.coq10 WHERE n.coq10 > 0
                       ) nut
                     ) AS "customNutrients"
                   FROM tba_supplements s
