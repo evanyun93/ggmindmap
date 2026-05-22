@@ -5,41 +5,41 @@ import { syncService } from '../services/sync.js';
 // amountMg: DB에 mg 단위로 저장. μg 단위 영양소(A, D, B12 등)는 저장 시 factor 0.001 적용됨.
 // → 값 < 1이면 μg로 환산해서 표시.
 const NUTRIENT_META = {
-  VIT_A:            { name: '비타민 A',  category: 'vitamin'    },
-  VIT_B1:           { name: '비타민 B1', category: 'vitamin'    },
-  VIT_B2:           { name: '비타민 B2', category: 'vitamin'    },
-  NIACIN:           { name: '나이아신',  category: 'vitamin'    },
-  PANTOTHENIC_ACID: { name: '판토텐산',  category: 'vitamin'    },
-  VIT_B6:           { name: '비타민 B6', category: 'vitamin'    },
-  BIOTIN:           { name: '비오틴',    category: 'vitamin'    },
-  FOLATE:           { name: '엽산',      category: 'vitamin'    },
-  VIT_B12:          { name: '비타민 B12',category: 'vitamin'    },
-  VIT_C:            { name: '비타민 C',  category: 'vitamin'    },
-  VIT_D:            { name: '비타민 D',  category: 'vitamin'    },
-  VIT_E:            { name: '비타민 E',  category: 'vitamin'    },
-  VIT_K:            { name: '비타민 K',  category: 'vitamin'    },
-  CALCIUM:          { name: '칼슘',      category: 'mineral'    },
-  MAGNESIUM:        { name: '마그네슘',  category: 'mineral'    },
-  IRON:             { name: '철분',      category: 'mineral'    },
-  ZINC:             { name: '아연',      category: 'mineral'    },
-  SELENIUM:         { name: '셀레늄',    category: 'mineral'    },
-  COPPER:           { name: '구리',      category: 'mineral'    },
-  MANGANESE:        { name: '망간',      category: 'mineral'    },
-  IODINE:           { name: '요오드',    category: 'mineral'    },
-  OMEGA3:           { name: '오메가3',   category: 'functional' },
-  PROBIOTICS:       { name: '유산균',    category: 'functional' },
-  LUTEIN:           { name: '루테인',    category: 'functional' },
-  MILK_THISTLE:     { name: '밀크시슬',  category: 'functional' },
-  COQ10:            { name: '코엔자임Q10', category: 'functional' },
+  VIT_A:            { name: '비타민 A',    category: 'vitamin',    color: '#ff9800' }, // 주황 (당근)
+  VIT_B1:           { name: '비타민 B1',   category: 'vitamin',    color: '#ffca28' }, // 황금
+  VIT_B2:           { name: '비타민 B2',   category: 'vitamin',    color: '#c6e000' }, // 라임
+  NIACIN:           { name: '나이아신',    category: 'vitamin',    color: '#ffb300' }, // 앰버
+  PANTOTHENIC_ACID: { name: '판토텐산',    category: 'vitamin',    color: '#26c6da' }, // 시안
+  VIT_B6:           { name: '비타민 B6',   category: 'vitamin',    color: '#29b6f6' }, // 스카이블루
+  BIOTIN:           { name: '비오틴',      category: 'vitamin',    color: '#f48fb1' }, // 핑크
+  FOLATE:           { name: '엽산',        category: 'vitamin',    color: '#81c784' }, // 연두
+  VIT_B12:          { name: '비타민 B12',  category: 'vitamin',    color: '#ef9a9a' }, // 연빨강
+  VIT_C:            { name: '비타민 C',    category: 'vitamin',    color: '#ff7043' }, // 시트러스 오렌지
+  VIT_D:            { name: '비타민 D',    category: 'vitamin',    color: '#ffe57f' }, // 햇살 노랑
+  VIT_E:            { name: '비타민 E',    category: 'vitamin',    color: '#66bb6a' }, // 초록
+  VIT_K:            { name: '비타민 K',    category: 'vitamin',    color: '#26a69a' }, // 다크 틸
+  CALCIUM:          { name: '칼슘',        category: 'mineral',    color: '#64b5f6' }, // 파랑
+  MAGNESIUM:        { name: '마그네슘',    category: 'mineral',    color: '#9575cd' }, // 보라
+  IRON:             { name: '철분',        category: 'mineral',    color: '#e57373' }, // 레드
+  ZINC:             { name: '아연',        category: 'mineral',    color: '#ba68c8' }, // 바이올렛
+  SELENIUM:         { name: '셀레늄',      category: 'mineral',    color: '#4db6ac' }, // 틸
+  COPPER:           { name: '구리',        category: 'mineral',    color: '#a1887f' }, // 구릿빛
+  MANGANESE:        { name: '망간',        category: 'mineral',    color: '#5c6bc0' }, // 인디고
+  IODINE:           { name: '요오드',      category: 'mineral',    color: '#4dd0e1' }, // 아쿠아
+  OMEGA3:           { name: '오메가3',     category: 'functional', color: '#1e88e5' }, // 오션블루
+  PROBIOTICS:       { name: '유산균',      category: 'functional', color: '#43a047' }, // 바이오 그린
+  LUTEIN:           { name: '루테인',      category: 'functional', color: '#f9a825' }, // 매리골드
+  MILK_THISTLE:     { name: '밀크시슬',    category: 'functional', color: '#ab47bc' }, // 엉겅퀴 보라
+  COQ10:            { name: '코엔자임Q10', category: 'functional', color: '#ffd600' }, // 골드
 };
 
 function formatNutrientAmount(amountMg) {
   if (amountMg == null || amountMg <= 0) return null;
   if (amountMg < 1) {
     const ug = amountMg * 1000;
-    return ug < 10 ? `${ug.toFixed(1)}μg` : `${Math.round(ug)}μg`;
+    return `${parseFloat(ug.toFixed(1))}μg`;
   }
-  return amountMg < 10 ? `${amountMg.toFixed(1)}mg` : `${Math.round(amountMg)}mg`;
+  return `${parseFloat(amountMg.toFixed(1))}mg`;
 }
 
 // ───────── API Mock Data (분석용은 아직 백엔드가 없으므로 유지) ─────────
@@ -171,7 +171,7 @@ class SupplementWidget {
   // 전체 프레임 렌더링
   render() {
     this.container.innerHTML = `
-      <h4 class="sup-section-title">내가 먹는 영양제 리스트</h4>
+      <h4 class="sup-section-title">내가 먹는 영양제 리스트 <span class="sup-daily-badge">1일 섭취 기준</span></h4>
       <div class="sup-list-container"></div>
       
       <div class="sup-add-container">
@@ -239,25 +239,55 @@ class SupplementWidget {
     listWrap.innerHTML = '';
 
     this.state.supplements.forEach((sup, idx) => {
-      const pillsHtml = this._buildNutrientPills(sup.customNutrients);
+      const dosage = sup.dailyDosage || 1;
+      const pillsHtml = this._buildNutrientPills(sup.customNutrients, dosage);
+      const isCustom = String(sup.id).startsWith('custom_');
       listWrap.innerHTML += `
-        <div class="sup-item" data-id="${sup.id}">
+        <div class="sup-item" data-id="${sup.id}" data-idx="${idx}">
           <div class="sup-item-top">
             <div class="sup-item-info">
               <div class="sup-item-icon">💊</div>
               <div class="sup-item-text">
                 <span class="sup-item-name">${sup.name}</span>
-                <span class="sup-item-maker">${sup.manufacturer || '직접입력'}</span>
+                <div class="sup-item-meta-row">
+                  <span class="sup-item-maker">${sup.manufacturer || '직접입력'}</span>
+                  <div class="sup-item-dosage">
+                    <button class="sup-dosage-btn sup-dosage-minus" data-idx="${idx}">−</button>
+                    <span class="sup-dosage-val">${dosage}</span>
+                    <span class="sup-dosage-unit">회/일</span>
+                    <button class="sup-dosage-btn sup-dosage-plus" data-idx="${idx}">+</button>
+                  </div>
+                </div>
               </div>
             </div>
-            <button class="sup-item-del-btn" data-idx="${idx}">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
-              삭제
-            </button>
+            <div class="sup-item-actions">
+              <button class="sup-item-edit-btn" data-idx="${idx}" title="영양성분 수정 (1회 섭취량 기준)">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                수정
+              </button>
+              <button class="sup-item-del-btn" data-idx="${idx}">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                삭제
+              </button>
+            </div>
           </div>
           ${pillsHtml}
         </div>
       `;
+    });
+
+    listWrap.querySelectorAll('.sup-dosage-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const i = parseInt(e.currentTarget.dataset.idx, 10);
+        const sup = this.state.supplements[i];
+        if (btn.classList.contains('sup-dosage-plus')) {
+          sup.dailyDosage = (sup.dailyDosage || 1) + 1;
+        } else {
+          sup.dailyDosage = Math.max(1, (sup.dailyDosage || 1) - 1);
+        }
+        this.renderSupplements();
+        if (this.state.analysisStatus === 'SUCCESS') this.resetAnalysis();
+      });
     });
 
     listWrap.querySelectorAll('.sup-item-del-btn').forEach(btn => {
@@ -268,9 +298,256 @@ class SupplementWidget {
         if (this.state.analysisStatus === 'SUCCESS') this.resetAnalysis();
       });
     });
+
+    listWrap.querySelectorAll('.sup-item-edit-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const i = parseInt(e.currentTarget.dataset.idx, 10);
+        this._openNutrientEditModal(i);
+      });
+    });
   }
 
-  _buildNutrientPills(customNutrients) {
+  _openNutrientEditModal(idx) {
+    const sup = this.state.supplements[idx];
+    const existingModal = document.getElementById('sup-edit-modal');
+    if (existingModal) existingModal.remove();
+
+    // 현재 영양소 값을 nutrientId → amountMg 맵으로 변환
+    const currentMap = {};
+    (sup.customNutrients || []).forEach(n => { currentMap[n.nutrientId] = n.amountMg; });
+
+    const categories = {
+      '비타민': ['VIT_A','VIT_B1','VIT_B2','NIACIN','PANTOTHENIC_ACID','VIT_B6','BIOTIN','FOLATE','VIT_B12','VIT_C','VIT_D','VIT_E','VIT_K'],
+      '미네랄': ['CALCIUM','MAGNESIUM','IRON','ZINC','SELENIUM','COPPER','MANGANESE','IODINE'],
+      '기능성': ['OMEGA3','PROBIOTICS','LUTEIN','MILK_THISTLE','COQ10'],
+    };
+
+    const buildRows = (ids) => ids.map(id => {
+      const meta = NUTRIENT_META[id];
+      const val = currentMap[id] || '';
+      const displayVal = val ? (val < 1 ? parseFloat((val * 1000).toFixed(1)) : parseFloat(val.toFixed(1))) : '';
+      const unit = val && val < 1 ? 'μg' : 'mg';
+      return `
+        <div class="sup-edit-row">
+          <label class="sup-edit-label" style="color:${meta.color}">${meta.name}</label>
+          <input class="sup-edit-input" type="number" min="0" step="any"
+            data-nutrient-id="${id}" data-unit="${unit}"
+            value="${displayVal}" placeholder="-">
+          <span class="sup-edit-unit">${unit}</span>
+        </div>`;
+    }).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'sup-edit-modal';
+    modal.className = 'sup-edit-modal-overlay';
+    modal.innerHTML = `
+      <div class="sup-edit-modal">
+        <div class="sup-edit-modal-header">
+          <div>
+            <div class="sup-edit-modal-title">영양성분 수정 <span class="sup-edit-per-serving">1회 섭취량 기준</span></div>
+            <div class="sup-edit-modal-sub">${sup.name} · ${sup.manufacturer || '직접입력'}</div>
+          </div>
+          <button class="sup-edit-close-btn">✕</button>
+        </div>
+        <div class="sup-edit-modal-body">
+          ${Object.entries(categories).map(([cat, ids]) => `
+            <div class="sup-edit-category">
+              <div class="sup-edit-cat-title">${cat}</div>
+              ${buildRows(ids)}
+            </div>
+          `).join('')}
+        </div>
+        <div class="sup-edit-modal-footer">
+          <span class="sup-edit-hint">값을 비워두면 해당 성분은 제거됩니다</span>
+          <div class="sup-edit-footer-btns">
+            <button class="sup-edit-cancel-btn">취소</button>
+            <button class="sup-edit-save-btn">저장</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.sup-edit-close-btn').addEventListener('click', () => modal.remove());
+    modal.querySelector('.sup-edit-cancel-btn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    modal.querySelector('.sup-edit-save-btn').addEventListener('click', async () => {
+      const inputs = modal.querySelectorAll('.sup-edit-input');
+      const newNutrients = {};
+      inputs.forEach(input => {
+        const id = input.dataset.nutrientId;
+        const unit = input.dataset.unit;
+        const raw = parseFloat(input.value);
+        if (!isNaN(raw) && raw > 0) {
+          // μg로 표시된 경우 mg으로 환산해서 저장
+          newNutrients[id] = unit === 'μg' ? raw / 1000 : raw;
+        } else {
+          newNutrients[id] = 0;
+        }
+      });
+
+      // DB 반영 (직접입력 제품은 스킵)
+      if (!String(sup.id).startsWith('custom_')) {
+        const dbPayload = {};
+        Object.entries(newNutrients).forEach(([id, mg]) => {
+          dbPayload[id.toLowerCase()] = mg;
+        });
+        try {
+          await apiFetch(`/api/supplements/${sup.id}/nutrients`, {
+            method: 'PUT',
+            body: JSON.stringify(dbPayload),
+          });
+        } catch (e) {
+          console.warn('DB 저장 실패, 로컬만 반영:', e);
+        }
+      }
+
+      // state 업데이트
+      sup.customNutrients = Object.entries(newNutrients)
+        .filter(([, mg]) => mg > 0)
+        .map(([id, mg]) => ({ nutrientId: id, amountMg: mg }));
+
+      modal.remove();
+      this.renderSupplements();
+    });
+  }
+
+  _openSuggestModal(prefillName = '') {
+    const existing = document.getElementById('sup-suggest-modal');
+    if (existing) existing.remove();
+
+    const categories = {
+      '비타민': ['VIT_A','VIT_B1','VIT_B2','NIACIN','PANTOTHENIC_ACID','VIT_B6','BIOTIN','FOLATE','VIT_B12','VIT_C','VIT_D','VIT_E','VIT_K'],
+      '미네랄': ['CALCIUM','MAGNESIUM','IRON','ZINC','SELENIUM','COPPER','MANGANESE','IODINE'],
+      '기능성': ['OMEGA3','PROBIOTICS','LUTEIN','MILK_THISTLE','COQ10'],
+    };
+
+    const buildRows = (ids) => ids.map(id => {
+      const meta = NUTRIENT_META[id];
+      const unit = ['VIT_A','VIT_D','FOLATE','VIT_B12','BIOTIN','SELENIUM','IODINE'].includes(id) ? 'μg' : 'mg';
+      return `
+        <div class="sup-edit-row">
+          <label class="sup-edit-label" style="color:${meta.color}">${meta.name}</label>
+          <input class="sup-edit-input" type="number" min="0" step="any"
+            data-nutrient-id="${id}" data-unit="${unit}" placeholder="-">
+          <span class="sup-edit-unit">${unit}</span>
+        </div>`;
+    }).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'sup-suggest-modal';
+    modal.className = 'sup-edit-modal-overlay';
+    modal.innerHTML = `
+      <div class="sup-edit-modal">
+        <div class="sup-edit-modal-header">
+          <div>
+            <div class="sup-edit-modal-title">영양제 사전 추가 제안 <span class="sup-suggest-badge">위키</span></div>
+            <div class="sup-edit-modal-sub">공식 성분표 기준 확인된 값만 입력해주세요</div>
+          </div>
+          <button class="sup-edit-close-btn">✕</button>
+        </div>
+        <div class="sup-suggest-meta">
+          <div class="sup-input-row" style="margin-bottom:0">
+            <label style="min-width:52px;font-size:12px;color:#9ca3af">제품명</label>
+            <input type="text" class="sup-input sup-suggest-name" value="${prefillName.replace(/"/g, '&quot;')}" placeholder="예: 센트룸 실버">
+          </div>
+          <div class="sup-input-row" style="margin-bottom:0">
+            <label style="min-width:52px;font-size:12px;color:#9ca3af">제조사</label>
+            <input type="text" class="sup-input sup-suggest-maker" placeholder="예: 한국화이자">
+          </div>
+        </div>
+        <div class="sup-edit-modal-body">
+          ${Object.entries(categories).map(([cat, ids]) => `
+            <div class="sup-edit-category">
+              <div class="sup-edit-cat-title">${cat}</div>
+              ${buildRows(ids)}
+            </div>
+          `).join('')}
+        </div>
+        <div class="sup-suggest-status" style="display:none;"></div>
+        <div class="sup-edit-modal-footer">
+          <span class="sup-edit-hint">2명 이상이 동일 정보를 제출하면 자동 반영됩니다</span>
+          <div class="sup-edit-footer-btns">
+            <button class="sup-edit-cancel-btn">취소</button>
+            <button class="sup-suggest-submit-btn">제안 제출하기</button>
+          </div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.sup-edit-close-btn').addEventListener('click', () => modal.remove());
+    modal.querySelector('.sup-edit-cancel-btn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+
+    modal.querySelector('.sup-suggest-submit-btn').addEventListener('click', async () => {
+      const name = modal.querySelector('.sup-suggest-name').value.trim();
+      const manufacturer = modal.querySelector('.sup-suggest-maker').value.trim();
+      if (!name) { alert('제품명을 입력해주세요.'); return; }
+
+      // 입력된 영양소 수집 (μg 입력값은 mg으로 변환)
+      const nutrients = {};
+      modal.querySelectorAll('.sup-edit-input').forEach(input => {
+        const raw = parseFloat(input.value);
+        if (!isNaN(raw) && raw > 0) {
+          const col = input.dataset.nutrientId.toLowerCase();
+          nutrients[col] = input.dataset.unit === 'μg' ? raw / 1000 : raw;
+        }
+      });
+
+      const submitBtn = modal.querySelector('.sup-suggest-submit-btn');
+      const statusEl  = modal.querySelector('.sup-suggest-status');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '제출 중...';
+
+      try {
+        const resp = await apiFetch('/api/supplements/submit', {
+          method: 'POST',
+          body: JSON.stringify({ name, manufacturer, nutrients }),
+        });
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          statusEl.className = 'sup-suggest-status error';
+          statusEl.textContent = data.error || '오류가 발생했습니다.';
+          statusEl.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = '제안 제출하기';
+          return;
+        }
+
+        statusEl.className = `sup-suggest-status ${data.status}`;
+        statusEl.textContent = data.message;
+        statusEl.style.display = 'block';
+        submitBtn.style.display = 'none';
+
+        // 내 리스트에도 추가 (영양소 포함)
+        const customNutrients = Object.entries(nutrients).map(([col, mg]) => ({
+          nutrientId: col.toUpperCase(),
+          amountMg: mg,
+        }));
+        this.addSupplement({
+          id: data.supplementId || `custom_${Date.now()}`,
+          name,
+          manufacturer,
+          dailyDosage: 1,
+          customNutrients,
+        });
+
+        setTimeout(() => modal.remove(), 3000);
+      } catch (err) {
+        console.error('제안 실패:', err);
+        statusEl.className = 'sup-suggest-status error';
+        statusEl.textContent = '네트워크 오류가 발생했습니다.';
+        statusEl.style.display = 'block';
+        submitBtn.disabled = false;
+        submitBtn.textContent = '제안 제출하기';
+      }
+    });
+  }
+
+  _buildNutrientPills(customNutrients, dosage = 1) {
     if (!customNutrients || customNutrients.length === 0) {
       return `<div class="sup-item-nutrients-empty">성분 정보 없음 (직접 입력한 제품)</div>`;
     }
@@ -282,9 +559,10 @@ class SupplementWidget {
       .map(n => {
         const meta = NUTRIENT_META[n.nutrientId];
         if (!meta) return '';
-        const val = formatNutrientAmount(n.amountMg);
+        const val = formatNutrientAmount(n.amountMg * dosage);
         if (!val) return '';
-        return `<span class="sup-nutrient-pill pill-${meta.category}">${meta.name} <strong>${val}</strong></span>`;
+        const c = meta.color;
+        return `<span class="sup-nutrient-pill" style="background:${c}1a;border-color:${c}4d;color:${c}">${meta.name} <strong>${val}</strong></span>`;
       })
       .join('');
 
@@ -375,9 +653,20 @@ class SupplementWidget {
             });
           });
         } else {
-          // 검색 결과가 없을 때 안내 메시지 표시
+          // 검색 결과가 없을 때: 직접입력 안내 + 사전 제안 버튼
           autoList.style.display = 'block';
-          autoList.innerHTML = `<div style="padding: 12px; text-align: center; color: #6b7280; font-size: 13px;">검색 결과가 없습니다. 아래 폼에서 직접 입력해주세요.</div>`;
+          autoList.innerHTML = `
+            <div class="sup-no-result">
+              <span>검색 결과가 없습니다.</span>
+              <button class="sup-suggest-open-btn" data-keyword="${v.replace(/"/g, '&quot;')}">
+                사전에 추가 제안하기
+              </button>
+            </div>`;
+          autoList.querySelector('.sup-suggest-open-btn').addEventListener('click', (e) => {
+            const keyword = e.currentTarget.dataset.keyword;
+            autoList.style.display = 'none';
+            this._openSuggestModal(keyword);
+          });
         }
       }, 300); // 300ms 디바운스 적용
     });

@@ -12,7 +12,8 @@ const PORT = process.env.PORT || 3000; // 백엔드 3000쓰자.
 const corsOptions = {
   origin: [
     'http://localhost:3001', // FE 포트 (3000에서 3001로 변경)
-    'http://localhost:5500', // Live Server 사용할 거면 유지
+    'http://localhost:5500',   // Live Server
+    'http://127.0.0.1:5500',  // Live Server (127.0.0.1 접속 시)
     'https://ggmindmap.vercel.app',
   ],
   credentials: true,

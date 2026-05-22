@@ -4,7 +4,7 @@
  */
 
 import { apiFetch } from '../services/api.js';
-import { syncService, SYNC_DATA_TYPES } from '../services/sync.js';
+import { SYNC_DATA_TYPES, syncService } from '../services/sync.js';
 import { showEditWarning } from './dashboard-grid.js';
 
 /** 기본 체크박스 색상 */

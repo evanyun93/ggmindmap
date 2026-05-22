@@ -43,6 +43,19 @@
   margin-top: 0;
 }
 
+/* "1일 섭취 기준" 배지 */
+.sup-daily-badge {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
+}
+
 /* ─── 내 영양제 관리 (카드 리스트) ─── */
 .sup-list-container {
   display: flex;
@@ -110,7 +123,55 @@
 .sup-item-maker {
   font-size: 11px;
   color: var(--text-secondary);
-  margin-top: 2px;
+  font-weight: 500;
+}
+
+/* 제조사 + 복용 횟수 가로 배치 */
+.sup-item-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 3px;
+  flex-wrap: wrap;
+}
+
+/* 복용 횟수 컨트롤 */
+.sup-item-dosage {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sup-dosage-btn {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.15);
+  background: rgba(255,255,255,0.06);
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: all 0.15s ease;
+}
+.sup-dosage-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: var(--success);
+}
+.sup-dosage-val {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  min-width: 14px;
+  text-align: center;
+}
+.sup-dosage-unit {
+  font-size: 10px;
+  color: var(--text-secondary);
   font-weight: 500;
 }
 .sup-item-nutrients {
@@ -155,13 +216,15 @@
   border-color: rgba(251, 146, 60, 0.3);
   color: #fdba74;
 }
-.sup-item-del-btn {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.2);
-  color: #f87171;
+.sup-item-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.sup-item-edit-btn, .sup-item-del-btn {
   border-radius: 8px;
   cursor: pointer;
-  padding: 8px 10px;
+  padding: 6px 10px;
   transition: all 0.2s ease;
   display: flex;
   flex-direction: column;
@@ -169,12 +232,168 @@
   font-weight: 700;
   align-items: center;
   gap: 2px;
+  border: 1px solid;
 }
-.sup-item-del-btn:hover {
-  background: #ef4444;
-  color: white;
-  transform: scale(1.05);
+.sup-item-edit-btn {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
 }
+.sup-item-edit-btn:hover { background: #6366f1; color: white; transform: scale(1.05); }
+.sup-item-del-btn {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+.sup-item-del-btn:hover { background: #ef4444; color: white; transform: scale(1.05); }
+
+/* ── 영양성분 편집 모달 ── */
+.sup-edit-modal-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  display: flex; align-items: center; justify-content: center;
+  backdrop-filter: blur(4px);
+}
+.sup-edit-modal {
+  background: var(--widget-bg, #1e2130);
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 16px;
+  width: 480px; max-width: 95vw;
+  max-height: 80vh;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.sup-edit-modal-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+.sup-edit-modal-title { font-size: 16px; font-weight: 700; color: var(--text-primary, #fff); display: flex; align-items: center; gap: 8px; }
+/* 사전 제안 위키 배지 */
+.sup-suggest-badge {
+  font-size: 10px; font-weight: 700;
+  padding: 2px 7px; border-radius: 100px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24; letter-spacing: 0.04em; vertical-align: middle;
+}
+/* 검색 결과 없음 + 제안 버튼 */
+.sup-no-result {
+  padding: 10px 12px;
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 13px; color: #6b7280;
+}
+.sup-suggest-open-btn {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399; border-radius: 6px;
+  padding: 4px 10px; font-size: 12px; font-weight: 600;
+  cursor: pointer; transition: all 0.2s;
+  white-space: nowrap;
+}
+.sup-suggest-open-btn:hover {
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.5);
+}
+/* 제안 모달 — 제품명/제조사 입력 영역 */
+.sup-suggest-meta {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 14px 20px 10px;
+  border-bottom: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+/* 제출 결과 상태 메시지 */
+.sup-suggest-status {
+  margin: 0 20px 2px;
+  padding: 10px 14px; border-radius: 8px;
+  font-size: 13px; font-weight: 500; line-height: 1.5;
+}
+.sup-suggest-status.pending {
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+}
+.sup-suggest-status.approved {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+.sup-suggest-status.error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+/* 제안 제출 버튼 */
+.sup-suggest-submit-btn {
+  padding: 9px 18px; border-radius: 8px; border: none;
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff; font-size: 14px; font-weight: 700;
+  cursor: pointer; transition: all 0.2s;
+}
+.sup-suggest-submit-btn:hover:not(:disabled) {
+  filter: brightness(1.1); transform: translateY(-1px);
+}
+.sup-suggest-submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.sup-edit-per-serving {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 100px;
+  background: rgba(99, 102, 241, 0.12);
+  border: 1px solid rgba(99, 102, 241, 0.3);
+  color: #a5b4fc;
+  letter-spacing: 0.02em;
+}
+.sup-edit-modal-sub { font-size: 12px; color: var(--text-secondary, #9ca3af); margin-top: 3px; }
+.sup-edit-close-btn {
+  background: none; border: none; color: var(--text-secondary, #9ca3af);
+  cursor: pointer; font-size: 18px; padding: 2px 6px;
+}
+.sup-edit-close-btn:hover { color: #fff; }
+.sup-edit-modal-body {
+  overflow-y: auto; padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 16px;
+}
+.sup-edit-category {}
+.sup-edit-cat-title {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  color: var(--text-secondary, #6b7280); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.sup-edit-row {
+  display: grid; grid-template-columns: 100px 1fr 36px;
+  align-items: center; gap: 8px; margin-bottom: 6px;
+}
+.sup-edit-label { font-size: 12px; font-weight: 600; }
+.sup-edit-input {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 6px; color: #fff;
+  padding: 5px 8px; font-size: 12px; width: 100%;
+  transition: border-color 0.2s;
+}
+.sup-edit-input:focus { outline: none; border-color: rgba(99,102,241,0.6); }
+.sup-edit-input::placeholder { color: rgba(255,255,255,0.2); }
+.sup-edit-unit { font-size: 11px; color: var(--text-secondary, #6b7280); }
+.sup-edit-modal-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-color, rgba(255,255,255,0.08));
+}
+.sup-edit-hint { font-size: 11px; color: var(--text-secondary, #6b7280); }
+.sup-edit-footer-btns { display: flex; gap: 8px; }
+.sup-edit-cancel-btn {
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+  color: var(--text-secondary, #9ca3af); border-radius: 8px;
+  padding: 8px 16px; font-size: 13px; cursor: pointer;
+}
+.sup-edit-save-btn {
+  background: #6366f1; border: none; color: #fff;
+  border-radius: 8px; padding: 8px 20px; font-size: 13px;
+  font-weight: 700; cursor: pointer; transition: background 0.2s;
+}
+.sup-edit-save-btn:hover { background: #4f46e5; }
 
 /* 영양제 추가하기 영역 */
 .sup-add-container {
