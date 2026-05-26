@@ -667,23 +667,71 @@
   box-shadow: 0 0 10px currentColor;
 }
 
-/* 출처 박스 */
-.sup-ai-detail-box {
-  margin-top: 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 20px;
+/* ─── 복용량 상세 카드 ─── */
+.sup-detail-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sup-detail-card {
+  background: rgba(255,255,255,0.03);
+  border-radius: 10px;
+  padding: 14px 16px;
+  border-left: 3px solid var(--accent, #6b7280);
+}
+.sup-detail-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.sup-detail-nutrient-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.sup-detail-total {
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--accent, #6b7280);
+}
+.sup-detail-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.sup-detail-source-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 3px 0;
+}
+.sup-detail-no-source { opacity: 0.5; font-style: italic; }
+.sup-detail-rda-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-secondary);
+  padding-top: 8px;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  opacity: 0.7;
+}
+.sup-detail-pct {
+  font-weight: 700;
+  color: var(--accent, #6b7280);
+  opacity: 1;
 }
 .sup-bot-msg {
   background: rgba(139, 92, 246, 0.08);
-  border-left: 4px solid var(--accent-purple);
-  padding: 14px;
+  border-left: 3px solid var(--accent-purple);
+  padding: 10px 12px;
   border-radius: 8px;
   display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-top: 15px;
+  gap: 10px;
+  align-items: flex-start;
+  margin-top: 10px;
 }
 
 /* 다크 테마 대응 고도화 (과다/부족 색상) */
@@ -695,3 +743,113 @@
 .nc-GREEN .sup-progress-fill { background: #10b981; color: #10b981; }
 .nc-YELLOW .sup-nc-status { color: #fbbf24; }
 .nc-YELLOW .sup-progress-fill { background: #facc15; color: #facc15; }
+/* 고용량(HIGH): UL 없는 수용성 비타민 — 경고 아닌 안내 톤 */
+.nc-TEAL .sup-nc-status { color: #2dd4bf; }
+.nc-TEAL .sup-progress-fill { background: #14b8a6; color: #14b8a6; }
+.nc-TEAL .sup-nutrient-card { border-color: rgba(20, 184, 166, 0.2); }
+.sup-nc-footnote {
+  font-size: 10px;
+  margin-top: 8px;
+  opacity: 0.8;
+  letter-spacing: 0.01em;
+}
+.sup-nc-high-note { color: #2dd4bf; }
+.sup-nc-missing-note { color: #9ca3af; }
+
+/* 미복용 영양소 카드 — 비활성 느낌 */
+.sup-nutrient-card.nc-missing {
+  opacity: 0.55;
+  border-style: dashed;
+}
+.sup-nutrient-card.nc-missing:hover {
+  opacity: 0.8;
+  transform: none;
+}
+
+/* ─── 분석 뱃지 (AI/기준) ─── */
+.sup-btn-analyze span { color: #fff; }
+
+.sup-analysis-badge {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 10px;
+  margin-top: 6px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.sup-analysis-badge.badge-ai {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+.sup-analysis-badge.badge-rule {
+  background: rgba(156, 163, 175, 0.15);
+  color: #d1d5db;
+  border: 1px solid rgba(156, 163, 175, 0.3);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.sup-analysis-badge.badge-rule:hover {
+  background: rgba(156, 163, 175, 0.28);
+  color: #f3f4f6;
+}
+.sup-badge-info {
+  font-size: 10px;
+  opacity: 0.65;
+}
+
+/* ─── 분석 기준 안내 모달 ─── */
+.sup-criteria-modal-inner {
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+.sup-criteria-profile {
+  font-size: 12px;
+  color: var(--text-secondary);
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+.sup-criteria-profile strong {
+  color: var(--text-primary);
+}
+.sup-criteria-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 16px;
+}
+.sup-criteria-table th {
+  text-align: left;
+  padding: 7px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+}
+.sup-criteria-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  color: var(--text-primary);
+  font-size: 12px;
+}
+.sup-criteria-table tr:last-child td { border-bottom: none; }
+.sup-criteria-legend {
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.sup-criteria-source {
+  font-size: 10px;
+  color: var(--text-secondary);
+  margin-top: 12px;
+  text-align: right;
+  opacity: 0.6;
+}

@@ -108,10 +108,7 @@ class SupplementWidget {
 
     // State 객체
     this.state = {
-      userProfile: {
-        gender: 'FEMALE', age: 32, weightKg: 55, heightCm: 165,
-        isPregnant: false, medicalConditions: [], currentMedications: []
-      },
+      healthInfo: null,  // /api/auth/health-info 에서 로드
       supplements: [],
       analysisStatus: 'IDLE', // 'IDLE' | 'LOADING' | 'SUCCESS'
       analysisResult: null
@@ -122,9 +119,52 @@ class SupplementWidget {
 
     // 타임아웃
     this.debounceTimer = null;
+    this.saveTimer = null;
 
     this.initCollapse(el);
     this.render();
+    this._loadList();
+  }
+
+  get _widgetId() {
+    return this.el.dataset.id;
+  }
+
+  async _loadList() {
+    try {
+      const [listRes, healthRes] = await Promise.all([
+        apiFetch(`/api/supplements/user-list?widgetId=${encodeURIComponent(this._widgetId)}`),
+        apiFetch('/api/auth/health-info'),
+      ]);
+      if (listRes.ok) {
+        const list = await listRes.json();
+        if (Array.isArray(list) && list.length > 0) {
+          this.state.supplements = list;
+          this.renderSupplements();
+        }
+      }
+      if (healthRes.ok) {
+        const { healthInfo } = await healthRes.json();
+        this.state.healthInfo = healthInfo || null;
+      }
+    } catch (err) {
+      console.error('[Supplement] 초기 데이터 로드 실패:', err);
+    }
+  }
+
+  _saveList() {
+    clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(async () => {
+      try {
+        await apiFetch('/api/supplements/user-list', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ widgetId: this._widgetId, supplements: this.state.supplements }),
+        });
+      } catch (err) {
+        console.error('[Supplement] 목록 저장 실패:', err);
+      }
+    }, 800);
   }
 
   // 💡 [V6 추가] 접기/펼치기 기능 및 초기 상태 로드
@@ -286,6 +326,7 @@ class SupplementWidget {
           sup.dailyDosage = Math.max(1, (sup.dailyDosage || 1) - 1);
         }
         this.renderSupplements();
+        this._saveList();
         if (this.state.analysisStatus === 'SUCCESS') this.resetAnalysis();
       });
     });
@@ -295,6 +336,7 @@ class SupplementWidget {
         const i = parseInt(e.currentTarget.dataset.idx, 10);
         this.state.supplements.splice(i, 1);
         this.renderSupplements();
+        this._saveList();
         if (this.state.analysisStatus === 'SUCCESS') this.resetAnalysis();
       });
     });
@@ -410,6 +452,7 @@ class SupplementWidget {
 
       modal.remove();
       this.renderSupplements();
+      this._saveList();
     });
   }
 
@@ -569,6 +612,92 @@ class SupplementWidget {
     return pills ? `<div class="sup-item-nutrients">${pills}</div>` : '';
   }
 
+  _showCriteriaModal() {
+    const existing = document.getElementById('sup-criteria-modal');
+    if (existing) existing.remove();
+
+    const { nutrientDetails, profile } = this.state.analysisResult || {};
+    if (!nutrientDetails) return;
+
+    // 적용된 프로필 텍스트
+    const genderLabel = profile?.gender === 'MALE' ? '남성' : '여성';
+    const age = profile?.age || 30;
+    const ageGroupLabel = age < 30 ? '19–29세 (청년)' : age < 50 ? '30–49세 (성인)' : age < 65 ? '50–64세 (중장년)' : '65세 이상 (노년)';
+    const profileText = profile?.hasHealthInfo
+      ? `${genderLabel} · ${ageGroupLabel}${profile.isPregnant ? ' · 임신 중' : ''}`
+      : '일반 성인 기준 (건강 정보 미입력 → 30세 여성 기준)';
+
+    // 평가 기준 색상/설명
+    const STATUS_INFO = {
+      '위험': { color: '#f87171', desc: '상한섭취량(UL) 초과 — 독성 위험' },
+      '과다': { color: '#fb923c', desc: '권장량 150% 초과 (UL 있는 영양소) — 축적 주의' },
+      '초과': { color: '#fbbf24', desc: '권장량 100–150% — 약간 초과' },
+      '적정': { color: '#34d399', desc: '권장량 50–100% — 적정 범위' },
+      '부족': { color: '#60a5fa', desc: '권장량 50% 미만 — 보충 고려' },
+      '고용량': { color: '#2dd4bf', desc: '권장량 150% 초과 (UL 없는 수용성) — 초과분은 체외 배출' },
+      '참고': { color: '#9ca3af', desc: '공식 권장량 없음 — 참고 정보' },
+    };
+
+    const rowsHtml = nutrientDetails.map(n => {
+      const si = STATUS_INFO[n.status] || STATUS_INFO['참고'];
+      const rdaStr = n.recommendedAmount != null ? `${n.recommendedAmount}${n.unit}` : '기준 없음';
+      const amtStr = `${n.currentAmount}${n.unit}`;
+      return `
+        <tr>
+          <td>${n.name}</td>
+          <td>${amtStr}</td>
+          <td>${rdaStr}</td>
+          <td style="color:${si.color}; font-weight:700;">${n.status}</td>
+        </tr>`;
+    }).join('');
+
+    const legendHtml = Object.entries(STATUS_INFO).map(([label, v]) => `
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="width:9px; height:9px; border-radius:50%; background:${v.color}; flex-shrink:0;"></span>
+        <span style="color:${v.color}; font-weight:700; min-width:28px;">${label}</span>
+        <span style="color:#9ca3af; font-size:11px;">${v.desc}</span>
+      </div>`).join('');
+
+    const modal = document.createElement('div');
+    modal.id = 'sup-criteria-modal';
+    modal.className = 'sup-edit-modal-overlay';
+    modal.innerHTML = `
+      <div class="sup-edit-modal sup-criteria-modal-inner">
+        <div class="sup-edit-modal-header">
+          <div>
+            <div class="sup-edit-modal-title">분석 기준 안내</div>
+            <div class="sup-edit-modal-sub">한국인 영양섭취기준 2020 (보건복지부·한국영양학회)</div>
+          </div>
+          <button class="sup-edit-close-btn">✕</button>
+        </div>
+        <div class="sup-edit-modal-body" style="padding:0 20px 16px;">
+          <div class="sup-criteria-profile">
+            적용된 프로필: <strong>${profileText}</strong>
+          </div>
+          <table class="sup-criteria-table">
+            <thead>
+              <tr>
+                <th>영양소</th>
+                <th>섭취량</th>
+                <th>권장량(RDA)</th>
+                <th>평가</th>
+              </tr>
+            </thead>
+            <tbody>${rowsHtml}</tbody>
+          </table>
+          <div class="sup-criteria-legend">
+            <div style="font-size:11px; font-weight:700; color:var(--text-secondary); margin-bottom:6px;">평가 기준</div>
+            ${legendHtml}
+          </div>
+          <div class="sup-criteria-source">출처: 보건복지부·한국영양학회 「한국인 영양섭취기준」 2020년</div>
+        </div>
+      </div>`;
+
+    document.body.appendChild(modal);
+    modal.querySelector('.sup-edit-close-btn').addEventListener('click', () => modal.remove());
+    modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
+  }
+
   resetAnalysis() {
     this.state.analysisStatus = 'IDLE';
     this.state.analysisResult = null;
@@ -693,35 +822,17 @@ class SupplementWidget {
       this.uiState.isAddFormOpen = false;
     });
 
-    // 분석하기 클릭 (현재는 Mock API 유지, 추후 분석 백엔드 완성 시 연동)
+    // 분석하기 클릭
     btnAnalyze.addEventListener('click', async () => {
-      if (this.state.supplements.length === 0) return alert("영양제를 추가해주세요.");
+      if (this.state.supplements.length === 0) return alert('영양제를 추가해주세요.');
 
-      // 상태 변경 UI (LOADING)
-      this.state.analysisStatus = 'LOADING';
-      btnAnalyze.classList.add('loading');
-      btnAnalyze.innerHTML = `<div class="sup-spinner"></div><span>AI 분석 중...</span>`;
-
-      // Request Payload 구성
-      const payload = {
-        userProfile: this.state.userProfile,
-        currentSupplements: this.state.supplements
-      };
-
-      try {
-        const res = await mockApiAnalysis(payload);
-
-        if (res.success) {
-          this.state.analysisStatus = 'SUCCESS';
-          this.state.analysisResult = res.data;
-          this.renderAnalysisResults();
-        }
-      } catch (err) {
-        console.error("분석 오류:", err);
-      } finally {
-        btnAnalyze.classList.remove('loading');
-        btnAnalyze.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>분석 다시하기</span>`;
+      // healthInfo 없으면 선택 배너 표시
+      if (!this.state.healthInfo) {
+        const proceed = await this._askHealthInfoChoice();
+        if (proceed === null) return; // 취소
       }
+
+      this._runAnalysis(btnAnalyze);
     });
 
     this.container.querySelector('.sup-btn-cancel').addEventListener('click', () => {
@@ -763,9 +874,81 @@ class SupplementWidget {
     }
   }
 
+  // healthInfo 없을 때 선택지 제시 → Promise: true(바로 분석) | false(대시보드로) | null(취소)
+  _askHealthInfoChoice() {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'sup-edit-modal-overlay';
+      overlay.innerHTML = `
+        <div class="sup-edit-modal" style="max-width:360px; padding:24px;">
+          <div style="font-size:15px; font-weight:700; margin-bottom:8px;">건강 정보가 없어요</div>
+          <div style="font-size:13px; color:#6b7280; line-height:1.6; margin-bottom:20px;">
+            성별·나이 등 건강 정보를 입력하면 더 정확한 분석이 가능해요.<br>
+            지금 입력하거나, 일반 성인 기준으로 바로 분석할 수 있어요.
+          </div>
+          <div style="display:flex; flex-direction:column; gap:8px;">
+            <button class="sup-suggest-submit-btn" id="sup-goto-health">건강 정보 입력하러 가기</button>
+            <button style="padding:10px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; cursor:pointer; font-size:13px;" id="sup-analyze-anyway">일반 기준으로 바로 분석</button>
+            <button style="padding:8px; background:none; border:none; color:#9ca3af; cursor:pointer; font-size:12px;" id="sup-health-cancel">취소</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+
+      overlay.querySelector('#sup-goto-health').addEventListener('click', () => {
+        overlay.remove();
+        // 대시보드 건강정보 섹션으로 스크롤/열기 시도
+        const healthBtn = document.querySelector('[data-action="open-health-info"], .health-info-btn, #healthInfoBadge');
+        if (healthBtn) healthBtn.click();
+        resolve(false);
+      });
+      overlay.querySelector('#sup-analyze-anyway').addEventListener('click', () => {
+        overlay.remove();
+        resolve(true);
+      });
+      overlay.querySelector('#sup-health-cancel').addEventListener('click', () => {
+        overlay.remove();
+        resolve(null);
+      });
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) { overlay.remove(); resolve(null); } });
+    });
+  }
+
+  async _runAnalysis(btnAnalyze) {
+    this.state.analysisStatus = 'LOADING';
+    btnAnalyze.classList.add('loading');
+    btnAnalyze.innerHTML = `<div class="sup-spinner"></div><span>AI 분석 중...</span>`;
+
+    try {
+      const res = await apiFetch('/api/supplements/analyze', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ supplements: this.state.supplements }),
+      });
+      const result = await res.json();
+
+      if (result.success) {
+        this.state.analysisStatus = 'SUCCESS';
+        this.state.analysisResult = result.data;
+        this.renderAnalysisResults();
+      } else {
+        alert(result.error || '분석 중 오류가 발생했습니다.');
+        this.state.analysisStatus = 'IDLE';
+      }
+    } catch (err) {
+      console.error('분석 오류:', err);
+      alert('분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      this.state.analysisStatus = 'IDLE';
+    } finally {
+      btnAnalyze.classList.remove('loading');
+      const isDone = this.state.analysisStatus === 'SUCCESS';
+      btnAnalyze.innerHTML = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>${isDone ? '분석 다시하기' : '분석하기'}</span>`;
+    }
+  }
+
   addSupplement(supInfo) {
     this.state.supplements.push(supInfo);
     this.renderSupplements();
+    this._saveList();
     this.resetAnalysis();
   }
 
@@ -775,10 +958,10 @@ class SupplementWidget {
     resBox.style.display = 'block';
 
     if (!this.state.analysisResult) return;
-    const { summary, nutrientDetails } = this.state.analysisResult;
+    const { summary, nutrientDetails, usedAI } = this.state.analysisResult;
 
     const alertBox = this.container.querySelector('.sup-ai-alert');
-    if (summary.status === 'WARNING') {
+    if (summary.status === 'WARNING' || summary.status === 'CAUTION') {
       alertBox.className = 'sup-ai-alert visible alert-warning';
     } else {
       alertBox.className = 'sup-ai-alert visible alert-success';
@@ -786,6 +969,20 @@ class SupplementWidget {
 
     alertBox.querySelector('.alert-title-text').textContent = summary.title;
     alertBox.querySelector('.sup-ai-message').textContent = summary.message;
+    // AI vs 룰 기반 뱃지
+    const existingBadge = alertBox.querySelector('.sup-analysis-badge');
+    if (existingBadge) existingBadge.remove();
+    const badge = document.createElement('span');
+    if (usedAI) {
+      badge.className = 'sup-analysis-badge badge-ai';
+      badge.textContent = '🤖 AI 분석';
+    } else {
+      badge.className = 'sup-analysis-badge badge-rule';
+      badge.innerHTML = '📊 기준 분석 <span class="sup-badge-info">ⓘ</span>';
+      badge.title = '분석 기준 보기';
+      badge.addEventListener('click', () => this._showCriteriaModal());
+    }
+    alertBox.querySelector('.sup-ai-message').after(badge);
 
     const grid = this.container.querySelector('.sup-nutrient-grid');
     grid.innerHTML = '';
@@ -797,13 +994,20 @@ class SupplementWidget {
       if (n.nutrientId === 'VITAMIN_C') iconChar = '🍋';
       if (n.nutrientId === 'ZINC') iconChar = '💎';
 
-      grid.innerHTML += `
-        <div class="sup-nutrient-card nc-${n.color}">
+      const highNote = n.color === 'TEAL'
+      ? `<div class="sup-nc-footnote sup-nc-high-note">💧 수용성 — 초과분은 체외 배출</div>`
+      : '';
+    const missingNote = n.missing
+      ? `<div class="sup-nc-footnote sup-nc-missing-note">현재 복용 중인 영양제에 없음</div>`
+      : '';
+
+    grid.innerHTML += `
+        <div class="sup-nutrient-card nc-${n.color}${n.missing ? ' nc-missing' : ''}">
           <div class="sup-nc-header">
             <div class="sup-nc-icon">${iconChar}</div>
             <div class="sup-nc-title-wrap">
               <span class="sup-nc-name">${n.name}</span>
-              <span class="sup-nc-status">${n.status} / ${n.percentage}%</span>
+              <span class="sup-nc-status">${n.status} / ${n.percentage != null ? n.percentage + '%' : '-'}</span>
             </div>
           </div>
           <div class="sup-progress-wrapper">
@@ -814,9 +1018,10 @@ class SupplementWidget {
             <div class="sup-progress-labels">
               <span>${n.currentAmount}${n.unit}</span>
               <span>100%</span>
-              <span>${n.recommendedAmount}${n.unit}</span>
+              <span>${n.recommendedAmount != null ? n.recommendedAmount + n.unit : '-'}</span>
             </div>
           </div>
+          ${highNote}${missingNote}
         </div>
       `;
     });
@@ -832,22 +1037,37 @@ class SupplementWidget {
     const botBox = this.container.querySelector('.sup-bottom-details');
     botBox.innerHTML = '';
 
-    const overdoses = nutrientDetails.filter(n => n.status === '과다' || n.percentage > 100);
-    if (overdoses.length > 0) {
-      let html = `<div class="sup-ai-detail-box">`;
-      overdoses.forEach(ov => {
-        html += `<div style="font-weight:700; margin-bottom:8px;">${ov.name} 과다 복용 출처 확인</div>`;
-        ov.sources.forEach(src => {
-          html += `<div class="sup-ai-detail-item"><span>${src.name}</span><span>${src.amount}${src.unit}</span></div>`;
-        });
-        html += `
-          <div class="sup-ai-detail-item" style="border-top:2px solid #e5e7eb; border-bottom:none; font-weight:700;">
-            <span>총계</span><span style="color:#b91c1c;">${ov.currentAmount}${ov.unit} (권장량 초과)</span>
-          </div>`;
+    // 위험/과다/초과 항목 + AI 코멘트 있는 항목 포함
+    const notable = nutrientDetails.filter(n =>
+      ['위험', '과다', '초과'].includes(n.status) || n.aiBotMessage
+    );
+    if (notable.length > 0) {
+      const colorByStatus = { '위험': '#f87171', '과다': '#fb923c', '초과': '#fbbf24' };
+      let html = `<h4 class="sup-section-title" style="margin-top:24px;">복용량 상세 확인</h4><div class="sup-detail-cards">`;
+      notable.forEach(ov => {
+        const accentColor = colorByStatus[ov.status] || '#9ca3af';
+        const sourcesHtml = ov.sources.length > 0
+          ? ov.sources.map(src =>
+              `<div class="sup-detail-source-row"><span>${src.name}</span><span>${src.amount}${src.unit}</span></div>`
+            ).join('')
+          : `<div class="sup-detail-source-row sup-detail-no-source"><span>출처 정보 없음</span></div>`;
+        const botHtml = ov.aiBotMessage
+          ? `<div class="sup-bot-msg"><div class="sup-bot-icon">🤖</div><div style="font-size:12px;line-height:1.5;">${ov.aiBotMessage}</div></div>`
+          : '';
 
-        if (ov.aiBotMessage) {
-          html += `<div class="sup-bot-msg"><div class="sup-bot-icon">🤖</div><div style="font-size:12px; line-height:1.4;">${ov.aiBotMessage}</div></div>`;
-        }
+        html += `
+          <div class="sup-detail-card" style="--accent:${accentColor}">
+            <div class="sup-detail-card-header">
+              <span class="sup-detail-nutrient-name">${ov.name}</span>
+              <span class="sup-detail-total">${ov.currentAmount}${ov.unit}</span>
+            </div>
+            <div class="sup-detail-sources">${sourcesHtml}</div>
+            <div class="sup-detail-rda-row">
+              <span>권장량 ${ov.recommendedAmount != null ? ov.recommendedAmount + ov.unit : '-'}</span>
+              <span class="sup-detail-pct">${ov.percentage != null ? ov.percentage + '%' : ''}</span>
+            </div>
+            ${botHtml}
+          </div>`;
       });
       html += `</div>`;
       botBox.innerHTML = html;
