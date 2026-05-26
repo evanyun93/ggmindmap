@@ -89,7 +89,7 @@ function resolveProfile(healthInfo) {
   const gender = (healthInfo?.gender || 'FEMALE').toUpperCase();
   const birthYear = parseInt(healthInfo?.birthYear) || 0;
   const age = birthYear > 0 ? (new Date().getFullYear() - birthYear) : 30;
-  const isPregnant = gender === 'FEMALE' && !!(healthInfo?.isPregnant);
+  const isPregnant = gender === 'FEMALE' && healthInfo?.isPregnant === 'yes';
   return { gender, age, isPregnant };
 }
 

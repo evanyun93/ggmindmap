@@ -1072,6 +1072,14 @@ class SupplementWidget {
       html += `</div>`;
       botBox.innerHTML = html;
     }
+
+    // 면책 문구 — 항상 분석 결과 하단에 표시
+    botBox.insertAdjacentHTML('beforeend', `
+      <div class="sup-disclaimer">
+        <span class="sup-disclaimer-icon">⚠️</span>
+        <p>본 분석은 한국인 영양섭취기준(2020 DRI) 및 AI를 활용한 <strong>참고용 정보</strong>입니다. 의학적 진단이나 치료를 대체하지 않으며, 건강 관련 중요한 결정은 반드시 의사 또는 전문 영양사와 상담하시기 바랍니다.</p>
+      </div>
+    `);
   }
 }
 

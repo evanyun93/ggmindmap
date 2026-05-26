@@ -236,7 +236,7 @@ export function getDashboardHTML(user) {
         </div>
         <div style="background: #f8f9fa; padding: 24px; border-radius: 12px; border: 1px solid #eee; text-align: center;">
             <h5 style="margin: 0 0 8px 0; font-size: 20px; color: #8B5CF6;">MindMap</h5>
-            <p style="margin: 0 0 24px 0; font-size: 14px; color: #6c757d;">Version 2.1.0</p>
+            <p style="margin: 0 0 24px 0; font-size: 14px; color: #6c757d;">Version 3.0.0</p>
             <p style="margin: 0 0 12px 0; font-size: 13px; color: #adb5bd; font-weight: 600;">만든이</p>
             <a href="https://www.instagram.com/yun.boy" target="_blank" style="display: inline-flex; align-items: center; gap: 8px; color: #E1306C; text-decoration: none; font-weight: bold; background: white; padding: 12px 24px; border-radius: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #f1f3f5; transition: transform 0.2s;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
