@@ -714,7 +714,13 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 }
             };
 
-            inputEl.onblur = saveEdit;
+            inputEl.onblur = (ev) => {
+                // 같은 아이템 내부 요소(색상버튼, 위치버튼 등) 클릭 시 blur 무시
+                // — 위치 피커 모달은 body 직속이라 relatedTarget이 null이 될 수 있으므로
+                //   모달 오픈 중에는 setBtn.onclick에서 별도로 재포커스 처리함
+                if (ev.relatedTarget && itemEl.contains(ev.relatedTarget)) return;
+                saveEdit();
+            };
             inputEl.onkeydown = (ev) => {
                 ev.stopPropagation();
                 if (ev.key === 'Enter') inputEl.blur();
@@ -764,6 +770,13 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                         name: itemEl.dataset.locationName || null
                     };
                     const result = await openLocationPicker(initial);
+
+                    // 모달이 닫힌 후 수정모드가 살아있으면 input 재포커스
+                    if (itemEl.classList.contains('is-editing-task')) {
+                        const activeInput = itemEl.querySelector('.todo-edit-input');
+                        if (activeInput) setTimeout(() => activeInput.focus(), 0);
+                    }
+
                     if (!result) return;
 
                     // 즉시 DOM 반영
