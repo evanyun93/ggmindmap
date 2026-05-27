@@ -632,13 +632,10 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             const locationWrap = itemEl.querySelector('.todo-location-wrap');
 
             if (itemEl.classList.contains('is-editing-task')) {
-                inputEl.blur();
+                // blur 체인 대신 직접 호출 — iOS에서 blur()가 no-op인 경우 대응
+                if (typeof itemEl._pendingSaveEdit === 'function') itemEl._pendingSaveEdit();
                 return;
             }
-
-            // 모바일에서 blur(saveEdit) → click 순서로 발생할 때 재진입 방지
-            // saveEdit이 실행된 지 300ms 이내면 편집 모드 재진입을 건너뜀
-            if (itemEl._editExitTime && Date.now() - itemEl._editExitTime < 300) return;
 
             itemEl.classList.add('is-editing-task');
             textEl.classList.add('hidden');
@@ -658,20 +655,24 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             cancelBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
             cancelBtn.style.cssText = `background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; display:flex; align-items:center; justify-content:center; transform:scale(1.1); position:relative; z-index:9999; pointer-events:auto;`;
 
-            cancelBtn.onmousedown = (ev) => {
-                ev.preventDefault();
-                ev.stopPropagation();
+            // 취소: 원문 복원 후 saveEdit 직접 호출 (모바일/데스크탑 공통)
+            const doCancel = (ev) => {
+                if (ev) { ev.preventDefault(); ev.stopPropagation(); }
                 inputEl.value = textEl.textContent;
-                inputEl.blur();
+                if (typeof itemEl._pendingSaveEdit === 'function') itemEl._pendingSaveEdit();
             };
-            cancelBtn.ontouchstart = cancelBtn.onmousedown;
+            cancelBtn.onmousedown = doCancel;
+            cancelBtn.ontouchend = (ev) => { ev.preventDefault(); doCancel(ev); };
             editBtn.parentNode.insertBefore(cancelBtn, editBtn.nextSibling);
 
             inputEl.focus();
             inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
 
             const saveEdit = async () => {
-                itemEl._editExitTime = Date.now(); // 모바일 재진입 방지용 타임스탬프
+                // 중복 실행 방지 (blur + 버튼 직접 호출이 겹칠 경우)
+                if (!itemEl._pendingSaveEdit) return;
+                itemEl._pendingSaveEdit = null;
+
                 itemEl.classList.remove('is-editing-task');
                 if (cancelBtn.parentNode) cancelBtn.remove();
                 editBtn.innerHTML = pencilIcon;
@@ -719,17 +720,20 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 }
             };
 
+            // itemEl에 저장 → 체크/취소 버튼에서 직접 호출 가능
+            itemEl._pendingSaveEdit = saveEdit;
+
             inputEl.onblur = (ev) => {
-                // 같은 아이템 내부 요소(색상버튼, 위치버튼 등) 클릭 시 blur 무시
-                // — 위치 피커 모달은 body 직속이라 relatedTarget이 null이 될 수 있으므로
-                //   모달 오픈 중에는 setBtn.onclick에서 별도로 재포커스 처리함
+                // 같은 아이템 내부 요소(색상·위치 버튼) 클릭 시 blur 무시
                 if (ev.relatedTarget && itemEl.contains(ev.relatedTarget)) return;
                 saveEdit();
             };
             inputEl.onkeydown = (ev) => {
                 ev.stopPropagation();
-                if (ev.key === 'Enter') inputEl.blur();
-                if (ev.key === 'Escape') cancelBtn.dispatchEvent(new MouseEvent('mousedown'));
+                if (ev.key === 'Enter') {
+                    if (typeof itemEl._pendingSaveEdit === 'function') itemEl._pendingSaveEdit();
+                }
+                if (ev.key === 'Escape') doCancel();
             };
         };
     }
@@ -767,6 +771,8 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             const clearBtn = locationWrap.querySelector('.todo-location-clear-btn');
 
             if (setBtn) {
+                // mousedown preventDefault: input blur 방지 (데스크탑·Android)
+                setBtn.onmousedown = (e) => e.preventDefault();
                 setBtn.onclick = async (e) => {
                     e.stopPropagation();
                     const initial = {
@@ -833,6 +839,7 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             }
 
             if (clearBtn) {
+                clearBtn.onmousedown = (e) => e.preventDefault();
                 clearBtn.onclick = async (e) => {
                     e.stopPropagation();
 
@@ -878,6 +885,9 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
     const colorItemPalette = colorPickWrap?.querySelector('.todo-item-color-palette');
 
     if (colorPickBtn && colorItemPalette) {
+        // mousedown preventDefault: input blur 방지 (데스크탑·Android)
+        colorPickBtn.onmousedown = (e) => e.preventDefault();
+        colorItemPalette.addEventListener('mousedown', (e) => e.preventDefault());
         colorPickBtn.onclick = (e) => {
             e.stopPropagation();
             const isCurrentlyHidden = colorItemPalette.classList.contains('hidden');
