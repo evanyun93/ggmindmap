@@ -278,6 +278,7 @@ export class WidgetManager {
                           <button class="color-chip" data-color="#EF4444" style="background:#EF4444;"></button>
                           <button class="color-chip" data-color="#EC4899" style="background:#EC4899;"></button>
                           <button class="color-chip" data-color="#FFFFFF" style="background:#FFFFFF;outline:1px solid rgba(255,255,255,0.3);"></button>
+                          <button class="color-chip rainbow-chip" data-color="rainbow" title="무지개 (추가할 때마다 랜덤 색상)"></button>
                         </div>
                       </div>
                       <input type="text" class="todo-input" placeholder="할 일을 입력하세요...">

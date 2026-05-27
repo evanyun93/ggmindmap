@@ -156,13 +156,13 @@ router.patch('/reorder', authenticateToken, async (req, res) => {
 });
 
 /**
- * To-Do 상태 변경 (완료/미완료 및 텍스트/알람 변경)
+ * To-Do 상태 변경 (완료/미완료, 텍스트/알람/위치 변경)
  */
 router.patch('/:id', authenticateToken, async (req, res) => {
     try {
         const { id } = req.params;
-        const { isCompleted, task, color, alarmTime } = req.body;
-        
+        const { isCompleted, task, color, alarmTime, locationLat, locationLng, locationName, clearLocation } = req.body;
+
         const updateFields = [];
         const params = [];
         let paramIndex = 1;
@@ -182,6 +182,26 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         if (alarmTime !== undefined) {
             updateFields.push(`alarm_time = $${paramIndex++}`);
             params.push(alarmTime || null);
+        }
+        if (clearLocation) {
+            // 위치 정보 전체 삭제
+            updateFields.push(`location_lat = NULL`);
+            updateFields.push(`location_lng = NULL`);
+            updateFields.push(`location_name = NULL`);
+            updateFields.push(`location_notified_at = NULL`);
+        } else {
+            if (locationLat !== undefined) {
+                updateFields.push(`location_lat = $${paramIndex++}`);
+                params.push(locationLat || null);
+            }
+            if (locationLng !== undefined) {
+                updateFields.push(`location_lng = $${paramIndex++}`);
+                params.push(locationLng || null);
+            }
+            if (locationName !== undefined) {
+                updateFields.push(`location_name = $${paramIndex++}`);
+                params.push(locationName || null);
+            }
         }
 
         if (updateFields.length === 0) {
@@ -209,6 +229,23 @@ router.patch('/:id', authenticateToken, async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error('To-Do 변경 에러:', error);
+        res.status(500).json({ success: false, message: '서버 오류' });
+    }
+});
+
+/**
+ * 위치 알림 발송 기록 갱신 (프론트에서 geofence 진입 시 호출)
+ */
+router.patch('/:id/location-notified', authenticateToken, async (req, res) => {
+    try {
+        const { id } = req.params;
+        await pool.query(
+            'UPDATE tba_todos SET location_notified_at = NOW() WHERE id = $1 AND user_id = $2',
+            [id, req.user.id]
+        );
+        res.json({ success: true });
+    } catch (error) {
+        console.error('[Location] location-notified 업데이트 에러:', error);
         res.status(500).json({ success: false, message: '서버 오류' });
     }
 });

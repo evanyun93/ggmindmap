@@ -6,9 +6,26 @@
 import { apiFetch } from '../services/api.js';
 import { SYNC_DATA_TYPES, syncService } from '../services/sync.js';
 import { showEditWarning } from './dashboard-grid.js';
+import {
+    startLocationWatch,
+    refreshGeofenceStates,
+    openLocationPicker
+} from './todo-location.js';
 
 /** 기본 체크박스 색상 */
 const DEFAULT_CHECKBOX_COLOR = '#8B5CF6';
+
+/** 위치 모니터링용 전체 todos 캐시 (모든 위젯 통합) */
+let _allTodosCache = [];
+
+/** 위치 감시가 한 번 이상 시작되었는지 여부 */
+let _locationWatchStarted = false;
+
+/** 무지개 모드 키 */
+const RAINBOW_COLOR_KEY = 'rainbow';
+
+/** 무지개 모드에서 사용할 랜덤 색상 목록 */
+const RAINBOW_COLORS = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899'];
 
 /**
  * 광클 방지 유틸리티 (Click Guard)
@@ -257,14 +274,37 @@ function setupCrossDeviceSync(el) {
 }
 
 async function applyCheckboxColor(el, color) {
-    el.style.setProperty('--todo-checkbox-color', color);
+    const isRainbow = color === RAINBOW_COLOR_KEY;
+
+    // 무지개 모드 플래그 설정
+    el.dataset.rainbowMode = isRainbow ? 'true' : '';
+
+    if (isRainbow) {
+        // 무지개 모드: CSS 변수는 기본값 유지 (개별 항목마다 저장된 색상 사용)
+        el.style.removeProperty('--todo-checkbox-color');
+    } else {
+        el.style.setProperty('--todo-checkbox-color', color);
+    }
+
     // 로컬 + 서버 동기화
     await syncService.setData(SYNC_DATA_TYPES.TODO_COLOR, null, color);
+
+    // 칩 active 상태 업데이트
     el.querySelectorAll('.color-chip').forEach(chip => {
         chip.classList.toggle('active', chip.dataset.color === color);
     });
+
+    // 컬러 버튼 시각 업데이트
     const colorBtn = el.querySelector('.todo-color-btn');
-    if (colorBtn) colorBtn.style.color = color;
+    if (colorBtn) {
+        if (isRainbow) {
+            colorBtn.style.color = '';
+            colorBtn.classList.add('rainbow-mode');
+        } else {
+            colorBtn.style.color = color;
+            colorBtn.classList.remove('rainbow-mode');
+        }
+    }
 }
 
 async function setupTitleEdit(el, titleEl, editBtn, widgetData) {
@@ -410,7 +450,24 @@ async function loadTodoList(el, isBackgroundSync = false) {
             return;
         }
 
-        if (result.success) renderTodos(el, result.todos);
+        if (result.success) {
+            renderTodos(el, result.todos);
+
+            // 모듈 레벨 todos 캐시 갱신 (위치 모니터링용)
+            // 각 위젯의 todos를 id 기준으로 병합 (중복 제거)
+            const incomingIds = new Set(result.todos.map(t => String(t.id)));
+            _allTodosCache = [
+                ..._allTodosCache.filter(t => !incomingIds.has(String(t.id))),
+                ...result.todos
+            ];
+            refreshGeofenceStates(_allTodosCache);
+
+            // 위치 알림이 설정된 todo가 있을 때 한 번만 감시 시작
+            if (!_locationWatchStarted && _allTodosCache.some(t => t.location_lat && !t.is_completed)) {
+                _locationWatchStarted = true;
+                startLocationWatch(() => _allTodosCache);
+            }
+        }
     } catch (err) {
         console.error('[Todo] 로드 에러:', err);
     }
@@ -427,7 +484,11 @@ async function addTodo(el) {
     // 시간 파싱
     const { task, alarmTime } = parseTimeFromTask(taskContent);
     // 현재 위젯의 스타일에서 색상을 가져오거나 캐시에서 즉시 읽음 (비차단)
-    const color = el.style.getPropertyValue('--todo-checkbox-color') || DEFAULT_CHECKBOX_COLOR;
+    // 무지개 모드일 경우 랜덤 색상 선택
+    const isRainbow = el.dataset.rainbowMode === 'true';
+    const color = isRainbow
+        ? RAINBOW_COLORS[Math.floor(Math.random() * RAINBOW_COLORS.length)]
+        : (el.style.getPropertyValue('--todo-checkbox-color') || DEFAULT_CHECKBOX_COLOR);
     const widgetId = el.closest('.draggable-widget')?.dataset?.id;
 
     // 낙관적 UI (Optimistic UI): 서버 응답을 기다리지 않고 화면에 먼저 임시 아이템 추가
@@ -567,6 +628,8 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
         editBtn.onclick = (e) => {
             const inputEl = itemEl.querySelector('.todo-edit-input');
             const alarmBadge = itemEl.querySelector('.todo-alarm-badge');
+            const colorWrap = itemEl.querySelector('.todo-color-pick-wrap');
+            const locationWrap = itemEl.querySelector('.todo-location-wrap');
 
             if (itemEl.classList.contains('is-editing-task')) {
                 inputEl.blur();
@@ -577,6 +640,8 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             textEl.classList.add('hidden');
             if (alarmBadge) alarmBadge.classList.add('hidden');
             inputEl.classList.remove('hidden');
+            if (colorWrap) colorWrap.style.display = 'flex';
+            if (locationWrap) locationWrap.style.display = 'flex';
 
             const pencilIcon = editBtn.innerHTML;
             editBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events:none;"><path d="M20 6L9 17L4 12"/></svg>`;
@@ -607,6 +672,14 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 editBtn.innerHTML = pencilIcon;
                 editBtn.style.color = '#9ca3af';
                 editBtn.title = "수정";
+                // 색상 팔레트 래퍼 및 열린 팔레트 숨김
+                if (colorWrap) {
+                    colorWrap.style.display = 'none';
+                    const openPalette = colorWrap.querySelector('.todo-item-color-palette');
+                    if (openPalette) openPalette.classList.add('hidden');
+                }
+                // 위치 버튼 숨기기
+                if (locationWrap) locationWrap.style.display = 'none';
 
                 const newTask = inputEl.value.trim();
                 if (!newTask || newTask === textEl.textContent) {
@@ -674,6 +747,178 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             if (indicator) indicator.remove();
         });
     }
+
+    // ── 아이템 위치 알림 설정 ──────────────────────────────────────
+    const locationWrap = itemEl.querySelector('.todo-location-wrap');
+    if (locationWrap) {
+        const bindLocationBtns = () => {
+            const setBtn = locationWrap.querySelector('.todo-location-set-btn');
+            const clearBtn = locationWrap.querySelector('.todo-location-clear-btn');
+
+            if (setBtn) {
+                setBtn.onclick = async (e) => {
+                    e.stopPropagation();
+                    const initial = {
+                        lat: parseFloat(itemEl.dataset.locationLat) || null,
+                        lng: parseFloat(itemEl.dataset.locationLng) || null,
+                        name: itemEl.dataset.locationName || null
+                    };
+                    const result = await openLocationPicker(initial);
+                    if (!result) return;
+
+                    // 즉시 DOM 반영
+                    itemEl.dataset.locationLat = result.lat;
+                    itemEl.dataset.locationLng = result.lng;
+                    itemEl.dataset.locationName = result.name;
+
+                    // 배지 갱신
+                    const existingBadge = itemEl.querySelector('.todo-location-badge');
+                    const contentWrap = itemEl.querySelector('.todo-content-wrap');
+                    const newBadgeHtml = `<div class="todo-location-badge" title="위치 알림: ${result.name}">📍 <span>${result.name}</span></div>`;
+                    if (existingBadge) {
+                        existingBadge.outerHTML = newBadgeHtml;
+                    } else if (contentWrap) {
+                        contentWrap.insertAdjacentHTML('beforeend', newBadgeHtml);
+                    }
+
+                    // 위치 버튼 갱신 (설정됨 상태로)
+                    locationWrap.innerHTML = `
+                        <button class="todo-location-set-btn" title="위치 변경" style="background:none;border:none;padding:3px 6px;cursor:pointer;color:#60a5fa;font-size:11px;border-radius:5px;border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;gap:2px;white-space:nowrap;">📍</button>
+                        <button class="todo-location-clear-btn" title="위치 제거" style="background:none;border:none;padding:3px;cursor:pointer;color:#94a3b8;font-size:11px;display:flex;align-items:center;">✕</button>
+                    `;
+                    bindLocationBtns();
+
+                    // 캐시 + 감시 갱신
+                    const cachedIdx = _allTodosCache.findIndex(t => String(t.id) === String(id));
+                    if (cachedIdx !== -1) {
+                        _allTodosCache[cachedIdx].location_lat = result.lat;
+                        _allTodosCache[cachedIdx].location_lng = result.lng;
+                        _allTodosCache[cachedIdx].location_name = result.name;
+                    }
+                    if (!_locationWatchStarted) {
+                        _locationWatchStarted = true;
+                        startLocationWatch(() => _allTodosCache);
+                    }
+
+                    // 서버 저장
+                    apiFetch(`/api/todos/${id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            locationLat: result.lat,
+                            locationLng: result.lng,
+                            locationName: result.name
+                        })
+                    }).then(() => {
+                        syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetEl.dataset.id, Date.now());
+                    }).catch(err => console.error('[Todo] 위치 저장 오류:', err));
+                };
+            }
+
+            if (clearBtn) {
+                clearBtn.onclick = async (e) => {
+                    e.stopPropagation();
+
+                    // DOM 즉시 반영
+                    itemEl.dataset.locationLat = '';
+                    itemEl.dataset.locationLng = '';
+                    itemEl.dataset.locationName = '';
+
+                    const existingBadge = itemEl.querySelector('.todo-location-badge');
+                    if (existingBadge) existingBadge.remove();
+
+                    // 버튼 미설정 상태로 교체
+                    locationWrap.innerHTML = `
+                        <button class="todo-location-set-btn" title="위치 알림 추가" style="background:none;border:none;padding:3px 6px;cursor:pointer;color:#64748b;font-size:11px;border-radius:5px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:2px;white-space:nowrap;">📍 위치</button>
+                    `;
+                    bindLocationBtns();
+
+                    // 캐시 갱신
+                    const cachedIdx = _allTodosCache.findIndex(t => String(t.id) === String(id));
+                    if (cachedIdx !== -1) {
+                        _allTodosCache[cachedIdx].location_lat = null;
+                        _allTodosCache[cachedIdx].location_lng = null;
+                        _allTodosCache[cachedIdx].location_name = null;
+                    }
+
+                    // 서버 저장
+                    apiFetch(`/api/todos/${id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({ clearLocation: true })
+                    }).then(() => {
+                        syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetEl.dataset.id, Date.now());
+                    }).catch(err => console.error('[Todo] 위치 제거 오류:', err));
+                };
+            }
+        };
+
+        bindLocationBtns();
+    }
+
+    // ── 아이템 색상 변경 ──────────────────────────────────────────
+    const colorPickWrap = itemEl.querySelector('.todo-color-pick-wrap');
+    const colorPickBtn = colorPickWrap?.querySelector('.todo-item-color-btn');
+    const colorItemPalette = colorPickWrap?.querySelector('.todo-item-color-palette');
+
+    if (colorPickBtn && colorItemPalette) {
+        colorPickBtn.onclick = (e) => {
+            e.stopPropagation();
+            const isCurrentlyHidden = colorItemPalette.classList.contains('hidden');
+
+            // 다른 열린 팔레트 모두 닫기
+            document.querySelectorAll('.todo-item-color-palette:not(.hidden)').forEach(p => p.classList.add('hidden'));
+
+            if (isCurrentlyHidden) {
+                colorItemPalette.classList.remove('hidden');
+                // 외부 클릭 시 닫기 (한 번만 등록)
+                const outsideClickHandler = (ev) => {
+                    if (!colorPickWrap.contains(ev.target)) {
+                        colorItemPalette.classList.add('hidden');
+                        document.removeEventListener('click', outsideClickHandler);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', outsideClickHandler), 0);
+            }
+        };
+
+        colorItemPalette.addEventListener('click', (e) => {
+            const chip = e.target.closest('.todo-item-color-chip');
+            if (!chip) return;
+            e.stopPropagation();
+
+            const pickedColor = chip.dataset.color;
+            // 무지개 칩이면 팔레트 색 중 랜덤 선택
+            const newColor = pickedColor === RAINBOW_COLOR_KEY
+                ? RAINBOW_COLORS[Math.floor(Math.random() * RAINBOW_COLORS.length)]
+                : pickedColor;
+
+            // 즉시 UI 반영 — 체크박스 색상 업데이트
+            const chk = itemEl.querySelector('.todo-check');
+            if (chk) {
+                chk.style.borderColor = newColor;
+                if (chk.checked) chk.style.backgroundColor = newColor;
+                chk.dataset.color = newColor;
+            }
+
+            // 색상 dot 업데이트
+            const colorDot = colorPickBtn.querySelector('.todo-color-dot');
+            if (colorDot) colorDot.style.background = newColor;
+
+            // 선택된 칩 active 표시
+            colorItemPalette.querySelectorAll('.todo-item-color-chip').forEach(c => {
+                c.style.borderColor = c.dataset.color === pickedColor ? '#fff' : 'transparent';
+            });
+
+            colorItemPalette.classList.add('hidden');
+
+            // 서버 저장 + 동기화
+            apiFetch(`/api/todos/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ color: newColor })
+            }).then(() => {
+                syncService.setData(SYNC_DATA_TYPES.TODO_DATA_UPDATE, widgetEl.dataset.id, Date.now());
+            }).catch(err => console.error('[Todo] 색상 변경 에러:', err));
+        });
+    }
 }
 
 function parseTimeFromTask(taskContent) {
@@ -735,6 +980,16 @@ function parseTimeFromTask(taskContent) {
 function generateTodoHtml(todo) {
     const color = todo.color || DEFAULT_CHECKBOX_COLOR;
     const checked = todo.is_completed;
+    const locationName = todo.location_name || '';
+    const locationLat = todo.location_lat || '';
+    const locationLng = todo.location_lng || '';
+
+    // 아이템별 색상 팔레트 칩 HTML 생성
+    const itemPaletteColors = ['#8B5CF6', '#06B6D4', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#FFFFFF'];
+    const itemColorChipsHtml = itemPaletteColors.map(c =>
+        `<button class="todo-item-color-chip" data-color="${c}" style="width:18px;height:18px;border-radius:50%;background:${c};border:2px solid ${c === color ? '#fff' : 'transparent'};cursor:pointer;padding:0;flex-shrink:0;transition:transform 0.15s,border-color 0.15s;${c === '#FFFFFF' ? 'outline:1px solid rgba(255,255,255,0.25);' : ''}"></button>`
+    ).join('');
+    const itemRainbowChipHtml = `<button class="todo-item-color-chip rainbow-chip" data-color="rainbow" title="무지개 (랜덤)" style="width:18px;height:18px;border-radius:50%;background:conic-gradient(#EF4444,#F59E0B,#10B981,#06B6D4,#8B5CF6,#EC4899,#EF4444);border:2px solid transparent;cursor:pointer;padding:0;flex-shrink:0;transition:transform 0.15s;"></button>`;
 
     // 알람 표시 생성
     let alarmHtml = '';
@@ -766,8 +1021,22 @@ function generateTodoHtml(todo) {
         `;
     }
 
+    // 위치 배지 (항상 표시)
+    const locationBadgeHtml = locationName
+        ? `<div class="todo-location-badge" title="위치 알림: ${locationName}">📍 <span>${locationName}</span></div>`
+        : '';
+
+    // 위치 설정 버튼 (수정 모드에서만 표시)
+    const locationSetBtnHtml = locationName
+        ? `<button class="todo-location-set-btn" title="위치 변경" style="background:none;border:none;padding:3px 6px;cursor:pointer;color:#60a5fa;font-size:11px;border-radius:5px;border:1px solid rgba(96,165,250,0.3);display:flex;align-items:center;gap:2px;white-space:nowrap;max-width:80px;overflow:hidden;text-overflow:ellipsis;">📍</button>
+          <button class="todo-location-clear-btn" title="위치 제거" style="background:none;border:none;padding:3px;cursor:pointer;color:#94a3b8;font-size:11px;display:flex;align-items:center;">✕</button>`
+        : `<button class="todo-location-set-btn" title="위치 알림 추가" style="background:none;border:none;padding:3px 6px;cursor:pointer;color:#64748b;font-size:11px;border-radius:5px;border:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;gap:2px;white-space:nowrap;transition:color 0.15s,border-color 0.15s;" onmouseover="this.style.color='#60a5fa';this.style.borderColor='rgba(96,165,250,0.3)'" onmouseout="this.style.color='#64748b';this.style.borderColor='rgba(255,255,255,0.08)'">📍 위치</button>`;
+
     return `
-    <div class="todo-item ${checked ? 'completed' : ''}" data-id="${todo.id}">
+    <div class="todo-item ${checked ? 'completed' : ''}" data-id="${todo.id}"
+         data-location-lat="${locationLat}"
+         data-location-lng="${locationLng}"
+         data-location-name="${locationName.replace(/"/g, '&quot;')}">
         <div class="todo-drag-handle" title="드래그하여 순서 변경">
             <svg width="10" height="16" viewBox="0 0 10 16" fill="currentColor" style="pointer-events:none;">
                 <circle cx="3" cy="2.5" r="1.4"/><circle cx="7" cy="2.5" r="1.4"/>
@@ -783,9 +1052,22 @@ function generateTodoHtml(todo) {
                 <span class="todo-text">${todo.task}</span>
                 <input type="text" class="todo-edit-input hidden" value="${todo.task}" style="background:transparent; border:1px solid var(--todo-checkbox-color, #8B5CF6); color:inherit; border-radius:4px; padding:2px 6px; width:100%; outline:none; font-size:inherit;">
                 ${alarmHtml}
+                ${locationBadgeHtml}
             </div>
         </div>
-        <div class="todo-actions" style="display:flex; gap:4px; align-items:center;">
+        <div class="todo-actions" style="display:flex; gap:4px; align-items:center; position:relative; overflow:visible;">
+            <!-- 위치 알림 버튼 (수정 모드에서만 표시) -->
+            <div class="todo-location-wrap" style="display:none; align-items:center; gap:2px; flex-shrink:0;">
+                ${locationSetBtnHtml}
+            </div>
+            <div class="todo-color-pick-wrap" style="position:relative; display:none; align-items:center;">
+                <button class="todo-item-color-btn" title="체크박스 색상 변경" style="background:none; border:none; padding:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:transform 0.2s;" onmouseover="this.style.transform='scale(1.2)'" onmouseout="this.style.transform='scale(1)'">
+                    <span class="todo-color-dot" style="width:10px; height:10px; border-radius:50%; background:${color}; display:block; box-shadow:0 0 0 1.5px rgba(255,255,255,0.25); flex-shrink:0;"></span>
+                </button>
+                <div class="todo-item-color-palette hidden" style="position:absolute; bottom:calc(100% + 6px); right:-4px; background:#1e293b; border:1px solid rgba(255,255,255,0.12); border-radius:10px; padding:8px 10px; display:flex; gap:6px; align-items:center; z-index:9999; box-shadow:0 8px 24px rgba(0,0,0,0.5); white-space:nowrap;">
+                    ${itemColorChipsHtml}${itemRainbowChipHtml}
+                </div>
+            </div>
             <button class="todo-edit-btn" data-id="${todo.id}" title="수정" style="background:none; border:none; padding:4px; cursor:pointer; color:#9ca3af; display:flex; align-items:center; justify-content:center; transition:color 0.2s;" onmouseover="this.style.color='#8B5CF6'" onmouseout="this.style.color='#9ca3af'">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
             </button>
@@ -849,7 +1131,8 @@ function renderTodos(el, todos) {
             if (itemEl.style.opacity !== '0.5') {
                 const needsUpdate = (chk && chk.checked !== checked) ||
                     (textEl && textEl.textContent !== todo.task) ||
-                    (chk && chk.dataset.color !== color);
+                    (chk && chk.dataset.color !== color) ||
+                    (itemEl.dataset.locationName || '') !== (todo.location_name || '');
 
                 if (needsUpdate && !itemEl.classList.contains('is-editing-task')) {
                     const newNode = createNode(newHtml);

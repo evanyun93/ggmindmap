@@ -163,6 +163,7 @@ self.addEventListener('notificationclick', (event) => {
     event.notification.close();
     const notifData = event.notification.data;
     const todoId = notifData?.id;
+    const notifType = notifData?.type; // 'location' | undefined(time-alarm)
 
     // 본체 클릭 시 앱 열기 (액션 버튼 클릭 시에는 실행 안 함)
     if (!event.action) {
@@ -177,13 +178,32 @@ self.addEventListener('notificationclick', (event) => {
         return;
     }
 
-    // '해제' 또는 '5분 연장' 등 버튼 액션 처리
-    if (event.action && event.action !== '') {
-        if (!todoId) {
-            console.error('[SW] 알람 ID가 없어 액션을 처리할 수 없습니다.');
-            return;
-        }
+    if (!todoId) {
+        console.error('[SW] 알람 ID가 없어 액션을 처리할 수 없습니다.');
+        return;
+    }
 
+    // ── 위치 알림 확인 액션 ──────────────────────────────────────
+    if (notifType === 'location' || event.action === 'location_dismiss') {
+        event.waitUntil(
+            getAuthToken().then(jwtToken => {
+                const headers = {
+                    'Content-Type': 'application/json',
+                    'ngrok-skip-browser-warning': '1'
+                };
+                if (jwtToken) headers['Authorization'] = `Bearer ${jwtToken}`;
+                return fetch(`${API_BASE}/api/todos/${todoId}/location-notified`, {
+                    method: 'PATCH',
+                    headers,
+                    credentials: 'include'
+                }).catch(err => console.error('[SW] 위치 알림 확인 실패:', err));
+            })
+        );
+        return;
+    }
+
+    // ── 시간 알람 액션 (해제 / 5분 연장) ───────────────────────────
+    if (event.action && event.action !== '') {
         event.waitUntil(
             getAuthToken().then(jwtToken => {
                 const headers = {

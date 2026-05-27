@@ -322,6 +322,19 @@ async function initDatabase() {
         ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS position INTEGER DEFAULT 0;
       `);
 
+      // 위치 알림 관련 컬럼 추가
+      try {
+        await client.query(`
+          ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS location_lat DECIMAL(10,7);
+          ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS location_lng DECIMAL(11,7);
+          ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS location_name VARCHAR(255);
+          ALTER TABLE tba_todos ADD COLUMN IF NOT EXISTS location_notified_at TIMESTAMPTZ;
+        `);
+        console.log('✅ tba_todos 위치 알림 컬럼 추가 완료');
+      } catch (e) {
+        console.error('⚠️ 위치 알림 컬럼 추가 실패:', e.message);
+      }
+
       await client.query("SET TIME ZONE 'Asia/Seoul'");
 
       try {

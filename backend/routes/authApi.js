@@ -587,7 +587,7 @@ router.post('/register', async (req, res) => {
  */
 router.patch('/settings', authenticateToken, async (req, res) => {
     try {
-        const { todoAutoDelete, email, newPassword, displayName } = req.body;
+        const { todoAutoDelete, email, newPassword, newLoginId, displayName } = req.body;
 
         if (displayName !== undefined) {
             await pool.query('UPDATE tba_users SET display_name = $1 WHERE id = $2', [displayName || null, req.user.id]);
@@ -608,9 +608,18 @@ router.patch('/settings', authenticateToken, async (req, res) => {
         if (newPassword !== undefined) {
             const user = (await pool.query('SELECT * FROM tba_users WHERE id = $1', [req.user.id])).rows[0];
             if (!user.password) {
+                // 최초 비밀번호 설정 시 login_id도 함께 저장
+                if (!newLoginId || newLoginId.length < 4) {
+                    return res.status(400).json({ success: false, message: '아이디는 4자 이상이어야 합니다.' });
+                }
+                // login_id 중복 확인
+                const loginIdCheck = await pool.query('SELECT id FROM tba_users WHERE login_id = $1 AND id != $2', [newLoginId, req.user.id]);
+                if (loginIdCheck.rows.length > 0) {
+                    return res.status(409).json({ success: false, message: '이미 사용 중인 아이디입니다.' });
+                }
                 const hashedPassword = await bcrypt.hash(newPassword, 10);
-                await pool.query('UPDATE tba_users SET password = $1 WHERE id = $2', [hashedPassword, req.user.id]);
-                return res.json({ success: true, message: '비밀번호가 설정되었습니다.' });
+                await pool.query('UPDATE tba_users SET login_id = $1, password = $2 WHERE id = $3', [newLoginId, hashedPassword, req.user.id]);
+                return res.json({ success: true, message: '아이디와 비밀번호가 설정되었습니다.' });
             }
         }
 

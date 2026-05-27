@@ -1624,6 +1624,7 @@
   border: 1px solid rgba(255, 255, 255, 0.03);
   transition: all 0.2s;
   animation: fadeIn 0.3s ease-out;
+  overflow: visible; /* 색상 팔레트 팝업이 아이템 밖으로 나올 수 있도록 */
 }
 
 .todo-item:hover {
@@ -1791,6 +1792,103 @@
   border-color: #ffffff;
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.4);
   transform: scale(1.15);
+}
+
+/* 무지개 칩 */
+@keyframes rainbow-spin {
+  from { filter: hue-rotate(0deg); }
+  to   { filter: hue-rotate(360deg); }
+}
+
+.color-chip.rainbow-chip {
+  background: conic-gradient(#EF4444, #F59E0B, #10B981, #06B6D4, #8B5CF6, #EC4899, #EF4444);
+}
+
+.color-chip.rainbow-chip:hover,
+.color-chip.rainbow-chip.active {
+  animation: rainbow-spin 1.5s linear infinite;
+}
+
+/* 아이템별 색상 팔레트 칩 */
+.todo-item-color-chip:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 6px rgba(255, 255, 255, 0.35);
+}
+
+.todo-item-color-chip.rainbow-chip:hover {
+  animation: rainbow-spin 1s linear infinite;
+}
+
+/* 무지개 모드일 때 컬러 버튼 */
+.todo-color-btn.rainbow-mode {
+  background: conic-gradient(#EF4444, #F59E0B, #10B981, #06B6D4, #8B5CF6, #EC4899, #EF4444) !important;
+  border-radius: 50% !important;
+  border-color: rgba(255,255,255,0.3) !important;
+  animation: rainbow-spin 2s linear infinite;
+}
+
+/* ── 위치 알림 배지 ──────────────────────────────────────── */
+.todo-location-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #60a5fa;
+  background: rgba(96, 165, 250, 0.10);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+  border-radius: 5px;
+  padding: 2px 6px;
+  margin-top: 3px;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.todo-location-badge span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  text-decoration: none !important;
+  opacity: 1 !important;
+  color: #60a5fa !important;
+  font-size: 10px !important;
+}
+
+.todo-item.completed .todo-location-badge {
+  opacity: 0.45;
+}
+
+/* ── 위치 피커 모달 스크롤바 ─────────────────────────────── */
+#loc-search-results::-webkit-scrollbar {
+  width: 4px;
+}
+#loc-search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+#loc-search-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+}
+
+/* Kakao 지도 내부 요소가 모달 위로 올라오는 것 방지 */
+.todo-loc-modal .kakao_map_anchor_copyright,
+.todo-loc-modal .map_logo {
+  z-index: 1 !important;
+}
+
+/* 검색 결과 스크롤바 */
+#loc-search-results::-webkit-scrollbar {
+  width: 4px;
+}
+#loc-search-results::-webkit-scrollbar-track {
+  background: transparent;
+}
+#loc-search-results::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
 }
 
 .todo-item span {
