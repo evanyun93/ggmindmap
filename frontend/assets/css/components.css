@@ -1891,6 +1891,68 @@
   border-radius: 4px;
 }
 
+/* ── 즐겨찾기 섹션 스크롤바 ──────────────────────────────── */
+#loc-favorites-list::-webkit-scrollbar {
+  height: 3px;
+}
+#loc-favorites-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+#loc-favorites-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 3px;
+}
+
+/* ── 즐겨찾기 칩 ─────────────────────────────────────────── */
+.loc-fav-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(251, 191, 36, 0.08);
+  border: 1px solid rgba(251, 191, 36, 0.22);
+  border-radius: 20px;
+  padding: 3px 4px 3px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+  transition: background 0.15s, border-color 0.15s;
+  max-width: 140px;
+}
+
+.loc-fav-chip:hover {
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.40);
+}
+
+.loc-fav-chip-label {
+  color: #fbbf24;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.loc-fav-chip-del {
+  background: none;
+  border: none;
+  color: rgba(251, 191, 36, 0.45);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 4px;
+  line-height: 1;
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+
+.loc-fav-chip-del:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .todo-item span {
   flex: 1;
   font-size: 0.95rem;

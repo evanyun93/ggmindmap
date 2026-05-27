@@ -90,6 +90,10 @@ app.use('/api/push', pushApi);
 const supplementApi = require('./routes/supplementApi'); // 나중에 만들 검색 API 등
 app.use('/api/supplements', supplementApi);
 
+// 11. 위치 즐겨찾기 API
+const locationFavoritesApi = require('./routes/locationFavoritesApi');
+app.use('/api/location-favorites', locationFavoritesApi);
+
 // ─── 프론트엔드 정적 파일 제공 ──────────────────────────────────────────
 // app.use(express.static(path.join(__dirname, '..', 'frontend')));
 

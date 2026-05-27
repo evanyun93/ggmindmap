@@ -2,7 +2,7 @@
  * @file todo-location.js
  * @description TODO 위치기반 알림
  * - watchPosition으로 100m 반경 진입 시 SW 알림 발송
- * - Kakao Maps SDK 기반 위치 피커 모달 (POI 검색 포함)
+ * - Kakao Maps SDK 기반 위치 피커 모달 (POI 검색 + 즐겨찾기 포함)
  * - Kakao 역지오코딩(coord2Address) 지원
  *
  * [SDK 충돌 없음]
@@ -239,6 +239,74 @@ export async function reverseGeocode(lat, lng) {
     }
 }
 
+// ── 즐겨찾기 API ─────────────────────────────────────────────────
+
+/** 즐겨찾기 목록 조회 */
+async function fetchFavorites() {
+    try {
+        const res = await apiFetch('/api/location-favorites');
+        if (!res.ok) return [];
+        return await res.json();
+    } catch {
+        return [];
+    }
+}
+
+/** 즐겨찾기 추가 */
+async function addFavorite(name, address, lat, lng) {
+    const res = await apiFetch('/api/location-favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, address, lat, lng })
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: '저장 실패' }));
+        throw new Error(err.error || '즐겨찾기 저장 실패');
+    }
+    return await res.json();
+}
+
+/** 즐겨찾기 삭제 */
+async function removeFavorite(id) {
+    const res = await apiFetch(`/api/location-favorites/${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('즐겨찾기 삭제 실패');
+}
+
+// ── 즐겨찾기 칩 렌더링 헬퍼 ─────────────────────────────────────
+
+/**
+ * 즐겨찾기 칩 하나를 생성합니다.
+ * @param {{ id, name, address, lat, lng }} fav
+ * @param {function} onSelect  - 칩 클릭 시 호출
+ * @param {function} onDelete  - ✕ 클릭 시 호출
+ */
+function createFavChip(fav, onSelect, onDelete) {
+    const chip = document.createElement('div');
+    chip.className = 'loc-fav-chip';
+    chip.dataset.id = fav.id;
+    chip.innerHTML = `
+        <span class="loc-fav-chip-label">⭐ ${fav.name}</span>
+        <button class="loc-fav-chip-del" title="즐겨찾기 삭제" type="button">✕</button>
+    `;
+
+    chip.querySelector('.loc-fav-chip-label').addEventListener('click', () => onSelect(fav));
+    chip.querySelector('.loc-fav-chip-del').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        chip.style.opacity = '0.4';
+        chip.style.pointerEvents = 'none';
+        try {
+            await removeFavorite(fav.id);
+            chip.remove();
+            onDelete(fav.id);
+        } catch {
+            chip.style.opacity = '1';
+            chip.style.pointerEvents = '';
+        }
+    });
+
+    return chip;
+}
+
 // ── 위치 피커 모달 ────────────────────────────────────────────────
 
 /**
@@ -346,20 +414,84 @@ export async function openLocationPicker(initial = {}) {
                     background:#1e293b;
                 "></div>
 
+                <!-- 즐겨찾기 섹션 -->
+                <div id="loc-favorites-section" style="
+                    display:none;
+                    border-bottom:1px solid rgba(255,255,255,0.05);
+                    flex-shrink:0; position:relative; z-index:9;
+                    background:#1a2332;
+                ">
+                    <div style="
+                        padding:6px 14px 4px;
+                        display:flex; align-items:center; justify-content:space-between;
+                    ">
+                        <span style="color:#94a3b8; font-size:11px; font-weight:600; letter-spacing:0.4px;">⭐ 즐겨찾기</span>
+                    </div>
+                    <div id="loc-favorites-list" style="
+                        display:flex; gap:6px;
+                        overflow-x:auto; padding:0 14px 8px;
+                        scrollbar-width:thin; scrollbar-color:#334155 transparent;
+                    "></div>
+                </div>
+
                 <!-- 지도 -->
                 <div id="todo-kakao-map" style="flex:1; min-height:250px; width:100%;"></div>
+
+                <!-- 즐겨찾기 이름 입력 (저장 시 인라인 표시) -->
+                <div id="loc-fav-save-row" style="
+                    display:none;
+                    padding:8px 14px;
+                    border-top:1px solid rgba(255,255,255,0.06);
+                    background:#0f172a;
+                    gap:6px; align-items:center;
+                    flex-shrink:0; position:relative; z-index:10;
+                ">
+                    <input id="loc-fav-name-input" type="text"
+                        placeholder="즐겨찾기 이름 (예: 집, 회사, 헬스장)"
+                        maxlength="20"
+                        autocomplete="off"
+                        style="
+                            flex:1; background:#1e293b;
+                            border:1px solid rgba(139,92,246,0.5);
+                            border-radius:8px; color:#e2e8f0;
+                            padding:6px 10px; font-size:13px; outline:none;
+                            min-width:0;
+                        "
+                    />
+                    <button id="loc-fav-save-confirm" style="
+                        background:#8B5CF6; border:none; border-radius:8px;
+                        color:white; padding:6px 12px; cursor:pointer;
+                        font-size:12px; font-weight:600; white-space:nowrap;
+                        flex-shrink:0;
+                    ">저장</button>
+                    <button id="loc-fav-save-cancel" style="
+                        background:none; border:1px solid rgba(255,255,255,0.12);
+                        border-radius:8px; color:#64748b;
+                        padding:6px 10px; cursor:pointer; font-size:12px;
+                        flex-shrink:0;
+                    ">취소</button>
+                </div>
 
                 <!-- 선택 정보 + 확인 버튼 -->
                 <div style="
                     padding:10px 14px;
                     border-top:1px solid rgba(255,255,255,0.06);
-                    display:flex; align-items:center; gap:10px;
+                    display:flex; align-items:center; gap:8px;
                     flex-shrink:0; position:relative; z-index:10;
                 ">
                     <div id="loc-selected-info" style="
                         flex:1; color:#64748b; font-size:12px;
                         overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
                     ">지도를 클릭하거나 검색하여 위치를 선택하세요</div>
+                    <!-- 즐겨찾기 저장 토글 버튼 (위치 선택 후 활성화) -->
+                    <button id="loc-add-fav-btn" disabled title="즐겨찾기에 추가" style="
+                        background:none;
+                        border:1px solid rgba(255,255,255,0.10);
+                        border-radius:8px; color:#64748b;
+                        padding:6px 10px; cursor:not-allowed; font-size:14px;
+                        flex-shrink:0; transition:all 0.15s;
+                        opacity:0.4;
+                    ">⭐</button>
                     <button id="loc-confirm-btn" disabled style="
                         background:#8B5CF6; border:none; border-radius:8px;
                         color:white; padding:7px 18px; cursor:pointer;
@@ -388,6 +520,10 @@ export async function openLocationPicker(initial = {}) {
 
         const confirmBtn = overlay.querySelector('#loc-confirm-btn');
         const selectedInfo = overlay.querySelector('#loc-selected-info');
+        const addFavBtn = overlay.querySelector('#loc-add-fav-btn');
+        const favSaveRow = overlay.querySelector('#loc-fav-save-row');
+        const favsList = overlay.querySelector('#loc-favorites-list');
+        const favsSection = overlay.querySelector('#loc-favorites-section');
 
         // 기존 위치가 있으면 마커 + 원 미리 표시
         if (initial.lat && initial.lng) {
@@ -422,6 +558,11 @@ export async function openLocationPicker(initial = {}) {
             selectedInfo.style.color = '#cbd5e1';
             confirmBtn.disabled = false;
             confirmBtn.style.opacity = '1';
+            // 즐겨찾기 버튼 활성화
+            addFavBtn.disabled = false;
+            addFavBtn.style.opacity = '1';
+            addFavBtn.style.cursor = 'pointer';
+            addFavBtn.style.color = '#94a3b8';
         }
 
         function setLocation(lat, lng, name) {
@@ -551,6 +692,120 @@ export async function openLocationPicker(initial = {}) {
             this.style.borderColor = '#8B5CF6';
             const resultsEl = overlay.querySelector('#loc-search-results');
             if (resultsEl.children.length > 0) resultsEl.style.display = 'block';
+        };
+
+        // ── 즐겨찾기 로드 ────────────────────────────────────
+        (async () => {
+            const favs = await fetchFavorites();
+            if (favs.length > 0) {
+                favsSection.style.display = 'block';
+                favs.forEach((fav) => {
+                    const chip = createFavChip(
+                        fav,
+                        // 선택 콜백
+                        (f) => {
+                            map.setLevel(3);
+                            setLocation(f.lat, f.lng, f.name);
+                            overlay.querySelector('#loc-search-input').value = f.name;
+                            overlay.querySelector('#loc-search-results').style.display = 'none';
+                        },
+                        // 삭제 콜백 (칩 자체는 이미 제거됨)
+                        () => {
+                            if (favsList.children.length === 0) {
+                                favsSection.style.display = 'none';
+                            }
+                        }
+                    );
+                    favsList.appendChild(chip);
+                });
+            }
+        })();
+
+        // ── 즐겨찾기 저장 UI ─────────────────────────────────
+        addFavBtn.addEventListener('click', () => {
+            if (addFavBtn.disabled) return;
+            // 이미 열려있으면 닫기
+            if (favSaveRow.style.display === 'flex') {
+                favSaveRow.style.display = 'none';
+                return;
+            }
+            // 이름 입력창에 현재 선택 장소명 기본값으로 채우기
+            const nameInput = overlay.querySelector('#loc-fav-name-input');
+            nameInput.value = selectedName || '';
+            favSaveRow.style.display = 'flex';
+            setTimeout(() => nameInput.focus(), 50);
+        });
+
+        // 즐겨찾기 저장 확인
+        overlay.querySelector('#loc-fav-save-confirm').onclick = async () => {
+            const nameInput = overlay.querySelector('#loc-fav-name-input');
+            const favName = nameInput.value.trim();
+            if (!favName) {
+                nameInput.focus();
+                nameInput.style.borderColor = '#ef4444';
+                setTimeout(() => (nameInput.style.borderColor = 'rgba(139,92,246,0.5)'), 1200);
+                return;
+            }
+
+            const confirmBtn2 = overlay.querySelector('#loc-fav-save-confirm');
+            confirmBtn2.textContent = '저장 중...';
+            confirmBtn2.disabled = true;
+
+            try {
+                const newFav = await addFavorite(
+                    favName,
+                    selectedName || '',
+                    selectedLat,
+                    selectedLng
+                );
+                // 즐겨찾기 칩 추가
+                const chip = createFavChip(
+                    newFav,
+                    (f) => {
+                        map.setLevel(3);
+                        setLocation(f.lat, f.lng, f.name);
+                        overlay.querySelector('#loc-search-input').value = f.name;
+                        overlay.querySelector('#loc-search-results').style.display = 'none';
+                    },
+                    () => {
+                        if (favsList.children.length === 0) {
+                            favsSection.style.display = 'none';
+                        }
+                    }
+                );
+                // 목록 맨 앞에 삽입
+                favsList.insertBefore(chip, favsList.firstChild);
+                favsSection.style.display = 'block';
+
+                // 입력창 닫기
+                favSaveRow.style.display = 'none';
+                nameInput.value = '';
+
+                // ⭐ 버튼 잠깐 강조
+                addFavBtn.style.color = '#fbbf24';
+                setTimeout(() => (addFavBtn.style.color = '#94a3b8'), 1500);
+            } catch (err) {
+                alert(err.message);
+            } finally {
+                confirmBtn2.textContent = '저장';
+                confirmBtn2.disabled = false;
+            }
+        };
+
+        // 즐겨찾기 저장 이름 입력 엔터키
+        overlay.querySelector('#loc-fav-name-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                overlay.querySelector('#loc-fav-save-confirm').click();
+            }
+            if (e.key === 'Escape') {
+                favSaveRow.style.display = 'none';
+            }
+        });
+
+        // 즐겨찾기 저장 취소
+        overlay.querySelector('#loc-fav-save-cancel').onclick = () => {
+            favSaveRow.style.display = 'none';
         };
 
         // ── 확인 버튼 ─────────────────────────────────────────

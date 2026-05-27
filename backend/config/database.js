@@ -249,6 +249,20 @@ async function initDatabase() {
         );
       `);
 
+      // tba_location_favorites 생성 (위치 즐겨찾기)
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS tba_location_favorites (
+          id SERIAL PRIMARY KEY,
+          user_id INTEGER REFERENCES tba_users(id) ON DELETE CASCADE NOT NULL,
+          name VARCHAR(100) NOT NULL,
+          address VARCHAR(255),
+          lat DECIMAL(10,7) NOT NULL,
+          lng DECIMAL(11,7) NOT NULL,
+          created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_location_favorites_user ON tba_location_favorites(user_id);
+      `);
+
       // ============================================
       // [2단계] 기존 테이블에 대한 마이그레이션 (ALTER / UPDATE)
       // ============================================
