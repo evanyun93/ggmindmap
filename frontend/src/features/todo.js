@@ -636,6 +636,10 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
                 return;
             }
 
+            // 모바일에서 blur(saveEdit) → click 순서로 발생할 때 재진입 방지
+            // saveEdit이 실행된 지 300ms 이내면 편집 모드 재진입을 건너뜀
+            if (itemEl._editExitTime && Date.now() - itemEl._editExitTime < 300) return;
+
             itemEl.classList.add('is-editing-task');
             textEl.classList.add('hidden');
             if (alarmBadge) alarmBadge.classList.add('hidden');
@@ -667,6 +671,7 @@ function bindTodoEventsToElement(widgetEl, itemEl, id, color) {
             inputEl.selectionStart = inputEl.selectionEnd = inputEl.value.length;
 
             const saveEdit = async () => {
+                itemEl._editExitTime = Date.now(); // 모바일 재진입 방지용 타임스탬프
                 itemEl.classList.remove('is-editing-task');
                 if (cancelBtn.parentNode) cancelBtn.remove();
                 editBtn.innerHTML = pencilIcon;
