@@ -38,6 +38,21 @@ router.post('/', authenticateToken, async (req, res) => {
         const safeZ = Math.round(Number(zIndex) || 100);
 
         let finalTitle = title;
+        // 마인드맵 위젯이고 제목이 없는 경우 자동 타이틀 부여 (마인드맵 1, 2, 3, ...)
+        if (widgetType === 'mindmap' && !finalTitle) {
+            const existingMindmaps = await pool.query(
+                "SELECT title FROM tba_user_widgets WHERE user_id = $1 AND widget_type = 'mindmap'",
+                [req.user.id]
+            );
+            const usedNums = new Set();
+            existingMindmaps.rows.forEach(row => {
+                const match = row.title && row.title.match(/^마인드맵 (\d+)$/);
+                if (match) usedNums.add(parseInt(match[1]));
+            });
+            let nextNum = 1;
+            while (usedNums.has(nextNum)) nextNum++;
+            finalTitle = `마인드맵 ${nextNum}`;
+        }
         // 메모장 위젯이고 제목이 없는 경우 자동 타이틀 부여 (메모장 A ~ Z)
         if (widgetType === 'notepad' && !finalTitle) {
             const existingNotepads = await pool.query(

@@ -134,6 +134,75 @@
     border-color: rgba(139, 92, 246, 0.3);
 }
 
+/* 내보내기 버튼 */
+.mm-export-wrap {
+    position: relative;
+}
+
+.mm-export-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    border-radius: 20px;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.mm-export-btn:hover {
+    background: rgba(16, 185, 129, 0.22);
+    border-color: rgba(16, 185, 129, 0.6);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
+}
+
+.mm-export-dropdown {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    background: rgba(15, 23, 42, 0.96);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 100px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(12px);
+    z-index: 2000;
+}
+
+.mm-export-dropdown.hidden { display: none; }
+
+.mm-export-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+}
+
+.mm-export-option:hover {
+    background: rgba(16, 185, 129, 0.15);
+    color: white;
+}
+
 /* 저장 버튼 */
 .mm-save-btn {
     display: flex;
@@ -857,6 +926,13 @@
     /* 저장 버튼 축소 */
     .mm-save-btn {
         padding: 6px 12px;
+        font-size: 12px;
+        gap: 4px;
+    }
+
+    /* 내보내기 버튼 축소 */
+    .mm-export-btn {
+        padding: 6px 10px;
         font-size: 12px;
         gap: 4px;
     }

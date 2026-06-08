@@ -356,6 +356,18 @@ async function initDatabase() {
         console.error('⚠️ 위치 알림 컬럼 추가 실패:', e.message);
       }
 
+      // 유저 마지막 위치 컬럼 추가 (서버측 geofence 스케줄러용)
+      try {
+        await client.query(`
+          ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_lat DECIMAL(10,7);
+          ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_lng DECIMAL(11,7);
+          ALTER TABLE tba_users ADD COLUMN IF NOT EXISTS last_location_at TIMESTAMPTZ;
+        `);
+        console.log('✅ tba_users 마지막 위치 컬럼 추가 완료');
+      } catch (e) {
+        console.error('⚠️ tba_users 마지막 위치 컬럼 추가 실패:', e.message);
+      }
+
       await client.query("SET TIME ZONE 'Asia/Seoul'");
 
       try {

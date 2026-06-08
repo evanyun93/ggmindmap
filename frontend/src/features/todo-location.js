@@ -1,7 +1,8 @@
 /**
  * @file todo-location.js
  * @description TODO 위치기반 알림
- * - watchPosition으로 100m 반경 진입 시 SW 알림 발송
+ * - watchPosition으로 100m 반경 진입 시 SW 알림 발송 (클라이언트측)
+ * - 서버에 현재 위치 주기적 전송 → 서버측 geofence 스케줄러가 백그라운드 FCM 발송
  * - Kakao Maps SDK 기반 위치 피커 모달 (POI 검색 + 즐겨찾기 포함)
  * - Kakao 역지오코딩(coord2Address) 지원
  *
@@ -18,11 +19,15 @@ const GEOFENCE_RADIUS_METERS = 100;
 /** 같은 TODO에 재알림 쿨다운 (30분) */
 const RENOTIFY_COOLDOWN_MS = 30 * 60 * 1000;
 
+/** 서버에 위치를 전송하는 최소 간격 (30초) */
+const SERVER_LOCATION_SEND_INTERVAL_MS = 30 * 1000;
+
 /** geofence 상태 맵 (todoId → { wasInside: bool, lastNotifiedAt: ISOString|null }) */
 const geofenceState = new Map();
 
 let _watchId = null;
 let _getActiveTodosCallback = null;
+let _lastServerLocationSentAt = 0;
 
 // ── Haversine 거리 계산 ────────────────────────────────────────────
 
@@ -38,12 +43,34 @@ function haversineDistance(lat1, lng1, lat2, lng2) {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
+// ── 서버에 현재 위치 전송 (백그라운드 geofence 지원) ────────────────
+
+async function sendLocationToServer(lat, lng) {
+    const now = Date.now();
+    // 최소 전송 간격 제한 (30초)
+    if (now - _lastServerLocationSentAt < SERVER_LOCATION_SEND_INTERVAL_MS) return;
+    _lastServerLocationSentAt = now;
+
+    try {
+        await apiFetch('/api/location/current', {
+            method: 'PATCH',
+            body: JSON.stringify({ lat, lng })
+        });
+    } catch (_e) {
+        // 위치 전송 실패는 무시 (기능에 치명적이지 않음)
+    }
+}
+
 // ── Geofence 체크 ────────────────────────────────────────────────
 
 async function checkGeofences(position) {
     if (!_getActiveTodosCallback) return;
 
     const { latitude, longitude } = position.coords;
+
+    // 서버에 현재 위치 전송 (서버측 geofence 스케줄러가 앱 백그라운드/종료 시 활용)
+    sendLocationToServer(latitude, longitude);
+
     const todos = _getActiveTodosCallback();
 
     for (const todo of todos) {

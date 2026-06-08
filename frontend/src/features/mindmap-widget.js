@@ -41,6 +41,75 @@ export function initMindmapWidget(el, widgetData) {
     const svg = el.querySelector('.mindmap-widget-svg');
     if (!svg) return;
 
+    // ── 제목 편집 ────────────────────────────────────────────────
+    const titleEl = el.querySelector('.mindmap-widget-title');
+    const editTitleBtn = el.querySelector('.edit-mindmap-title-btn');
+    const pencilIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+    const checkIcon = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="3" style="pointer-events: none;"><path d="M20 6L9 17L4 12"/></svg>`;
+
+    const exitTitleEditMode = (newTitle) => {
+        const input = el.querySelector('.edit-title-input');
+        if (input) {
+            titleEl.textContent = newTitle;
+            input.replaceWith(titleEl);
+        }
+        const cancelBtn = el.querySelector('.cancel-title-edit-btn');
+        if (cancelBtn) cancelBtn.remove();
+        el.classList.remove('is-editing');
+        if (editTitleBtn) { editTitleBtn.innerHTML = pencilIcon; editTitleBtn.title = '제목 수정'; }
+    };
+
+    if (editTitleBtn && titleEl) {
+        editTitleBtn.onclick = async (e) => {
+            e.stopPropagation();
+            const isEditing = el.classList.contains('is-editing');
+            if (!isEditing) {
+                el.classList.add('is-editing');
+                editTitleBtn.innerHTML = checkIcon;
+                editTitleBtn.title = '저장';
+                const current = titleEl.textContent;
+                const input = document.createElement('input');
+                input.value = current;
+                input.className = 'edit-title-input';
+                Object.assign(input.style, {
+                    background: '#1e293b', border: '1px solid #8B5CF6', color: 'white',
+                    borderRadius: '4px', padding: '2px 8px', width: '150px'
+                });
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'cancel-title-edit-btn';
+                cancelBtn.innerHTML = `<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+                cancelBtn.title = '취소';
+                cancelBtn.style.cssText = 'background:none; border:none; padding:4px; cursor:pointer; color:#ef4444; margin-left:4px; position:relative; z-index:9999; pointer-events:auto;';
+                cancelBtn.onmousedown = (ev) => { ev.preventDefault(); ev.stopPropagation(); exitTitleEditMode(current); };
+                cancelBtn.ontouchstart = cancelBtn.onmousedown;
+                editTitleBtn.parentNode.insertBefore(cancelBtn, editTitleBtn.nextSibling);
+                titleEl.replaceWith(input);
+                input.focus();
+                input.select();
+                input.onmousedown = (ev) => ev.stopPropagation();
+                input.onkeydown = (ev) => {
+                    ev.stopPropagation();
+                    if (ev.key === 'Enter') editTitleBtn.click();
+                    if (ev.key === 'Escape') cancelBtn.dispatchEvent(new MouseEvent('mousedown'));
+                };
+            } else {
+                const input = el.querySelector('.edit-title-input');
+                if (input) {
+                    const newTitle = input.value.trim() || '마인드맵';
+                    exitTitleEditMode(newTitle);
+                    try {
+                        await apiFetch(`/api/widgets/${widgetId}`, {
+                            method: 'PATCH',
+                            body: JSON.stringify({ title: newTitle })
+                        });
+                    } catch (err) {
+                        console.error('마인드맵 제목 업데이트 에러:', err);
+                    }
+                }
+            }
+        };
+    }
+
     // ── 상태 (읽기 전용: 팬/줌만 허용) ─────────────────────────
     let nodes = [];
     let links = [];
@@ -280,17 +349,30 @@ export function initMindmapWidget(el, widgetData) {
 
     // ── 초기 데이터 로드 및 렌더링 ──────────────────────────────
     (async () => {
-        try {
-            const res = await apiFetch('/api/mindmap');
-            const data = await res.json();
-            if (data.success && data.data && Array.isArray(data.data.nodes) && data.data.nodes.length > 0) {
-                nodes = data.data.nodes;
-                links = data.data.links || [];
+        const settings = widgetData?.settings;
+        // settings.mindmapData 키가 존재하면 위젯 자체 데이터 사용 (신규 위젯 포함)
+        // 키가 없으면 전역 /api/mindmap 폴백 (기존 위젯 하위 호환)
+        if (settings && 'mindmapData' in settings) {
+            const saved = settings.mindmapData;
+            if (saved && Array.isArray(saved.nodes) && saved.nodes.length > 0) {
+                nodes = saved.nodes;
+                links = saved.links || [];
             } else {
                 nodes = [defaultNode()];
             }
-        } catch (_) {
-            nodes = [defaultNode()];
+        } else {
+            try {
+                const res = await apiFetch('/api/mindmap');
+                const data = await res.json();
+                if (data.success && data.data && Array.isArray(data.data.nodes) && data.data.nodes.length > 0) {
+                    nodes = data.data.nodes;
+                    links = data.data.links || [];
+                } else {
+                    nodes = [defaultNode()];
+                }
+            } catch (_) {
+                nodes = [defaultNode()];
+            }
         }
 
         render();

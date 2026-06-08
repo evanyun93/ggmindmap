@@ -131,7 +131,7 @@ export class WidgetManager {
           settings: {
             ...(type === 'milestone'
               ? { syncWithMemo: false, summaryData: [{ label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }, { label: '', value: '' }] }
-              : (type === 'recipe' ? { recipes: [] } : {})
+              : (type === 'recipe' ? { recipes: [] } : (type === 'mindmap' ? { mindmapData: null } : {}))
             ),
             layouts: {
               [`${window.innerWidth <= 768 ? 'mobile' : 'pc'}_expanded`]: {
@@ -378,7 +378,10 @@ export class WidgetManager {
                 <div class="widget-header clickable-header mindmap-widget-header">
                   <div class="header-main">
                     <div class="card-icon">🧠</div>
-                    <h3 class="mindmap-widget-title">마인드맵</h3>
+                    <h3 class="mindmap-widget-title">${data.title || '마인드맵'}</h3>
+                    <button class="btn-edit-title edit-mindmap-title-btn" title="제목 수정">
+                      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" style="pointer-events: none;"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+                    </button>
                   </div>
                   <div class="header-actions">
                     <button class="btn-del-widget" onclick="window.widgetManager.deleteWidget(${data.id})" title="위젯 삭제">

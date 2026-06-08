@@ -48,6 +48,14 @@ if (currentEnv !== 'development') {
 const { startEtlScheduler } = require('./services/etlService');
 startEtlScheduler();
 
+// 서버측 위치 기반 geofence 스케줄러 시작 (개발 환경에서는 중복 알림 방지를 위해 비활성화)
+if (currentEnv !== 'development') {
+  const { startLocationGeofenceScheduler } = require('./utils/locationGeofenceScheduler');
+  startLocationGeofenceScheduler();
+} else {
+  console.log(`⚠️ [Local] 현재 환경(${currentEnv})이 개발 모드이므로 위치 geofence 스케줄러를 시작하지 않습니다.`);
+}
+
 // ─── API 라우트 등록 ──────────────────────────────────────────
 
 // 1. 인증 관련 (로그인, 가입, 소셜)
@@ -93,6 +101,10 @@ app.use('/api/supplements', supplementApi);
 // 11. 위치 즐겨찾기 API
 const locationFavoritesApi = require('./routes/locationFavoritesApi');
 app.use('/api/location-favorites', locationFavoritesApi);
+
+// 12. 위치 업데이트 API (서버측 geofence 스케줄러용)
+const locationApi = require('./routes/locationApi');
+app.use('/api/location', locationApi);
 
 // ─── 프론트엔드 정적 파일 제공 ──────────────────────────────────────────
 // app.use(express.static(path.join(__dirname, '..', 'frontend')));

@@ -33,6 +33,26 @@ export function getMindmapHTML() {
 
                 <div class="mm-topbar-right">
                     <div class="mm-save-indicator" id="saveStatus"></div>
+                    <div class="mm-export-wrap" id="mmExportWrap">
+                        <button class="mm-export-btn" id="mmExportBtn" title="이미지로 내보내기">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7 10 12 15 17 10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            내보내기
+                        </button>
+                        <div class="mm-export-dropdown hidden" id="mmExportDropdown">
+                            <button class="mm-export-option" id="mmExportPng">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                PNG
+                            </button>
+                            <button class="mm-export-option" id="mmExportJpg">
+                                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                                JPG
+                            </button>
+                        </div>
+                    </div>
                     <button class="mm-help-btn" id="mmHelpBtn" title="사용 설명서">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <circle cx="12" cy="12" r="10"/>

@@ -1175,6 +1175,27 @@ function setupEvents() {
     document.getElementById('saveMindmapBtn').onclick        = saveMindmap;
     document.getElementById('backToDashFromMindmap').onclick = () => location.reload();
 
+    // 내보내기 드롭다운
+    const exportBtn      = document.getElementById('mmExportBtn');
+    const exportDropdown = document.getElementById('mmExportDropdown');
+    if (exportBtn && exportDropdown) {
+        exportBtn.onclick = (e) => {
+            e.stopPropagation();
+            exportDropdown.classList.toggle('hidden');
+        };
+        document.getElementById('mmExportPng').onclick = (e) => {
+            e.stopPropagation();
+            exportDropdown.classList.add('hidden');
+            exportMindmap('png');
+        };
+        document.getElementById('mmExportJpg').onclick = (e) => {
+            e.stopPropagation();
+            exportDropdown.classList.add('hidden');
+            exportMindmap('jpg');
+        };
+        document.addEventListener('click', () => exportDropdown.classList.add('hidden'));
+    }
+
     // 도움말 모달 (드래그 가능)
     const helpBtn   = document.getElementById('mmHelpBtn');
     const helpModal = document.getElementById('mmHelpModal');
@@ -1623,6 +1644,104 @@ async function saveMindmap() {
         }
     } catch (_) {
         if (indicator) { indicator.textContent = '저장 실패'; indicator.className = 'mm-save-indicator'; }
+    }
+}
+
+async function exportMindmap(format = 'png') {
+    if (nodes.length === 0) { window.appAlert?.('내보낼 노드가 없습니다.'); return; }
+
+    const PAD = 70;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach(node => {
+        const hw = node.type === 'freehand'
+            ? (node.width  || 120) / 2
+            : (node.type === 'rect' ? (node.width  || 120) / 2 : (node.type === 'triangle' ? (node.width  || 120) / 2 : (node.radius || 50)));
+        const hh = node.type === 'freehand'
+            ? (node.height || 80)  / 2
+            : (node.type === 'rect' ? (node.height || 60)  / 2 : (node.type === 'triangle' ? (node.height || 100) / 2 : (node.radius || 50)));
+        minX = Math.min(minX, node.x - hw);
+        minY = Math.min(minY, node.y - hh);
+        maxX = Math.max(maxX, node.x + hw);
+        maxY = Math.max(maxY, node.y + hh);
+    });
+
+    const vbX = minX - PAD, vbY = minY - PAD;
+    const vbW = (maxX - minX) + PAD * 2;
+    const vbH = (maxY - minY) + PAD * 2;
+    const scale = 2;
+
+    const origSvg = document.getElementById('mindmapSVG');
+    const svgClone = origSvg.cloneNode(true);
+
+    // 선택 오버레이·UI 요소 제거
+    svgClone.querySelectorAll('.selection-overlay, .mm-select-rect, .mm-text-box').forEach(el => el.remove());
+    svgClone.querySelectorAll('[onmousedown],[oncontextmenu],[ontouchstart]').forEach(el => {
+        el.removeAttribute('onmousedown');
+        el.removeAttribute('oncontextmenu');
+        el.removeAttribute('ontouchstart');
+    });
+
+    // 팬/줌 transform 제거 (뷰박스로 제어)
+    const panGroup = svgClone.querySelector('#mm-pan-group');
+    if (panGroup) panGroup.removeAttribute('transform');
+
+    // 크기 및 뷰박스 설정
+    svgClone.setAttribute('width',   String(vbW * scale));
+    svgClone.setAttribute('height',  String(vbH * scale));
+    svgClone.setAttribute('viewBox', `${vbX} ${vbY} ${vbW} ${vbH}`);
+
+    // 배경 추가
+    const bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    bg.setAttribute('x', String(vbX)); bg.setAttribute('y', String(vbY));
+    bg.setAttribute('width', String(vbW)); bg.setAttribute('height', String(vbH));
+    bg.setAttribute('fill', '#0f172a');
+    if (panGroup) panGroup.insertBefore(bg, panGroup.firstChild);
+    else svgClone.appendChild(bg);
+
+    // 필수 CSS 인라인
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style');
+    style.textContent = `
+        text { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif; }
+        .node-text { fill: rgba(255,255,255,0.95); font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+        .node-group.main .node-text { font-size: 16px; font-weight: 700; }
+        .node-text--url { fill: #60a5fa; }
+        .mindmap-link { fill: none; stroke: rgba(139,92,246,0.4); stroke-width: 2; stroke-linecap: round; }
+        .mm-draw-ink path { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .node-shape { }
+    `;
+    svgClone.insertBefore(style, svgClone.firstChild);
+
+    // SVG → Blob → Image → Canvas
+    const svgStr = new XMLSerializer().serializeToString(svgClone);
+    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+
+    try {
+        await new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width  = vbW * scale;
+                canvas.height = vbH * scale;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+                URL.revokeObjectURL(url);
+
+                const mimeType = format === 'jpg' ? 'image/jpeg' : 'image/png';
+                const dataUrl  = canvas.toDataURL(mimeType, format === 'jpg' ? 0.92 : undefined);
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `mindmap_${Date.now()}.${format}`;
+                a.click();
+                resolve();
+            };
+            img.onerror = reject;
+            img.src = url;
+        });
+    } catch (e) {
+        URL.revokeObjectURL(url);
+        console.error('[MindMap] 내보내기 실패:', e);
+        window.appAlert?.('이미지 내보내기에 실패했습니다.');
     }
 }
 
