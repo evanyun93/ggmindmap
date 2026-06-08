@@ -1155,7 +1155,7 @@ function setupEvents() {
             return;
         }
 
-        // ─ Ctrl+C : 복사 ─
+        // ─ Ctrl+C : 복사 (시스템 클립보드 + 메모리 fallback) ─
         if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
             if (window._editNodeId != null) return;
             const targets = selectedNodeIds.size > 0
@@ -1164,37 +1164,56 @@ function setupEvents() {
             const valid = targets.filter(Boolean).filter(n => !n.isMain);
             if (valid.length === 0) return;
             e.preventDefault();
-            _clipboard = JSON.parse(JSON.stringify(valid));
+            const copiedIds = new Set(valid.map(n => n.id));
+            _clipboard = JSON.parse(JSON.stringify(valid)).map(n => ({
+                ...n,
+                __links__: links.filter(lk => lk.source === n.id && copiedIds.has(lk.target))
+            }));
+            const payload = JSON.stringify({ __mindmap__: true, nodes: _clipboard });
+            navigator.clipboard?.writeText(payload).catch(() => {});
             return;
         }
 
-        // ─ Ctrl+V : 붙여넣기 ─
+        // ─ Ctrl+V : 붙여넣기 (시스템 클립보드 우선, fallback 메모리) ─
         if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
             if (window._editNodeId != null) return;
-            if (_clipboard.length === 0) return;
             e.preventDefault();
-            saveSnapshot();
-            const PASTE_OFFSET = 24;
-            const idMap = new Map();
-            const newNodes = _clipboard.map(orig => {
-                const newId = Date.now() + Math.floor(Math.random() * 100000);
-                idMap.set(orig.id, newId);
-                return { ...JSON.parse(JSON.stringify(orig)), id: newId, x: orig.x + PASTE_OFFSET, y: orig.y + PASTE_OFFSET };
-            });
-            nodes.push(...newNodes);
-            // 복사된 노드 간 링크도 재생성
-            _clipboard.forEach(orig => {
-                links.forEach(lk => {
-                    if (lk.source === orig.id && idMap.has(lk.target)) {
-                        links.push({ source: idMap.get(orig.id), target: idMap.get(lk.target) });
-                    }
+            const doPaste = (clipNodes) => {
+                if (!clipNodes || clipNodes.length === 0) return;
+                saveSnapshot();
+                const PASTE_OFFSET = 24;
+                const idMap = new Map();
+                const newNodes = clipNodes.map(orig => {
+                    const newId = Date.now() + Math.floor(Math.random() * 100000);
+                    idMap.set(orig.id, newId);
+                    return { ...JSON.parse(JSON.stringify(orig)), id: newId, isMain: false, x: orig.x + PASTE_OFFSET, y: orig.y + PASTE_OFFSET };
                 });
-            });
-            selectedNodeIds.clear();
-            newNodes.forEach(n => selectedNodeIds.add(n.id));
-            selectedNodeId = newNodes.length === 1 ? newNodes[0].id : null;
-            renderMindmap();
-            saveMindmap();
+                nodes.push(...newNodes);
+                clipNodes.forEach(orig => {
+                    (orig.__links__ || []).forEach(lk => {
+                        if (idMap.has(lk.target)) links.push({ source: idMap.get(orig.id), target: idMap.get(lk.target) });
+                    });
+                });
+                selectedNodeIds.clear();
+                newNodes.forEach(n => selectedNodeIds.add(n.id));
+                selectedNodeId = newNodes.length === 1 ? newNodes[0].id : null;
+                renderMindmap();
+                saveMindmap();
+            };
+            if (navigator.clipboard?.readText) {
+                navigator.clipboard.readText().then(text => {
+                    try {
+                        const parsed = JSON.parse(text);
+                        if (parsed.__mindmap__ && Array.isArray(parsed.nodes)) {
+                            doPaste(parsed.nodes);
+                            return;
+                        }
+                    } catch (_) {}
+                    doPaste(_clipboard); // 시스템 클립보드가 마인드맵 데이터 아니면 메모리 사용
+                }).catch(() => doPaste(_clipboard));
+            } else {
+                doPaste(_clipboard);
+            }
             return;
         }
     });
@@ -2067,7 +2086,7 @@ window._nodeTextContextMenu = (e, id) => {
 // ── 텍스트 mousedown 전역 핸들러 ─────────────────────────────────
 window._nodeTextMouseDown = (e, id) => {
     e.stopPropagation();
-    
+
     // 특수 요소(링크, 체크박스) 클릭 처리
     const urlEl = e.target.closest('.node-text--url');
     if (urlEl) {
@@ -2081,6 +2100,35 @@ window._nodeTextMouseDown = (e, id) => {
     }
 
     if (resizingNodeId || window._editNodeId != null) return;
+
+    // Shift+클릭 → 연결 모드 (_nodeMouseDown과 동일 로직)
+    if (e.shiftKey || mobileConnectMode) {
+        if (connectSourceId != null && connectSourceId !== id) {
+            const exactIdx = links.findIndex(l => l.source === connectSourceId && l.target === id);
+            const revIdx   = links.findIndex(l => l.source === id && l.target === connectSourceId);
+            saveSnapshot();
+            if (exactIdx !== -1) {
+                links.splice(exactIdx, 1);
+            } else if (revIdx !== -1) {
+                links[revIdx] = { source: connectSourceId, target: id };
+            } else {
+                links.push({ source: connectSourceId, target: id });
+            }
+            connectSourceId = null;
+            renderMindmap();
+            saveMindmap();
+            if (mobileConnectMode) {
+                mobileConnectMode = false;
+                document.getElementById('mmMobConnect')?.classList.remove('active');
+                updateHintBar();
+            }
+        } else {
+            connectSourceId = id;
+            renderMindmap();
+            if (mobileConnectMode) updateHintBar();
+        }
+        return;
+    }
 
     const now     = Date.now();
     const elapsed = now - lastClickTime;
