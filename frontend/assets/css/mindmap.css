@@ -561,18 +561,6 @@
 /* ── 유틸 ───────────────────────────────────────────────── */
 .hidden { display: none !important; }
 
-/* ── 리사이즈 핸들 ──────────────────────────────────────── */
-.resize-handle {
-    fill: white;
-    stroke: #a78bfa;
-    stroke-width: 1.5;
-    filter: drop-shadow(0 1px 4px rgba(0,0,0,0.5));
-    transition: fill 0.12s;
-}
-
-.resize-handle:hover {
-    fill: #a78bfa;
-}
 
 .resize-border {
     fill: none;

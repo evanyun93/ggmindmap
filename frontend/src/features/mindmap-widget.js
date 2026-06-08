@@ -159,7 +159,7 @@ export function initMindmapWidget(el, widgetData) {
     if (editBtn) {
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            import('./mindmap.js').then(m => m.initMindmap());
+            import('./mindmap.js').then(m => m.initMindmap(Number(widgetId), widgetData?.settings ?? null));
         });
     }
 

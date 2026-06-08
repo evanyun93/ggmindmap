@@ -27,6 +27,10 @@ let nodes = [];
 let links = [];
 let selectedNodeId = null;
 
+// ── 위젯 모드 (위젯 편집 모드일 때 widgetId/settings 보관) ─────────
+let _widgetId       = null;
+let _widgetSettings = null; // 위젯 전체 settings (레이아웃 등 보존용)
+
 // ── 상태 ────────────────────────────────────────────────────────
 let draggingNodeId = null;
 let dragOffsetX = 0, dragOffsetY = 0;
@@ -92,6 +96,9 @@ let isMobileSelectMode = false;    // 모바일 영역 선택 모드 토글
 const MAX_HISTORY = 50;
 let undoStack = [];
 let redoStack = [];
+
+// ── 클립보드 (복사/붙여넣기) ────────────────────────────────────
+let _clipboard = []; // 복사된 노드 배열 (딥카피)
 
 function saveSnapshot() {
     undoStack.push({
@@ -240,11 +247,28 @@ function getEventSVGCoords(e) {
 }
 
 // ── 초기화 ──────────────────────────────────────────────────────
-export async function initMindmap() {
+// widgetId: 위젯 편집 모드일 때 위젯 ID, null이면 전역 마인드맵
+// widgetSettings: 위젯의 전체 settings 객체 (저장 시 레이아웃 등 보존)
+export async function initMindmap(widgetId = null, widgetSettings = null) {
+    _widgetId       = widgetId       ?? null;
+    _widgetSettings = widgetSettings ?? null;
+
     const appRoot = document.getElementById('app-root');
     appRoot.innerHTML = getMindmapHTML();
 
-    await loadMindmapData();
+    if (_widgetId !== null) {
+        // 위젯 모드: settings.mindmapData 사용
+        const saved = _widgetSettings?.mindmapData;
+        if (saved && Array.isArray(saved.nodes) && saved.nodes.length > 0) {
+            nodes = saved.nodes;
+            links = saved.links || [];
+        } else {
+            nodes = [];
+            links = [];
+        }
+    } else {
+        await loadMindmapData();
+    }
 
     if (nodes.length === 0) {
         nodes.push({
@@ -268,11 +292,13 @@ export async function initMindmap() {
         fitView();
         updateZoomIndicator();
     }
-    
+
     updateHintBar(); // 환경에 맞게 힌트 바 텍스트 갱신
 
-    // 실시간 동기화 리스너 (범용 아키텍처 적용 - 전역 마인드맵은 ID 0 사용)
-    syncService.watchWidget(0, async () => {
+    // 실시간 동기화 리스너 (위젯 모드는 해당 위젯 ID, 전역 모드는 ID 0 사용)
+    const watchId = _widgetId !== null ? _widgetId : 0;
+    syncService.watchWidget(watchId, async () => {
+        if (_widgetId !== null) return; // 위젯 모드에서는 외부 푸시 무시 (본인이 편집 중)
         console.log('[Mindmap] 실시간 데이터 업데이트 감지 - 데이터 재로드');
         await loadMindmapData();
         renderMindmap();
@@ -1115,17 +1141,60 @@ function setupEvents() {
 
         // ─ Ctrl+Z : Undo ─
         if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-            if (window._editNodeId != null) return; // 텍스트 편집 중 무시
+            if (window._editNodeId != null) return;
             e.preventDefault();
             undo();
             return;
         }
 
-        // ─ Ctrl+Shift+Z 또는 Ctrl+Y : Redo ─
-        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        // ─ Ctrl+Shift+Z / Ctrl+Y / Ctrl+R : Redo ─
+        if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || e.key === 'r' || (e.key === 'z' && e.shiftKey))) {
             if (window._editNodeId != null) return;
             e.preventDefault();
             redo();
+            return;
+        }
+
+        // ─ Ctrl+C : 복사 ─
+        if ((e.ctrlKey || e.metaKey) && e.key === 'c') {
+            if (window._editNodeId != null) return;
+            const targets = selectedNodeIds.size > 0
+                ? nodes.filter(n => selectedNodeIds.has(n.id))
+                : selectedNodeId != null ? [nodes.find(n => n.id === selectedNodeId)] : [];
+            const valid = targets.filter(Boolean).filter(n => !n.isMain);
+            if (valid.length === 0) return;
+            e.preventDefault();
+            _clipboard = JSON.parse(JSON.stringify(valid));
+            return;
+        }
+
+        // ─ Ctrl+V : 붙여넣기 ─
+        if ((e.ctrlKey || e.metaKey) && e.key === 'v') {
+            if (window._editNodeId != null) return;
+            if (_clipboard.length === 0) return;
+            e.preventDefault();
+            saveSnapshot();
+            const PASTE_OFFSET = 24;
+            const idMap = new Map();
+            const newNodes = _clipboard.map(orig => {
+                const newId = Date.now() + Math.floor(Math.random() * 100000);
+                idMap.set(orig.id, newId);
+                return { ...JSON.parse(JSON.stringify(orig)), id: newId, x: orig.x + PASTE_OFFSET, y: orig.y + PASTE_OFFSET };
+            });
+            nodes.push(...newNodes);
+            // 복사된 노드 간 링크도 재생성
+            _clipboard.forEach(orig => {
+                links.forEach(lk => {
+                    if (lk.source === orig.id && idMap.has(lk.target)) {
+                        links.push({ source: idMap.get(orig.id), target: idMap.get(lk.target) });
+                    }
+                });
+            });
+            selectedNodeIds.clear();
+            newNodes.forEach(n => selectedNodeIds.add(n.id));
+            selectedNodeId = newNodes.length === 1 ? newNodes[0].id : null;
+            renderMindmap();
+            saveMindmap();
             return;
         }
     });
@@ -1633,10 +1702,21 @@ async function saveMindmap() {
     const indicator = document.getElementById('saveStatus');
     if (indicator) { indicator.textContent = '저장 중…'; indicator.className = 'mm-save-indicator saving'; }
     try {
-        await apiFetch('/api/mindmap', {
-            method: 'POST',
-            body: JSON.stringify({ data: { nodes, links } })
-        });
+        if (_widgetId !== null) {
+            // 위젯 모드: 위젯 settings의 mindmapData만 업데이트 (나머지 settings 보존)
+            const mergedSettings = { ...(_widgetSettings || {}), mindmapData: { nodes, links } };
+            await apiFetch(`/api/widgets/${_widgetId}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ settings: mergedSettings })
+            });
+            // 로컬 캐시 동기화
+            if (_widgetSettings) _widgetSettings.mindmapData = { nodes, links };
+        } else {
+            await apiFetch('/api/mindmap', {
+                method: 'POST',
+                body: JSON.stringify({ data: { nodes, links } })
+            });
+        }
         if (indicator) {
             indicator.textContent = '저장됨';
             indicator.className = 'mm-save-indicator saved';
@@ -1842,12 +1922,10 @@ function updateResizeOverlay() {
     const PAD        = 8;  // 도형과 border 사이 여백
     const SIDE_HIT   = 16; // 변 전체 히트 두께
     const CORNER_HIT = 14; // 모서리 히트 반경 (총 28×28)
-    const VIS        = 6;  // 보이는 핸들 반경 (총 12×12)
 
-    // 모서리 핸들 생성 헬퍼
+    // 모서리 핸들 생성 헬퍼 (투명 히트 영역만, 시각적 핸들 없음)
     const cornerEl = (key, cx, cy, cur) =>
-        `<rect x="${cx-CORNER_HIT}" y="${cy-CORNER_HIT}" width="${CORNER_HIT*2}" height="${CORNER_HIT*2}" fill="transparent" style="cursor:${cur}" onmousedown="window._resizeHandleDown(event,'${key}')"/>` +
-        `<rect x="${cx-VIS}" y="${cy-VIS}" width="${VIS*2}" height="${VIS*2}" rx="3" class="resize-handle" pointer-events="none"/>`;
+        `<rect x="${cx-CORNER_HIT}" y="${cy-CORNER_HIT}" width="${CORNER_HIT*2}" height="${CORNER_HIT*2}" fill="transparent" style="cursor:${cur}" onmousedown="window._resizeHandleDown(event,'${key}')"/>`;
 
     // 변(side) 히트 라인 생성 헬퍼 (투명 두꺼운 선)
     const sideEl = (key, x1, y1, x2, y2, cur) =>
@@ -1888,11 +1966,6 @@ function updateResizeOverlay() {
         // 드래그 중 마우스-중심 거리로 반지름 직접 계산 → key='radial'
         svgContent += `<circle cx="${x}" cy="${y}" r="${rp}" fill="none" stroke="transparent" stroke-width="${SIDE_HIT}" style="cursor:nwse-resize" onmousedown="window._resizeHandleDown(event,'radial')"/>`;
 
-        // 4방향 시각적 핸들 (이벤트 없음)
-        [{ cx: x, cy: y-rp }, { cx: x, cy: y+rp }, { cx: x-rp, cy: y }, { cx: x+rp, cy: y }]
-            .forEach(h => {
-                svgContent += `<rect x="${h.cx-VIS}" y="${h.cy-VIS}" width="${VIS*2}" height="${VIS*2}" rx="3" class="resize-handle" pointer-events="none"/>`;
-            });
 
     } else { // triangle
         const hw  = (node.width  || 120) / 2;
