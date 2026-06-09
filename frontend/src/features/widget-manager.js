@@ -221,6 +221,9 @@ export class WidgetManager {
 
     grid.appendChild(widget);
 
+    // 위젯 헤더에 백업 메뉴 버튼 삽입
+    this._attachBackupMenu(widget, widgetData);
+
     // 기능 바인딩 (순환 참조 방지를 위해 동적 임포트 사용)
     import('./dashboard-grid.js').then(m => {
       if (m.updateMaxZIndex) m.updateMaxZIndex(parseInt(z) || 100);
@@ -235,6 +238,67 @@ export class WidgetManager {
 
     // 위젯 내부 로직 초기화
     this.initWidgetLogic(widget, widgetData);
+  }
+
+  _attachBackupMenu(widgetEl, widgetData) {
+    const headerActions = widgetEl.querySelector('.header-actions');
+    if (!headerActions) return;
+
+    // 드롭다운 포지셔닝을 위한 wrapper (relative)
+    const wrapper = document.createElement('div');
+    wrapper.className = 'widget-backup-wrap';
+
+    const menuBtn = document.createElement('button');
+    menuBtn.className = 'btn-widget-backup-menu';
+    menuBtn.title = '백업 / 복원';
+    menuBtn.innerHTML = `<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>`;
+
+    const dropdown = document.createElement('div');
+    dropdown.className = 'widget-backup-dropdown hidden';
+    dropdown.innerHTML = `
+      <button class="wbd-option" data-action="export">↓ 백업 저장</button>
+      <button class="wbd-option" data-action="import">↑ 백업 불러오기</button>
+    `;
+
+    wrapper.appendChild(menuBtn);
+    wrapper.appendChild(dropdown);
+    // 삭제 버튼 앞(왼쪽)에 배치
+    const delBtn = headerActions.querySelector('.btn-del-widget');
+    headerActions.insertBefore(wrapper, delBtn || null);
+
+    menuBtn.addEventListener('click', e => {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    });
+
+    dropdown.addEventListener('click', e => e.stopPropagation());
+
+    dropdown.querySelector('[data-action="export"]').addEventListener('click', async () => {
+      dropdown.classList.add('hidden');
+      try {
+        const { exportWidget } = await import('./widget-backup.js');
+        await exportWidget(widgetData.id);
+      } catch (err) {
+        window.appAlert?.('백업 저장 중 오류가 발생했습니다.');
+      }
+    });
+
+    dropdown.querySelector('[data-action="import"]').addEventListener('click', async () => {
+      dropdown.classList.add('hidden');
+      try {
+        const { pickFile, importWidgetFromFile } = await import('./widget-backup.js');
+        const file = await pickFile('.json');
+        if (!file) return;
+        await importWidgetFromFile(file);
+        window.appToast?.('위젯이 복원되었습니다. 새로고침합니다...');
+        setTimeout(() => location.reload(), 1200);
+      } catch (err) {
+        window.appAlert?.('백업 파일을 불러오는 데 실패했습니다: ' + err.message);
+      }
+    });
+
+    // 외부 클릭 시 드롭다운 닫기
+    document.addEventListener('click', () => dropdown.classList.add('hidden'));
   }
 
   getWidgetHTML(data) {

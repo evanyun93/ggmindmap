@@ -2163,9 +2163,6 @@
 }
 
 .btn-del-widget {
-  position: absolute;
-  top: 10px;
-  right: 10px;
   width: 28px;
   height: 28px;
   border-radius: 50% !important;
@@ -2177,7 +2174,7 @@
   justify-content: center !important;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   padding: 0 !important;
-  z-index: 10;
+  flex-shrink: 0;
 }
 
 .btn-del-widget:hover {

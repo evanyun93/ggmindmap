@@ -171,6 +171,30 @@ function initUtilities() {
         };
     }
 
+    // 설정 모달 내 대시보드 백업 버튼
+    document.getElementById('modalExportDashboard')?.addEventListener('click', async () => {
+        try {
+            const { exportDashboard } = await import('./widget-backup.js');
+            await exportDashboard();
+            window.appToast?.('대시보드 백업이 다운로드되었습니다.');
+        } catch (err) {
+            window.appAlert?.('백업 저장 중 오류가 발생했습니다.');
+        }
+    });
+
+    document.getElementById('modalImportDashboard')?.addEventListener('click', async () => {
+        try {
+            const { pickFile, importDashboardFromFile } = await import('./widget-backup.js');
+            const file = await pickFile('.json');
+            if (!file) return;
+            const count = await importDashboardFromFile(file);
+            window.appToast?.(`${count}개 위젯이 복원되었습니다. 새로고침합니다...`);
+            setTimeout(() => location.reload(), 1500);
+        } catch (err) {
+            window.appAlert?.('백업 파일을 불러오는 데 실패했습니다: ' + err.message);
+        }
+    });
+
     // 설정 모달 관련 추가 로직 (알림 권한 등)
     const setupBtn = document.getElementById('setupBtn');
     if (setupBtn) {

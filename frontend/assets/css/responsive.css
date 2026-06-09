@@ -455,11 +455,6 @@
     padding-right: 2px !important; /* 우측 끝 밀착 */
   }
 
-  /* 접혔을 때 삭제 버튼 위치 미세 조정 (살짝 위로, 조금 더 우측으로) */
-  .draggable-widget.collapsed .header-actions .btn-del-widget {
-    transform: translate(4px, -2px) !important;
-    opacity: 0.8;
-  }
 
   /* 접혔을 때 수정 버튼 등 불필요한 요소 숨김 */
   .draggable-widget.collapsed .btn-edit-title {
